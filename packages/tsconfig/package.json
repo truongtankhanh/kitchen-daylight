@@ -1,0 +1,11 @@
+{
+  "name": "@kd/tsconfig",
+  "private": true,
+  "version": "0.0.0",
+  "exports": {
+    "./base.json": "./base.json",
+    "./node.json": "./node.json",
+    "./web.json": "./web.json",
+    "./react-native.json": "./react-native.json"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "kd react-native (Expo); extend after expo/tsconfig.base",
+  "extends": "./base.json"
+}

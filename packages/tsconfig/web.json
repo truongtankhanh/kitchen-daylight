@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "kd web (Angular)",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "preserve",
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "noPropertyAccessFromIndexSignature": true
+  },
+  "angularCompilerOptions": {
+    "strictTemplates": true,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  }
+}
