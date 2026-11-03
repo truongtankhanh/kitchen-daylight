@@ -1,0 +1,19 @@
+# Generated output and caches
+**/dist/
+**/coverage/
+**/.turbo/
+**/.angular/
+**/.expo/
+apps/mobile/ios/
+apps/mobile/android/
+
+# Lockfile
+pnpm-lock.yaml
+
+# Owned by generators (decision 0004)
+packages/contracts/openapi*.json
+packages/contracts/src/generated/
+
+# Not formatted by this repository
+designs/
+docs/
