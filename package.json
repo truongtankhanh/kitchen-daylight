@@ -1,0 +1,21 @@
+{
+  "name": "kitchen-daylight",
+  "private": true,
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": "26.13.0"
+  },
+  "scripts": {
+    "build": "turbo run build --concurrency=2",
+    "lint": "turbo run lint --concurrency=2",
+    "typecheck": "turbo run typecheck --concurrency=2",
+    "test": "turbo run test --concurrency=2",
+    "format:check": "turbo run format:check format:check:root --concurrency=2",
+    "format:check:root": "prettier --check --no-error-on-unmatched-pattern package.json turbo.json pnpm-workspace.yaml \"*.md\" \".github/**\""
+  },
+  "devDependencies": {
+    "prettier": "catalog:",
+    "turbo": "2.11.10",
+    "typescript": "catalog:"
+  }
+}

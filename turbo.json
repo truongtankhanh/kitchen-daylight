@@ -1,0 +1,63 @@
+{
+  "$schema": "./node_modules/turbo/schema.json",
+  "concurrency": "2",
+  "globalDependencies": [".nvmrc", "pnpm-lock.yaml"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.spec.ts",
+        "!**/*.int-spec.ts",
+        "!test/**",
+        "$TURBO_ROOT$/packages/tsconfig/*.json"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/eslint-config/*.{js,json}",
+        "$TURBO_ROOT$/packages/tsconfig/*.json"
+      ],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/tsconfig/*.json"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/tsconfig/*.json"],
+      "outputs": ["coverage/**"]
+    },
+    "format:check": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/eslint-config/*.{js,json}"],
+      "outputs": []
+    },
+    "//#format:check:root": {
+      "inputs": ["package.json", "turbo.json", "pnpm-workspace.yaml", "*.md", ".github/**"],
+      "outputs": []
+    },
+    "@kd/api#openapi:generate": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["$TURBO_ROOT$/packages/contracts/openapi.json"]
+    },
+    "@kd/api#openapi:check": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/contracts/openapi.json"],
+      "outputs": []
+    },
+    "@kd/contracts#client:generate": {
+      "inputs": ["openapi.json", "package.json"],
+      "outputs": ["src/generated/**"]
+    },
+    "@kd/contracts#client:check": {
+      "inputs": ["openapi.json", "package.json", "src/generated/**"],
+      "outputs": []
+    }
+  }
+}

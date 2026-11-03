@@ -1,0 +1,25 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+# External packages used by two or more workspace packages (decision 0003).
+# Exact versions from decision 0001 only.
+catalog:
+  eslint: 10.14.0
+  prettier: 3.9.10
+  rxjs: 7.8.2
+  typescript: 6.0.3
+
+catalogMode: manual
+
+# Isolated layout, no hoisting to the root (decisions 0003 and 0006 item 1).
+nodeLinker: isolated
+shamefullyHoist: false
+
+engineStrict: true
+
+# Lifecycle-script allowlist (decision 0003): starts empty; each entry is added
+# by the task that needs it, with a reason in the pull request.
+allowBuilds: {}
+strictDepBuilds: true
