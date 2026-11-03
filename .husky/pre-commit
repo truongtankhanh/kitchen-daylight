@@ -1,0 +1,14 @@
+# shellcheck shell=sh
+# Pre-commit (decision 0002): secret scan of the staged changes, then lint and format of the
+# staged files. Never runs tests, type checks or builds.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed, so the commit is blocked (decision 0002)." >&2
+  echo "Install gitleaks 8.30.1 with 'brew install gitleaks' or from" >&2
+  echo "https://github.com/gitleaks/gitleaks/releases, then commit again." >&2
+  exit 1
+fi
+
+gitleaks git --pre-commit --redact --staged --verbose --config .gitleaks.toml || exit 1
+
+pnpm exec lint-staged --concurrent false

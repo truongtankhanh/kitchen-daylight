@@ -1,0 +1,4 @@
+# shellcheck shell=sh
+# Commit message check (decision 0002): Conventional Commits, scopes from commitlint.config.mjs.
+
+pnpm exec commitlint --edit "$1"

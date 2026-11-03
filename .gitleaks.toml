@@ -1,0 +1,17 @@
+# Secret scanning (decision 0002): gitleaks 8.30.1 default rules plus one allowlist.
+# The allowlist matches placeholder VALUES only. Never add a path entry (a real secret pasted
+# into .env.example must still be caught). New placeholder patterns come with the file that
+# uses them, reviewed in the pull request.
+
+title = "kitchen-daylight"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Local placeholders and reserved example domains"
+regexes = [
+  '''CHANGE_ME_LOCAL''',
+  '''(?i)(^|[^a-z0-9-])example\.com($|[^a-z0-9-])''',
+  '''(?i)(^|[^a-z0-9-])kitchendaylight\.example($|[^a-z0-9-])''',
+]
