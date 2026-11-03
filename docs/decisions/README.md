@@ -21,3 +21,4 @@ An accepted record is not rewritten: a change of decision is a new record that s
 | ID | Title | Status | Date | Task |
 |---|---|---|---|---|
 | [0001](0001-toolchain-versions.md) | Toolchain versions and compatibility | proposed | 2026-11-03 | P0-T2 |
+| [0002](0002-quality-tooling.md) | Quality tooling: tests, lint, hooks, commits, secrets | proposed | 2026-11-03 | P0-T3 |
