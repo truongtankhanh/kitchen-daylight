@@ -147,6 +147,10 @@ Expected: exit 0.
 
 Result: [x] pass [ ] fail
 
+Note: run at commit `1851a22`. The Phase 1 review fix `797ee0b` adds sibling-path fixtures and
+the manifest check; from that commit `check-fixtures` reports 197 violations, and the package
+`lint` script also runs `check-fixtures` and `check-manifests`.
+
 ```text
 $ node scripts/check-fixtures.mjs
 ok   boundaries/admin.ts (13 expected violations)
@@ -327,6 +331,29 @@ Cached:    0 cached, 1 total
            455017484  instructions retired
            182938865  cycles elapsed
             20597376  peak memory footprint
+```
+
+## Step 9: peak memory of a fresh install
+
+Added at the Phase 1 review: the phase success criteria ask for the install's peak memory too.
+Self-contained, so it can run after the cleanup below. Start in the repository root.
+
+```sh
+SMOKE_ROOT="$(mktemp -d)"
+git clone "$(git rev-parse --show-toplevel)" "$SMOKE_ROOT/kd"
+cd "$SMOKE_ROOT/kd"
+/usr/bin/time -l pnpm install --frozen-lockfile
+```
+
+Expected: exit 0. Record `maximum resident set size` and `peak memory footprint` as in step 8.
+
+Maximum resident set size: ____
+Peak memory footprint: ____
+
+Result: [ ] pass [ ] fail
+
+```text
+
 ```
 
 ## Cleanup

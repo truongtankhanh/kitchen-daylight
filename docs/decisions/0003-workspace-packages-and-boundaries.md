@@ -1,6 +1,6 @@
 # 0003. Workspace packages and dependency boundaries
 
-Status: **proposed** (P0-T4, 2026-11-03). Fixes package names, how shared packages are built and consumed, the pnpm and TypeScript settings, the Turborepo task graph and the import rules. P1-T1 (root workspace), P1-T2 (`@kd/tsconfig`), P1-T3 (`@kd/eslint-config` and the boundary fixtures) and every later package follow it. Closes scaffold-plan open item 4.
+Status: **accepted** (P0-T4, proposed 2026-11-03; accepted by the owner 2026-11-03, Phase 0 gate). Fixes package names, how shared packages are built and consumed, the pnpm and TypeScript settings, the Turborepo task graph and the import rules. P1-T1 (root workspace), P1-T2 (`@kd/tsconfig`), P1-T3 (`@kd/eslint-config` and the boundary fixtures) and every later package follow it. Closes scaffold-plan open item 4.
 
 ## Context
 
@@ -225,3 +225,17 @@ The normal `lint` ignores the fixtures folder. `lint:boundaries` runs ESLint on 
 - P0-T6 chooses the API module system. ESM-only shared packages work with either choice [S7].
 - P4-T7 confirms that Expo SDK 58 works with pnpm's isolated layout, and that there is no duplicate React or React Native.
 - Revisit triggers: a slice needs shared database code (new package and new record); the mobile app needs hoisting; a framework stops consuming compiled ESM packages.
+
+## Implementation notes (Phase 1, 2026-11-03)
+
+Recorded at the Phase 1 review, before this record was accepted. The sections above keep their wording; where the implementation differs, this section is the reference.
+
+- **pnpm settings (section 3)** live in `pnpm-workspace.yaml` (`nodeLinker: isolated`, `shamefullyHoist: false`, `engineStrict: true`, `allowBuilds: {}`, `strictDepBuilds: true`). There is no `.npmrc`: pnpm 12 reads these settings from the workspace file.
+- **TypeScript bases (section 4).** `@kd/tsconfig` has `base.json`, `node.json`, `web.json` and `react-native.json` (see its README). `base.json` holds the strictness only; `target` and `lib` are set per runtime (`node.json`: `es2024`). `library.json` was not created in Phase 1: the first compiled package (P3-T1) adds it to `@kd/tsconfig` with the settings of section 4.
+- **Turborepo (section 5).** The root format task is `//#format:check:root`. `@kd/eslint-config#lint` overrides `lint` to add every workspace `package.json` as an input, because its manifest check reads them.
+- **Import level (section 6).** Package names: `no-restricted-imports`. Relative paths: the local rule `kd/no-relative-boundary`, which resolves the specifier against the linted file and reports a path into a forbidden folder (including `designs/`, and for `api` the generated client of `@kd/contracts`). A path into the importer's own folder is never reported, whatever its name.
+- **Manifest level (section 6)** is `scripts/check-manifests.mjs` of `@kd/eslint-config`. It rejects a `@kd/*` dependency that the matrix forbids, a `@kd/*` dependency that is not in the matrix, and a workspace package that is not in the matrix. `@kd/tsconfig` has a row: it may depend on no `@kd/*` package.
+- **Fixtures (section 6).**
+  - Imports: one file per importer, `fixtures/boundaries/<importer>.ts`, linted as if it were `<importer folder>/src/boundary-fixture.ts`. Each line marked `// expect: <rule-id>` must be reported with that rule; every other line (allowed packages, own-folder paths) must lint clean. Both the path through the repository root and the short sibling path are covered.
+  - Manifests: `fixtures/manifests/*.json`, each listing in `expect` exactly the dependencies that must be rejected.
+  - Scripts: `check-fixtures` and `check-manifests`, both run by the package `lint` script (there is no `lint:boundaries` script).

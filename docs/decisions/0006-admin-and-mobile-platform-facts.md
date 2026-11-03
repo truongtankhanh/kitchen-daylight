@@ -1,6 +1,6 @@
 # 0006. Admin and mobile platform facts
 
-Status: **proposed** (P0-T7, 2026-11-03). Records documented facts about Expo SDK 58, React Native 0.88.1 and PrimeNG 22.1.4 that the foundation depends on, and answers scaffold-plan section 10 items 2 to 6. No code was written, no package installed and no device used. Each item has a status: `confirmed` (stated by official documentation or package metadata), `not confirmed` (no official statement found), or `deferred to <slice>` (needs a runtime check that belongs to that slice).
+Status: **accepted** (P0-T7, proposed 2026-11-03; accepted by the owner 2026-11-03, Phase 0 gate). Records documented facts about Expo SDK 58, React Native 0.88.1 and PrimeNG 22.1.4 that the foundation depends on, and answers scaffold-plan section 10 items 2 to 6. No code was written, no package installed and no device used. Each item has a status: `confirmed` (stated by official documentation or package metadata), `not confirmed` (no official statement found), or `deferred to <slice>` (needs a runtime check that belongs to that slice).
 
 ## Context
 

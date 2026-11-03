@@ -20,9 +20,9 @@ An accepted record is not rewritten: a change of decision is a new record that s
 
 | ID | Title | Status | Date | Task |
 |---|---|---|---|---|
-| [0001](0001-toolchain-versions.md) | Toolchain versions and compatibility | proposed | 2026-11-03 | P0-T2 |
-| [0002](0002-quality-tooling.md) | Quality tooling: tests, lint, hooks, commits, secrets | proposed | 2026-11-03 | P0-T3 |
-| [0003](0003-workspace-packages-and-boundaries.md) | Workspace packages and dependency boundaries | proposed | 2026-11-03 | P0-T4 |
-| [0004](0004-contract-and-client.md) | Contract workflow and client generator | proposed | 2026-11-03 | P0-T5 |
-| [0005](0005-api-foundation-conventions.md) | API foundation conventions | proposed | 2026-11-03 | P0-T6 |
-| [0006](0006-admin-and-mobile-platform-facts.md) | Admin and mobile platform facts | proposed | 2026-11-03 | P0-T7 |
+| [0001](0001-toolchain-versions.md) | Toolchain versions and compatibility | accepted | 2026-11-03 | P0-T2 |
+| [0002](0002-quality-tooling.md) | Quality tooling: tests, lint, hooks, commits, secrets | accepted | 2026-11-03 | P0-T3 |
+| [0003](0003-workspace-packages-and-boundaries.md) | Workspace packages and dependency boundaries | accepted | 2026-11-03 | P0-T4 |
+| [0004](0004-contract-and-client.md) | Contract workflow and client generator | accepted | 2026-11-03 | P0-T5 |
+| [0005](0005-api-foundation-conventions.md) | API foundation conventions | accepted | 2026-11-03 | P0-T6 |
+| [0006](0006-admin-and-mobile-platform-facts.md) | Admin and mobile platform facts | accepted | 2026-11-03 | P0-T7 |

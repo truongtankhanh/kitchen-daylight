@@ -1,6 +1,6 @@
 # 0002. Quality tooling: tests, lint, hooks, commits, secrets
 
-Status: **proposed** (P0-T3, 2026-11-03). Chooses the tools that P1-T3, P1-T4, P4-T1, P4-T6, P4-T7, P5-T1 and P5-T2 install. Versions are not pinned here: each tool is pinned by the task that adds it and recorded in [0001](0001-toolchain-versions.md).
+Status: **accepted** (P0-T3, proposed 2026-11-03; accepted by the owner 2026-11-03, Phase 0 gate). Chooses the tools that P1-T3, P1-T4, P4-T1, P4-T6, P4-T7, P5-T1 and P5-T2 install. Versions are not pinned here: each tool is pinned by the task that adds it and recorded in [0001](0001-toolchain-versions.md).
 
 ## Context
 
@@ -173,3 +173,12 @@ Both workspace package names and relative paths are restricted. Whether `pattern
 - P5-T1 runs `lint`, `typecheck`, `test` and the commit message check with `HUSKY=0`. P5-T2 adds gitleaks, dependency review, CodeQL and `pnpm audit`. P5-T6 sets the merge protection.
 - The testing-strategy sentence above is applied by the owner in the design workspace.
 - Revisit triggers: P0-T6 chooses CommonJS for the API; Expo documents Vitest; Betterleaks v2 is stable; dependency review is refused on this repository.
+
+## Implementation notes (Phase 1, 2026-11-03)
+
+Recorded at the Phase 1 review, before this record was accepted. The choices above stand; these notes say how they were built.
+
+- **Boundary enforcement (section 6).** Package-name imports use `no-restricted-imports` as chosen. Relative paths are checked by a local rule, `kd/no-relative-boundary`, defined inside `@kd/eslint-config` (no new tool or dependency): it resolves the specifier against the linted file and compares the result with the forbidden folders. A regex on the specifier, the first implementation, missed short paths between sibling folders such as `../../api/src/main.js` from `apps/admin/src`.
+- **The boundary script** is not called `lint:boundaries`. The package `lint` script of `@kd/eslint-config` runs `eslint`, then `check-fixtures` (import fixtures) and `check-manifests` (manifest fixtures and every workspace `package.json`), so `turbo run lint` and the CI `lint` job always exercise them. Details in [0003](0003-workspace-packages-and-boundaries.md#implementation-notes-phase-1-2026-11-03).
+- **Hook installation.** The root `prepare` script runs `.husky/install.mjs`: it skips without failing when husky is not installed (for example `pnpm install --prod`), and husky itself skips when `HUSKY=0`. Verified in the Phase 1 smoke sheet, step 7.
+- **Commit scopes (section 4).** `config-pnpm-scopes` yields the workspace names without the `@kd/` prefix; its extra `global` scope is removed. Checked on 2026-11-03: `chore(eslint-config): …` and `docs(repo): …` pass, an unknown scope fails.

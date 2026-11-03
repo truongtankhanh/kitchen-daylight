@@ -1,6 +1,6 @@
 # 0004. Contract workflow and client generator
 
-Status: **proposed** (P0-T5, 2026-11-03). Fixes how the OpenAPI document is produced, how the committed snapshot is kept deterministic, what `openapi:check` checks, which client generator `@kd/contracts` uses, where the generated client lives, and where the hand-written realtime event and error types live. Answers the three P0-T5 items left open by 0003 (generation without a database or network, the generated-client subpath, the location of the last released snapshot).
+Status: **accepted** (P0-T5, proposed 2026-11-03; accepted by the owner 2026-11-03, Phase 0 gate). Fixes how the OpenAPI document is produced, how the committed snapshot is kept deterministic, what `openapi:check` checks, which client generator `@kd/contracts` uses, where the generated client lives, and where the hand-written realtime event and error types live. Answers the three P0-T5 items left open by 0003 (generation without a database or network, the generated-client subpath, the location of the last released snapshot).
 
 ## Context
 

@@ -1,6 +1,6 @@
 # 0005. API foundation conventions
 
-Status: **proposed** (P0-T6, 2026-11-03). Fixes the API's routing, environment variables, env file, config validation, `APP_ENV` and production guard, module layout, logging, database access and migrations, CLI, container contract and host dev port. Also takes the two choices that earlier records left to P0-T6: the API module system (0003) and the Nest builder (0004).
+Status: **accepted** (P0-T6, proposed 2026-11-03; accepted by the owner 2026-11-03, Phase 0 gate). Fixes the API's routing, environment variables, env file, config validation, `APP_ENV` and production guard, module layout, logging, database access and migrations, CLI, container contract and host dev port. Also takes the two choices that earlier records left to P0-T6: the API module system (0003) and the Nest builder (0004).
 
 ## Contradictions and tightenings (for P6-T4)
 

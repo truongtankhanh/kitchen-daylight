@@ -1,6 +1,6 @@
 # 0001. Toolchain versions and compatibility
 
-Status: **proposed** (P0-T2, 2026-11-03). Pins the versions that ADR-0001 and scaffold-plan section 2 left open, resolves scaffold-plan items 1 and 7 and ADR-0001 open item 3.
+Status: **accepted** (P0-T2, proposed 2026-11-03; accepted by the owner 2026-11-03, Phase 0 gate). Pins the versions that ADR-0001 and scaffold-plan section 2 left open, resolves scaffold-plan items 1 and 7 and ADR-0001 open item 3.
 
 ## Context
 
@@ -47,6 +47,15 @@ Collected 2026-11-03 with read-only `npm view <pkg>@<version> version peerDepend
 | eslint | 10.14.0 | https://registry.npmjs.org/eslint | 2026-11-03 | engines `node ^20.19.0 \|\| ^22.13.0 \|\| >=24`; `typescript-eslint` 8.72.1 accepts `eslint ^10.0.0` | |
 | prettier | 3.9.10 | https://registry.npmjs.org/prettier | 2026-11-03 | engines `node >=14` | |
 | pino | 10.4.0 | https://registry.npmjs.org/pino | 2026-11-03 | no `engines` field and no peers | Node 26 support: to confirm in P4-T1 |
+| @eslint/js (P1-T3) | 10.0.1 | https://registry.npmjs.org/@eslint/js | 2026-11-03 | engines `node ^20.19.0 \|\| ^22.13.0 \|\| >=24`; peer `eslint ^10.0.0` | |
+| typescript-eslint (P1-T3) | 8.72.1 | https://registry.npmjs.org/typescript-eslint | 2026-11-03 | engines `node ^18.18.0 \|\| ^20.9.0 \|\| >=21.1.0`; peers `eslint ^8.57.0 \|\| ^9.0.0 \|\| ^10.0.0`, `typescript >=4.8.4 <6.1.0` | |
+| husky (P1-T4) | 9.1.7 | https://registry.npmjs.org/husky | 2026-11-03 | engines `node >=18`; no peers | |
+| lint-staged (P1-T4) | 17.6.0 | https://registry.npmjs.org/lint-staged | 2026-11-03 | engines `node >=22.22.1`; no peers | |
+| @commitlint/cli, @commitlint/config-conventional (P1-T4) | 21.2.4 | https://registry.npmjs.org/@commitlint/cli | 2026-11-03 | engines `node >=22.12.0`; no peers | |
+| @commitlint/config-pnpm-scopes (P1-T4) | 21.2.2 | https://registry.npmjs.org/@commitlint/config-pnpm-scopes | 2026-11-03 | engines `node >=22.12.0`; no peers | |
+| gitleaks (P1-T4, binary, not an npm package) | 8.30.1 | https://github.com/gitleaks/gitleaks/releases | 2026-11-03 | installed by each developer (Homebrew or release binary), decision 0002 section 5; the hook does not check the version | |
+
+Rows marked P1-T3 and P1-T4 were recorded at the Phase 1 review (2026-11-03); each was the registry `latest` on that day.
 
 ### Node range intersection
 
