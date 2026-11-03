@@ -339,21 +339,59 @@ Added at the Phase 1 review: the phase success criteria ask for the install's pe
 Self-contained, so it can run after the cleanup below. Start in the repository root.
 
 ```sh
+nvm use
 SMOKE_ROOT="$(mktemp -d)"
 git clone "$(git rev-parse --show-toplevel)" "$SMOKE_ROOT/kd"
 cd "$SMOKE_ROOT/kd"
 /usr/bin/time -l pnpm install --frozen-lockfile
 ```
 
-Expected: exit 0. Record `maximum resident set size` and `peak memory footprint` as in step 8.
+Expected: `nvm use` selects `26.13.0`; the install exits 0. Record `maximum resident set size`
+and `peak memory footprint` as in step 8. Without `nvm use` a shell on another Node line fails
+with `ERR_PNPM_UNSUPPORTED_ENGINE` (`engineStrict`), which is expected but measures nothing.
 
-Maximum resident set size: ____
-Peak memory footprint: ____
+Maximum resident set size: 64307200 bytes (~61 MiB)
+Peak memory footprint: 20433560 bytes (~19 MiB)
 
-Result: [ ] pass [ ] fail
+Result: [x] pass [ ] fail
+
+Note: run at commit `b421810` with a warm pnpm store (194 packages reused, 0 downloaded).
 
 ```text
+Found '<repo>/.nvmrc' with version <26.13.0>
+Now using node v26.13.0 (npm v11.20.0)
+Cloning into '$SMOKE_ROOT/kd'...
+done.
+Scope: all 3 workspace projects
+✓ Lockfile passes supply-chain policies (verified 37m ago)
+Lockfile is up to date, resolution step is skipped
+Packages: +194
+Progress: resolved 194, reused 194, downloaded 0, added 194, done
+. prepare$ node .husky/install.mjs
+└─ Done in 52ms
 
+devDependencies:
++ @commitlint/cli 21.2.4
++ @commitlint/config-conventional 21.2.4
++ @commitlint/config-pnpm-scopes 21.2.2
++ eslint 10.14.0
++ husky 9.1.7
++ lint-staged 17.6.0
++ prettier 3.9.10
++ turbo 2.11.10
++ typescript 6.0.3
+
+Done in 689ms using pnpm v12.16.1
+        0.75 real         0.14 user         0.45 sys
+            64307200  maximum resident set size
+               14810  page reclaims
+                 770  page faults
+                   0  swaps
+                3235  voluntary context switches
+               12464  involuntary context switches
+           462977482  instructions retired
+           187395078  cycles elapsed
+            20433560  peak memory footprint
 ```
 
 ## Cleanup
