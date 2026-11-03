@@ -24,3 +24,4 @@ An accepted record is not rewritten: a change of decision is a new record that s
 | [0002](0002-quality-tooling.md) | Quality tooling: tests, lint, hooks, commits, secrets | proposed | 2026-11-03 | P0-T3 |
 | [0003](0003-workspace-packages-and-boundaries.md) | Workspace packages and dependency boundaries | proposed | 2026-11-03 | P0-T4 |
 | [0004](0004-contract-and-client.md) | Contract workflow and client generator | proposed | 2026-11-03 | P0-T5 |
+| [0005](0005-api-foundation-conventions.md) | API foundation conventions | proposed | 2026-11-03 | P0-T6 |
