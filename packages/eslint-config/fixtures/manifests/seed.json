@@ -1,0 +1,9 @@
+{
+  "name": "@kd/seed",
+  "expect": ["@kd/contracts", "@kd/storage"],
+  "dependencies": {
+    "@kd/contracts": "workspace:*",
+    "@kd/seed-data": "workspace:*",
+    "@kd/storage": "workspace:*"
+  }
+}

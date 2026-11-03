@@ -1,0 +1,15 @@
+{
+  "name": "@kd/admin",
+  "expect": ["@kd/api", "@kd/seed-data"],
+  "dependencies": {
+    "@kd/api": "workspace:*",
+    "@kd/contracts": "workspace:*",
+    "@kd/design-tokens": "workspace:*",
+    "@kd/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "@kd/eslint-config": "workspace:*",
+    "@kd/seed-data": "workspace:*",
+    "@kd/tsconfig": "workspace:*"
+  }
+}

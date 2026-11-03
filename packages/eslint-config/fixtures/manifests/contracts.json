@@ -1,0 +1,11 @@
+{
+  "name": "@kd/contracts",
+  "expect": ["@kd/api"],
+  "peerDependencies": {
+    "@kd/api": "workspace:*"
+  },
+  "devDependencies": {
+    "@kd/eslint-config": "workspace:*",
+    "@kd/tsconfig": "workspace:*"
+  }
+}

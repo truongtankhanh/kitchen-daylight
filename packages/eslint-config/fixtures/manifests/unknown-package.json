@@ -1,0 +1,7 @@
+{
+  "name": "@kd/storage",
+  "expect": ["@kd/storage"],
+  "devDependencies": {
+    "@kd/tsconfig": "workspace:*"
+  }
+}

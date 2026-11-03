@@ -1,7 +1,9 @@
 // Lints every fixture with the config layer it targets and passes only when each line marked
 // `// expect: <rule-id>` is reported with that rule, and nothing else is reported.
-// Fixtures under fixtures/boundaries/<importer>.ts use that importer's preset and boundary layer;
-// fixtures under fixtures/rules/ use the base preset.
+// Fixtures under fixtures/boundaries/<importer>.ts use that importer's preset and boundary layer,
+// and are linted as if they were `<importer folder>/src/boundary-fixture.ts`, so their relative
+// paths resolve like real imports of that package. Fixtures under fixtures/rules/ use the base
+// preset at their own path.
 import { readdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -9,9 +11,10 @@ import { fileURLToPath } from 'node:url';
 
 import { ESLint } from 'eslint';
 
-import { angular, base, IMPORTERS, node, reactNative } from '../src/index.js';
+import { angular, base, FOLDERS, IMPORTERS, node, reactNative } from '../src/index.js';
 
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const repoRoot = path.resolve(packageDir, '../..');
 const fixturesDir = path.join(packageDir, 'fixtures');
 const EXPECT = /\/\/ expect: (\S+)\s*$/;
 
@@ -23,14 +26,19 @@ const PRESET_BY_IMPORTER = {
   'seed-data': node,
 };
 
-function configFor(relativePath) {
+function lintSetupFor(relativePath) {
   const [group, file] = relativePath.split(path.sep);
-  if (group !== 'boundaries') return base();
+  if (group !== 'boundaries') {
+    return { config: base(), lintPath: path.join(fixturesDir, relativePath) };
+  }
   const importer = path.basename(file, path.extname(file));
   if (!IMPORTERS.includes(importer))
     throw new Error(`No boundary layer for fixture ${relativePath}`);
   const preset = PRESET_BY_IMPORTER[importer] ?? base;
-  return preset({ importer });
+  return {
+    config: preset({ importer }),
+    lintPath: path.join(repoRoot, FOLDERS[importer], 'src', 'boundary-fixture.ts'),
+  };
 }
 
 function expectations(source) {
@@ -43,15 +51,16 @@ function expectations(source) {
 }
 
 async function checkFile(relativePath) {
-  const filePath = path.join(fixturesDir, relativePath);
+  const source = readFileSync(path.join(fixturesDir, relativePath), 'utf8');
+  const { config, lintPath } = lintSetupFor(relativePath);
   const eslint = new ESLint({
-    cwd: packageDir,
+    cwd: repoRoot,
     overrideConfigFile: true,
-    overrideConfig: configFor(relativePath),
+    overrideConfig: config,
     ignore: false,
   });
-  const [result] = await eslint.lintFiles([filePath]);
-  const expected = expectations(readFileSync(filePath, 'utf8'));
+  const [result] = await eslint.lintText(source, { filePath: lintPath });
+  const expected = expectations(source);
   const problems = [];
 
   for (const [line, ruleId] of expected) {

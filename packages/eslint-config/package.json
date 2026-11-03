@@ -7,8 +7,9 @@
     ".": "./src/index.js"
   },
   "scripts": {
-    "lint": "eslint . --max-warnings 0",
-    "check-fixtures": "node scripts/check-fixtures.mjs"
+    "lint": "eslint . --max-warnings 0 && node scripts/check-fixtures.mjs && node scripts/check-manifests.mjs",
+    "check-fixtures": "node scripts/check-fixtures.mjs",
+    "check-manifests": "node scripts/check-manifests.mjs"
   },
   "dependencies": {
     "@eslint/js": "10.0.1",
