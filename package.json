@@ -12,6 +12,7 @@
     "dev:infra": "scripts/dev-infra.sh up",
     "dev:infra:down": "scripts/dev-infra.sh down",
     "dev:infra:status": "scripts/dev-infra.sh status",
+    "dev:api": "pnpm --filter @kd/api start:dev",
     "build": "turbo run build --concurrency=2",
     "lint": "turbo run lint --concurrency=2",
     "typecheck": "turbo run typecheck --concurrency=2",

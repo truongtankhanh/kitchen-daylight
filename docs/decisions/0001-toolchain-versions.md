@@ -54,8 +54,12 @@ Collected 2026-11-03 with read-only `npm view <pkg>@<version> version peerDepend
 | @commitlint/cli, @commitlint/config-conventional (P1-T4) | 21.2.4 | https://registry.npmjs.org/@commitlint/cli | 2026-11-03 | engines `node >=22.12.0`; no peers | |
 | @commitlint/config-pnpm-scopes (P1-T4) | 21.2.2 | https://registry.npmjs.org/@commitlint/config-pnpm-scopes | 2026-11-03 | engines `node >=22.12.0`; no peers | |
 | gitleaks (P1-T4, binary, not an npm package) | 8.30.1 | https://github.com/gitleaks/gitleaks/releases | 2026-11-03 | installed by each developer (Homebrew or release binary), decision 0002 section 5; the hook does not check the version | |
+| reflect-metadata (P4-T1) | 0.2.2 | https://registry.npmjs.org/reflect-metadata | 2026-11-04 | no `engines` field and no peers; satisfies the `@nestjs/core` 12.3.2 peer `^0.1.12 \|\| ^0.2.0` | |
+| @types/node (P4-T1) | 26.6.6 | https://registry.npmjs.org/@types/node | 2026-11-04 | no `engines` field and no peers; major matches the Node 26 pin; required by `types: ["node"]` in `@kd/tsconfig/node.json` | |
+| vitest (P4-T1) | 5.1.0 | https://registry.npmjs.org/vitest | 2026-11-04 | engines `node ^22.12.0 \|\| ^24.0.0 \|\| >=26.0.0`; peers `vite ^6.4.0 \|\| ^7.0.0 \|\| ^8.0.0` (not optional), `@types/node ^22.0.0 \|\| >=24.0.0`; inside the `@angular/build` 22.2.5 peer `^4.0.8 \|\| ^5.0.0` (decision 0002) | |
+| vite (P4-T1, required peer of vitest) | 8.3.5 | https://registry.npmjs.org/vite | 2026-11-04 | engines `node ^20.19.0 \|\| >=22.12.0`; every peer optional (`@types/node ^20.19.0 \|\| >=22.12.0` among them) | |
 
-Rows marked P1-T3 and P1-T4 were recorded at the Phase 1 review (2026-11-03); each was the registry `latest` on that day.
+Rows marked P1-T3 and P1-T4 were recorded at the Phase 1 review (2026-11-03); each was the registry `latest` on that day. Rows marked P4-T1 were recorded on 2026-11-04, each the registry `latest` on that day; they are pinned in `apps/api` only until a second workspace package uses them, when they move to the catalog (decision 0003, section 3).
 
 ### Node range intersection
 
