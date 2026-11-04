@@ -68,7 +68,7 @@ The "API integration" row keeps "Same runner", which now means Vitest.
 |---|---|---|
 | `apps/api`, `packages/*`, `tools/*` (unit) | `vitest run --maxWorkers=2` | single run, never watch [S6] |
 | `apps/api` (integration, real PostgreSQL) | `vitest run --maxWorkers=1 --no-file-parallelism` | one shared database; no parallel files [S6] |
-| `apps/admin` | `ng test --no-watch --no-progress` plus `maxWorkers: 2` in the Vitest runner config | `ng test` watches by default [S3]; passing the worker cap through `runnerConfig` is **not verified**, to confirm in P4-T6 |
+| `apps/admin` | `ng test --no-watch --no-progress` plus `maxWorkers: 2` in the Vitest runner config | `ng test` watches by default [S3]; passing the worker cap through `runnerConfig` was **not verified** in P0-T3; P4-T6 wired it (`runnerConfig: vitest.config.mts` with `maxWorkers: 2`) and `ng test` passes, but whether the cap reaches the workers was not measured |
 | `apps/mobile` | `jest --maxWorkers=2` (and `--ci` in CI) | Expo's suggested `jest --watchAll` [S4] is rejected; Jest does not watch without the flag [S7] |
 | Root | `turbo run test --concurrency=2` | Turborepo cap from testing-strategy rule 3 |
 

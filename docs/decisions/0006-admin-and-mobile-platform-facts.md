@@ -214,3 +214,12 @@ Read on 2026-11-03. Registry data from read-only `npm view`; SDK 58 versions fro
   - `@maplibre/maplibre-react-native` drops Expo 58 from its peer range;
   - native tabs change API;
   - the EAS free plan changes before the release slice.
+
+## Implementation notes (Phase 4, 2026-11-04)
+
+Recorded at the Phase 4 review. The sections above keep their wording; this section says what P4-T6 and P4-T7 confirmed and where the rest moved.
+
+- **Item 1 (Expo in the pnpm monorepo), P4-T7:** `apps/mobile` has no `metro.config.js` and no `babel.config.js`, the workspace stays isolated, and `pnpm why` shows one `react` (19.3.0) and one `react-native` (0.88.1). `expo-doctor` passes every check except the SDK version check, which waits for the 58.0.23 patch set (0001, "Pending SDK 58 patch"). The runtime check on a device or simulator was **not** run (the task allowed no `expo` command and no device): deferred to the mobile shell slice.
+- **Item 6 (fonts):** not packaged in Phase 4. The admin uses the system fallback of `--kd-font-family` (P4-T6) and mobile has no `useFonts` call (P4-T7). Each app adds its font files with `OFL.txt` in the first slice that styles text; the decision of item 6 is unchanged.
+- **Item 7 (PrimeNG theming), P4-T6:** `providePrimeNG` is imported from `primeng/config`, with `definePreset(Aura, primeNgPreset)`, `prefix: 'p'`, `darkModeSelector: "[data-theme='dark']"` and `cssLayer: true`; `ng build` passes. Rendering in a browser was not checked: deferred to the first admin screen, together with the license key location (0001).
+- **Item 9 (build profiles), P4-T7:** `app.config.ts` implements the variant table and the placeholder guard as written; P4-T8 adds that every API root must end with `/api` (0004 implementation notes).
