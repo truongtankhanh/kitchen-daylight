@@ -1,0 +1,168 @@
+name: publish-api-image
+
+# Publishes the API image to GitHub Container Registry (P5-T4, Docker repository monorepo-integration.md M6).
+#
+# PUBLIC PACKAGE (ADR-0010 control 5): the image holds no secret and no real data. No .env file enters
+# the build context (.dockerignore), the build takes no secret and no build argument, and the job fails
+# before anything is pushed if the built image contains a .env file.
+#
+# Triggers: pushes to main and release tags only. Never a pull request, so a fork can never publish;
+# pull requests build the image without pushing in api-image.yml.
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+# A publish is never cancelled half-way; runs of the same ref queue instead.
+concurrency:
+  group: publish-api-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # A fork's own main has no write access to this package: skip there instead of failing.
+    if: github.repository == 'truongtankhanh/kitchen-daylight'
+    runs-on: ubuntu-24.04
+    # linux/arm64 is built under QEMU emulation on an amd64 runner, much slower than amd64.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/truongtankhanh/kitchen-daylight-api
+      # Local tag of the amd64 build that is checked before the push.
+      CHECK_IMAGE: kd-api:publish-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A release tag needs the history of main for the check below; main builds need one commit.
+          fetch-depth: ${{ github.ref_type == 'tag' && 0 || 1 }}
+          persist-credentials: false
+
+      # main is branch-protected, so a commit on it went through review. A release tag can be pushed to
+      # any commit by anyone with write access; publish it only if its commit is on main.
+      - name: Release tag points to a commit on main
+        if: github.ref_type == 'tag'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" origin/main; then
+            echo "::error title=Release tag::$REF_NAME points to $COMMIT_SHA, which is not on main"
+            exit 1
+          fi
+          echo "$REF_NAME: $COMMIT_SHA is on main"
+
+      # Release tag vMAJOR.MINOR.PATCH -> MAJOR.MINOR.PATCH; main -> sha-<short commit>. Never latest.
+      - name: Resolve the image tag
+        id: tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          if [ "$REF_TYPE" = 'tag' ]; then
+            # The trigger glob v*.*.* also matches v1.2.3-rc.1 and v1.2.x; only vMAJOR.MINOR.PATCH is a release.
+            if ! printf '%s\n' "$REF_NAME" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+              echo "::error title=Release tag::$REF_NAME is not vMAJOR.MINOR.PATCH"
+              exit 1
+            fi
+            version="${REF_NAME#v}"
+          else
+            version="sha-$(printf '%s' "$COMMIT_SHA" | cut -c1-7)"
+          fi
+          echo "image tag: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          # Pinned binfmt image (decision 0001) instead of the action's moving latest default.
+          image: docker.io/tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          # Pinned BuildKit (decision 0001) instead of the moving buildx-stable-1 default.
+          driver-opts: image=moby/buildkit:v0.34.2@sha256:c5f8862f52499773af85bc07695b2379ef08e8002352b0df2c4864c91d78dabe
+
+      # amd64 first, loaded locally for the check. Its cache scope is the one api-image.yml reads, so
+      # pull requests reuse the layers of main.
+      - name: Build the amd64 image for the check (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ env.CHECK_IMAGE }}
+          cache-from: type=gha,scope=api-image-amd64
+          cache-to: type=gha,mode=max,scope=api-image-amd64
+
+      # Public package: fail before the push if a .env file is in the image. /app is the only content the
+      # Dockerfile adds to the base image; the arm64 image copies the same files.
+      - name: Fail on a .env file in the image
+        run: |
+          set -eu
+          env_files="$(docker run --rm --network none "$CHECK_IMAGE" \
+            find /app \( -name '.env' -o -name '.env.*' \) ! -name '.env.example' -print)"
+          if [ -n "$env_files" ]; then
+            echo "$env_files"
+            echo '::error title=Env file::the image contains a .env file and would be published (ADR-0010 control 5)'
+            exit 1
+          fi
+          echo 'env files: none'
+
+      # The workflow's own GITHUB_TOKEN with packages: write on this job only; no personal token.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push linux/amd64 and linux/arm64
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.version }}
+          # LicenseRef-AllRightsReserved: no open-source license is granted (ADR-0010 control 7).
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.tag.outputs.version }}
+            org.opencontainers.image.licenses=LicenseRef-AllRightsReserved
+          cache-from: |
+            type=gha,scope=api-image-amd64
+            type=gha,scope=api-image-publish
+          cache-to: type=gha,mode=max,scope=api-image-publish
+
+      - name: Print the image digest
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -eu
+          echo "$IMAGE:$VERSION@$DIGEST"
+          {
+            echo '### API image published'
+            echo ''
+            echo '| Item | Value |'
+            echo '|---|---|'
+            echo "| Tag | \`$IMAGE:$VERSION\` |"
+            echo "| Digest | \`$DIGEST\` |"
+            echo "| Pin | \`$IMAGE:$VERSION@$DIGEST\` |"
+            echo '| Platforms | linux/amd64, linux/arm64 |'
+          } >> "$GITHUB_STEP_SUMMARY"
