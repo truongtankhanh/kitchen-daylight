@@ -1,3 +1,7 @@
+// class-transformer decorators read Reflect metadata when the class is defined. Load the
+// polyfill here, not through Nest, because the CLI and the specs call loadConfig without Nest.
+import 'reflect-metadata';
+
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsUrl, Max, Min, registerDecorator } from 'class-validator';
 import type { ValidationArguments } from 'class-validator';
