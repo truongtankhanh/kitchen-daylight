@@ -1,0 +1,102 @@
+name: ci
+
+# Pull-request verification (P5-T1, scaffold-plan section 8, decisions 0002 and 0003).
+# No secrets and no privileged pull-request trigger: fork pull requests run the same checks (ADR-0010 control 4).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      HUSKY: '0'
+      TURBO_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history for the commit message check and the OpenAPI breaking-change check.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pnpm (version from packageManager, store cached)
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: true
+          cache_dependency_path: pnpm-lock.yaml
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore and save the Turborepo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ hashFiles('.nvmrc', 'pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('.nvmrc', 'pnpm-lock.yaml') }}-
+            turbo-${{ runner.os }}-
+
+      - name: Commit messages
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: pnpm exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+
+      # Root scripts already pass --concurrency=2; package scripts carry the runner worker caps.
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # The mobile app is not built in a pull request (no expo export).
+      - name: Build (packages, API, admin)
+        run: pnpm build --filter='!@kd/mobile'
+
+      # Decision 0004 section 3b: oasdiff is needed only once a released snapshot exists.
+      - name: Install oasdiff (breaking-change check)
+        if: hashFiles('packages/contracts/openapi.released.json') != ''
+        env:
+          OASDIFF_VERSION: 1.35.0
+          # SHA-256 of oasdiff_1.35.0_linux_amd64.tar.gz, from the release checksums.txt.
+          OASDIFF_SHA256: a8023002fcb2eaa7f5758148a9303cb63d33b939886df312268bc0fc7b939140
+        run: |
+          archive="oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/${archive}"
+          echo "${OASDIFF_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/oasdiff"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/oasdiff" oasdiff
+          echo "$RUNNER_TEMP/oasdiff" >> "$GITHUB_PATH"
+
+      - name: Note the inactive breaking-change check
+        if: hashFiles('packages/contracts/openapi.released.json') == ''
+        run: |
+          echo 'breaking-change check inactive: no released snapshot yet (packages/contracts/openapi.released.json)' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: OpenAPI drift and breaking-change check
+        run: pnpm openapi:check
