@@ -1,0 +1,328 @@
+{
+ "_meta": {
+  "source": "https://danhmuchanhchinh.nso.gov.vn/DMDVHC.asmx",
+  "operations": [
+   "DanhMucTinh",
+   "DanhMucPhuongXa"
+  ],
+  "as_of": "21/10/2026",
+  "retrieved_at": "2026-10-21T08:15:41.689Z",
+  "counts": {
+   "provinces": 34,
+   "wards": 3321,
+   "by_ward_type": {
+    "WARD": 709,
+    "COMMUNE": 2599,
+    "SPECIAL_ZONE": 13
+   }
+  }
+ },
+ "rows": [
+  {
+   "code": "01",
+   "names": {
+    "vi": "Hà Nội",
+    "vi_full": "Thành phố Hà Nội"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "04",
+   "names": {
+    "vi": "Cao Bằng",
+    "vi_full": "Tỉnh Cao Bằng"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "08",
+   "names": {
+    "vi": "Tuyên Quang",
+    "vi_full": "Tỉnh Tuyên Quang"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "11",
+   "names": {
+    "vi": "Điện Biên",
+    "vi_full": "Tỉnh Điện Biên"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "12",
+   "names": {
+    "vi": "Lai Châu",
+    "vi_full": "Tỉnh Lai Châu"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "14",
+   "names": {
+    "vi": "Sơn La",
+    "vi_full": "Tỉnh Sơn La"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "15",
+   "names": {
+    "vi": "Lào Cai",
+    "vi_full": "Tỉnh Lào Cai"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "19",
+   "names": {
+    "vi": "Thái Nguyên",
+    "vi_full": "Tỉnh Thái Nguyên"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "20",
+   "names": {
+    "vi": "Lạng Sơn",
+    "vi_full": "Tỉnh Lạng Sơn"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "22",
+   "names": {
+    "vi": "Quảng Ninh",
+    "vi_full": "Thành phố Quảng Ninh"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "24",
+   "names": {
+    "vi": "Bắc Ninh",
+    "vi_full": "Thành phố Bắc Ninh"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "25",
+   "names": {
+    "vi": "Phú Thọ",
+    "vi_full": "Tỉnh Phú Thọ"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "31",
+   "names": {
+    "vi": "Hải Phòng",
+    "vi_full": "Thành phố Hải Phòng"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "33",
+   "names": {
+    "vi": "Hưng Yên",
+    "vi_full": "Tỉnh Hưng Yên"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "37",
+   "names": {
+    "vi": "Ninh Bình",
+    "vi_full": "Tỉnh Ninh Bình"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "38",
+   "names": {
+    "vi": "Thanh Hóa",
+    "vi_full": "Tỉnh Thanh Hóa"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "40",
+   "names": {
+    "vi": "Nghệ An",
+    "vi_full": "Tỉnh Nghệ An"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "42",
+   "names": {
+    "vi": "Hà Tĩnh",
+    "vi_full": "Tỉnh Hà Tĩnh"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "44",
+   "names": {
+    "vi": "Quảng Trị",
+    "vi_full": "Tỉnh Quảng Trị"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "46",
+   "names": {
+    "vi": "Huế",
+    "vi_full": "Thành phố Huế"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "48",
+   "names": {
+    "vi": "Đà Nẵng",
+    "vi_full": "Thành phố Đà Nẵng"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "51",
+   "names": {
+    "vi": "Quảng Ngãi",
+    "vi_full": "Tỉnh Quảng Ngãi"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "52",
+   "names": {
+    "vi": "Gia Lai",
+    "vi_full": "Tỉnh Gia Lai"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "56",
+   "names": {
+    "vi": "Khánh Hòa",
+    "vi_full": "Tỉnh Khánh Hòa"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "66",
+   "names": {
+    "vi": "Đắk Lắk",
+    "vi_full": "Tỉnh Đắk Lắk"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "68",
+   "names": {
+    "vi": "Lâm Đồng",
+    "vi_full": "Tỉnh Lâm Đồng"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "75",
+   "names": {
+    "vi": "Đồng Nai",
+    "vi_full": "Thành phố Đồng Nai"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "79",
+   "names": {
+    "vi": "Hồ Chí Minh",
+    "vi_full": "Thành phố Hồ Chí Minh"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "80",
+   "names": {
+    "vi": "Tây Ninh",
+    "vi_full": "Tỉnh Tây Ninh"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "82",
+   "names": {
+    "vi": "Đồng Tháp",
+    "vi_full": "Tỉnh Đồng Tháp"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "86",
+   "names": {
+    "vi": "Vĩnh Long",
+    "vi_full": "Tỉnh Vĩnh Long"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "91",
+   "names": {
+    "vi": "An Giang",
+    "vi_full": "Tỉnh An Giang"
+   },
+   "type": "PROVINCE",
+   "region": null
+  },
+  {
+   "code": "92",
+   "names": {
+    "vi": "Cần Thơ",
+    "vi_full": "Thành phố Cần Thơ"
+   },
+   "type": "CITY",
+   "region": null
+  },
+  {
+   "code": "96",
+   "names": {
+    "vi": "Cà Mau",
+    "vi_full": "Tỉnh Cà Mau"
+   },
+   "type": "PROVINCE",
+   "region": null
+  }
+ ]
+}

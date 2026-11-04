@@ -13,6 +13,8 @@ pnpm-lock.yaml
 # Owned by generators (decision 0004)
 packages/contracts/openapi*.json
 packages/contracts/src/generated/
+# Written by tools/seed-data/admin-units/fetch.mjs (JSON with one-space indent)
+tools/seed-data/admin-units/*.json
 
 # Not formatted by this repository
 designs/

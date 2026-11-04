@@ -1,0 +1,19 @@
+{
+  "name": "@kd/seed-data",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./admin-units/provinces.json": "./admin-units/provinces.json",
+    "./admin-units/wards.json": "./admin-units/wards.json"
+  },
+  "scripts": {
+    "fetch": "node admin-units/fetch.mjs",
+    "verify": "node admin-units/verify.mjs",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "devDependencies": {
+    "@kd/eslint-config": "workspace:*",
+    "eslint": "catalog:"
+  }
+}

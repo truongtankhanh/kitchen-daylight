@@ -254,6 +254,15 @@ importers:
 
   packages/tsconfig: {}
 
+  tools/seed-data:
+    devDependencies:
+      '@kd/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      eslint:
+        specifier: 'catalog:'
+        version: 10.14.0(jiti@2.7.0)
+
 packages:
 
   '@babel/code-frame@7.29.7':
