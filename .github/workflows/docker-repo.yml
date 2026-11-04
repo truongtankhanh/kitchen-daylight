@@ -1,0 +1,95 @@
+name: docker-repo
+
+# Docker repository integration (P5-T5, Docker repository monorepo-integration.md M5, file 5 sections 5.4
+# and 5.6). Checks out kitchen-daylight-docker at the version in docker-repo.version, then runs the
+# compatibility check and the parity check against infra/.
+# No secrets and no privileged pull-request trigger: fork pull requests run the same checks (ADR-0010 control 4).
+#
+# Not added yet: the end-to-end part (test-up.sh, Playwright, Maestro). It needs the seed command and the
+# first e2e tests (slice 1 onward). Recipe for the slice that adds it, from M5, in this job:
+#   1. Build the API image in the same job and keep it local under a pull-request-specific tag.
+#   2. Run `API_TAG=<that tag> scripts/test-up.sh` from the Docker repository (a shell variable wins over
+#      versions.env; the script has a 120 s timeout).
+#   3. Read `.env.test.out` for the suites: API_BASE_URL and the DATABASE_URL_*, MAIL_* and STORAGE_S3_*
+#      names (ADMIN_USER_EMAIL, ADMIN_USER_PASSWORD and ADMIN_TOTP_SECRET only once the API seed prints them
+#      in an agreed machine-readable form).
+#   4. Run Playwright and, where applicable, Maestro.
+#   5. Run `scripts/test-down.sh` in an `if: always()` step.
+#   6. Upload the service logs on failure.
+#   No pull_request_target, no self-hosted runner, no secrets on fork pull requests.
+on:
+  pull_request:
+    paths:
+      - infra/**
+      - docker-repo.version
+      - .github/workflows/docker-repo.yml
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-repo-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      DOCKER_REPO: truongtankhanh/kitchen-daylight-docker
+      # Inside the workspace (checkout cannot write outside it); ignored by git and by .dockerignore.
+      KD_DOCKER_DIR: .kd-docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Fallback to main while the Docker repository has no tag at all (none on 2026-11-03, none on
+      # 2026-11-04). Remove the fallback the day the Docker repository publishes 0.1.0. Once any tag exists,
+      # a docker-repo.version with no matching tag fails here instead of falling back.
+      - name: Resolve the Docker repository ref from docker-repo.version
+        id: ref
+        env:
+          # Fail instead of prompting if the repository cannot be read anonymously.
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          # pipefail: a failed ls-remote must fail the step, not look like "no tag yet".
+          set -euo pipefail
+          required="$(head -n 1 docker-repo.version | tr -d '[:space:]')"
+          url="https://github.com/$DOCKER_REPO.git"
+          tags="$(git ls-remote --tags --refs "$url" | sed 's#.*refs/tags/##')"
+          ref=''
+          for candidate in "v$required" "$required"; do
+            if printf '%s\n' "$tags" | grep -Fxq -- "$candidate"; then
+              ref="$candidate"
+              break
+            fi
+          done
+          if [ -z "$ref" ]; then
+            if [ -n "$tags" ]; then
+              echo "::error title=Docker repository ref::no tag v$required or $required in $DOCKER_REPO (docker-repo.version)"
+              exit 1
+            fi
+            ref='main'
+            echo "::warning title=Docker repository ref::$DOCKER_REPO has no tag yet; falling back to main instead of $required"
+          fi
+          echo "docker-repo.version=$required -> ref $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the Docker repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.DOCKER_REPO }}
+          ref: ${{ steps.ref.outputs.ref }}
+          path: ${{ env.KD_DOCKER_DIR }}
+          persist-credentials: false
+
+      - name: Docker repository version is compatible
+        run: scripts/check-docker-repo.sh
+
+      # Exits 0 with a note while infra/ does not exist.
+      - name: Parity with infra/
+        run: bash "$KD_DOCKER_DIR/scripts/check-parity.sh" "$GITHUB_WORKSPACE/infra"
