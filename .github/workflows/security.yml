@@ -1,0 +1,97 @@
+name: security
+
+# Secret scan, dependency review and dependency audit (P5-T2, decision 0002 sections 5 and 7,
+# ADR-0010 controls 1 and 4). No secrets and no privileged pull-request trigger: fork pull
+# requests run the same checks. CodeQL uses GitHub's default setup (repository settings), so
+# there is no CodeQL workflow here.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, for the advisory dependency audit (decision 0002 section 7).
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: gitleaks (full history, blocking)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The same pinned binary as the pre-commit hook (decision 0001), not gitleaks-action.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz, from the release checksums file.
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/gitleaks" gitleaks
+          echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+
+      - name: Scan the full history
+        run: gitleaks git --config .gitleaks.toml --redact --verbose --exit-code 1 .
+
+  dependency-review:
+    name: dependency review (blocking)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Review the dependencies this pull request adds
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development
+          comment-summary-in-pr: never
+
+  # Advisory (decision 0002 section 7): a new advisory in an existing dependency must not block
+  # unrelated pull requests; dependency review blocks what a pull request adds, and Dependabot
+  # alerts and security updates cover the rest.
+  audit:
+    name: pnpm audit (advisory)
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm (version from packageManager)
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: pnpm audit --audit-level=high
+        id: audit
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
+
+      - name: Report an advisory result
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo '::warning title=pnpm audit::advisories at high or above; see the audit step log'
+          echo 'pnpm audit found advisories at high or above (advisory, not blocking).' >> "$GITHUB_STEP_SUMMARY"

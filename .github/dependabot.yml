@@ -1,0 +1,72 @@
+# Dependabot version updates (P5-T2, decision 0001 consequences): weekly, minor and patch
+# grouped, majors in their own pull requests (lockstep families grouped), exact pins kept.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    # pnpm refuses versions younger than its default minimumReleaseAge (one day, decision 0001).
+    cooldown:
+      default-days: 1
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      angular-major:
+        patterns: ['@angular/*']
+        update-types: [major]
+      nestjs-major:
+        patterns: ['@nestjs/*']
+        update-types: [major]
+      minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # The Expo SDK set moves only with `expo install --fix`, never one by one (decision 0001).
+      - dependency-name: expo
+      - dependency-name: expo-*
+      - dependency-name: '@expo/*'
+      - dependency-name: jest-expo
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: react-native-*
+      - dependency-name: '@react-native/*'
+      # Held at 6.0.x by Angular and typescript-eslint until they accept 6.1 (decision 0001).
+      - dependency-name: typescript
+        versions: ['>= 6.1.0']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      actions-minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /apps/api
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: chore(deps)
+    ignore:
+      # The Node line is a major decided in decision 0001, together with .nvmrc and engines.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']

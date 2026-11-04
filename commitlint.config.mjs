@@ -4,8 +4,16 @@ import pnpmScopes from '@commitlint/config-pnpm-scopes';
 
 const EXTRA_SCOPES = ['repo', 'docs', 'ci', 'deps'];
 
+// Dependabot writes the header from .github/dependabot.yml (`chore(deps): bump ...`) but its
+// body carries release notes and URLs longer than body-max-line-length. Only messages with
+// that header and Dependabot's sign-off are skipped (decision 0002, P5-T2).
+const isDependabotCommit = (message) =>
+  /^chore\(deps\): bump /.test(message) &&
+  /^Signed-off-by: dependabot\[bot\] <support@github\.com>$/m.test(message);
+
 export default {
   extends: ['@commitlint/config-conventional'],
+  ignores: [isDependabotCommit],
   rules: {
     'scope-enum': async (context) => {
       const [level, applicable, workspaceScopes] = await pnpmScopes.rules['scope-enum'](context);

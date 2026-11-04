@@ -41,6 +41,19 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
 
+      # One Node pin (decision 0001): .nvmrc, engines.node and every node image of the API
+      # Dockerfile. A Dockerfile-only Dependabot bump fails here until the others follow.
+      - name: Node pin is the same everywhere
+        run: |
+          want="$(cat .nvmrc)"
+          engines="$(node -p 'require("./package.json").engines.node')"
+          images="$(sed -n 's/^FROM node:\([0-9][0-9.]*\)[-@ ].*/\1/p' apps/api/Dockerfile | sort -u)"
+          echo ".nvmrc=$want engines.node=$engines Dockerfile=$(echo "$images" | tr '\n' ' ')"
+          if [ "$engines" != "$want" ] || [ -z "$images" ] || [ "$images" != "$want" ]; then
+            echo '::error title=Node pin::.nvmrc, engines.node and apps/api/Dockerfile must name the same Node version'
+            exit 1
+          fi
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
