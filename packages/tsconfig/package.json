@@ -5,6 +5,7 @@
   "exports": {
     "./base.json": "./base.json",
     "./node.json": "./node.json",
+    "./library.json": "./library.json",
     "./web.json": "./web.json",
     "./react-native.json": "./react-native.json"
   }

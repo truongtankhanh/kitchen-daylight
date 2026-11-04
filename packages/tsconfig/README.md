@@ -28,6 +28,19 @@ For NestJS on Node 26 (`apps/api`) and Node command-line tools.
 - **May override:** `outDir`, `rootDir`, `include`, `sourceMap`, `declaration`, `incremental`, and extra `types` (for example `vitest/globals`).
 - **Must not:** change `module` or `moduleResolution`, or switch off the decorator flags.
 
+## `library.json`
+
+For compiled shared packages (`packages/*` and `tools/*`, decision 0003 sections 2 and 4), first used by `@kd/design-tokens`.
+
+- **Settings:**
+  - `module` and `moduleResolution` are `nodenext` (ESM);
+  - `target` and `lib` are `es2024`;
+  - `declaration`, so consumers read `dist/*.d.ts` and never a sibling's source;
+  - `outDir` is `${configDir}/dist`. `${configDir}` is the folder of the package's own `tsconfig.json`, so the output lands in that package, not in this one.
+- **Not here:** decorators and `types`. TypeScript 6 defaults `types` to an empty list, so a package that needs Node types adds `"types": ["node"]` and installs `@types/node`.
+- **The package sets:** `rootDir` (usually `./src`) and `include`.
+- **Must not:** change `module`, `moduleResolution` or `outDir`, or switch off `declaration`.
+
 ## `web.json`
 
 For the Angular admin (`apps/admin`).
@@ -50,6 +63,7 @@ For the Expo app (`apps/mobile`): the strictness of `base.json` with no module, 
   ```
 
   Later entries win, so the strictness of `base.json` applies on top of Expo's settings.
+
 - **Why the file does not extend Expo itself:** this package does not depend on `expo` (0003 keeps Expo-managed packages pinned in `apps/mobile`). TypeScript resolves an `extends` from the folder of the config that names it. So `expo/tsconfig.base` resolves from `apps/mobile`, not from this package.
 - **May override:** `include`, and the app settings Expo documents. No `paths` aliases (decision 0003).
 - **Must not:** reorder the two entries, or switch off any strict flag.

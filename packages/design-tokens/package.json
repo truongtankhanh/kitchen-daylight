@@ -1,0 +1,33 @@
+{
+  "name": "@kd/design-tokens",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./primeng": {
+      "types": "./dist/primeng-preset.d.ts",
+      "default": "./dist/primeng-preset.js"
+    },
+    "./react-native": {
+      "types": "./dist/react-native.d.ts",
+      "default": "./dist/react-native.js"
+    },
+    "./css": "./src/tokens.css"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.json",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "tokens:check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "@kd/eslint-config": "workspace:*",
+    "@kd/tsconfig": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}
