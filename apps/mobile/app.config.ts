@@ -66,6 +66,10 @@ function readApiBaseUrl(variant: Variant, raw: string | undefined): string {
   if (variant !== 'dev' && url.protocol !== 'https:') {
     throw new Error(`The API base URL for APP_VARIANT=${variant} must use https://`);
   }
+  // The OpenAPI paths start with /api; the client strips this suffix (`toClientBaseUrl`).
+  if (!/\/api\/?$/.test(url.pathname)) {
+    throw new Error(`The API base URL for APP_VARIANT=${variant} must end with /api`);
+  }
   return raw;
 }
 

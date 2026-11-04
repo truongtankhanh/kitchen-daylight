@@ -21,6 +21,13 @@ shamefullyHoist: false
 
 engineStrict: true
 
+# Scoped peer exceptions (decision 0004 section 4). openapi-typescript 7.13.0 declares
+# typescript ^5.x; generation and typecheck pass with the pinned 6.0.3 (P4-T8). Removed once
+# openapi-typescript declares TypeScript 6 support.
+peerDependencyRules:
+  allowedVersions:
+    'openapi-typescript>typescript': 6.0.3
+
 # Lifecycle-script allowlist (decision 0003): starts empty; each entry is added
 # by the task that needs it, with a reason in the pull request.
 allowBuilds:
@@ -30,4 +37,7 @@ allowBuilds:
   esbuild: false
   lmdb: false
   msgpackr-extract: false
+  # Denied (P4-T8): usage telemetry of swagger-ui-dist (through @nestjs/swagger); the
+  # package works without its install script.
+  '@scarf/scarf': false
 strictDepBuilds: true

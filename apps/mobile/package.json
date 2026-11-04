@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "58.0.16",
+    "@kd/contracts": "workspace:*",
     "@kd/design-tokens": "workspace:*",
     "@kd/i18n": "workspace:*",
     "expo": "58.0.22",

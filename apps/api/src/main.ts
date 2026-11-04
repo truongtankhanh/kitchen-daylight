@@ -1,7 +1,7 @@
-import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module.js';
+import { configureApp } from './configure-app.js';
 import { readEnvironment } from './config/env-file.js';
 import { ConfigValidationError, loadConfig } from './config/load-config.js';
 import type { ServerConfig } from './config/load-config.js';
@@ -26,9 +26,7 @@ async function bootstrap(): Promise<void> {
   const config = loadServerConfigOrExit();
   const app = await NestFactory.create(AppModule.forRoot(config));
 
-  // Routing fixed by decision 0005, section 1: feature endpoints are served under /api/v1.
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
+  configureApp(app);
 
   app.enableShutdownHooks();
 

@@ -20,6 +20,9 @@
     "typecheck": "turbo run typecheck --concurrency=2",
     "test": "turbo run test --concurrency=2",
     "format:check": "turbo run format:check format:check:root --concurrency=2",
+    "openapi:generate": "turbo run @kd/api#openapi:generate --concurrency=2 && turbo run @kd/contracts#client:generate --concurrency=2",
+    "openapi:check": "turbo run @kd/api#openapi:check @kd/contracts#client:check --concurrency=2 && pnpm openapi:breaking",
+    "openapi:breaking": "scripts/openapi-breaking.sh",
     "format:check:root": "prettier --check --no-error-on-unmatched-pattern package.json turbo.json pnpm-workspace.yaml \"*.md\" \".github/**\""
   },
   "devDependencies": {

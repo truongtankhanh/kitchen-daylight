@@ -29,3 +29,7 @@ pnpm-lock.yaml -diff linguist-generated
 *.woff binary
 *.woff2 binary
 *.eot binary
+
+# Owned by generators (decision 0004 section 2): LF in every checkout, so autocrlf cannot drift
+packages/contracts/openapi*.json text eol=lf
+packages/contracts/src/generated/** text eol=lf linguist-generated=true

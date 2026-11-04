@@ -63,11 +63,11 @@
       "outputs": []
     },
     "@kd/contracts#client:generate": {
-      "inputs": ["openapi.json", "package.json"],
+      "inputs": ["openapi.json", "package.json", "scripts/**"],
       "outputs": ["src/generated/**"]
     },
     "@kd/contracts#client:check": {
-      "inputs": ["openapi.json", "package.json", "src/generated/**"],
+      "inputs": ["openapi.json", "package.json", "scripts/**", "src/generated/**"],
       "outputs": []
     }
   }

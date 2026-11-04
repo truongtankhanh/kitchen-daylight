@@ -2,6 +2,6 @@
 import { base } from '@kd/eslint-config';
 
 export default [
-  { name: 'kd/contracts/ignores', ignores: ['dist/'] },
+  { name: 'kd/contracts/ignores', ignores: ['dist/', 'src/generated/'] },
   ...base({ importer: 'contracts' }),
 ];

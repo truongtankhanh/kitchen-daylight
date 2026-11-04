@@ -17,6 +17,7 @@
     "@angular/forms": "22.2.4",
     "@angular/platform-browser": "22.2.4",
     "@angular/router": "22.2.4",
+    "@kd/contracts": "workspace:*",
     "@kd/design-tokens": "workspace:*",
     "@primeuix/themes": "3.1.0",
     "primeng": "22.1.4",

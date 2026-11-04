@@ -6,7 +6,9 @@ import {
   ServiceUnavailableException,
   VERSION_NEUTRAL,
 } from '@nestjs/common';
+import { ApiOkResponse, ApiServiceUnavailableResponse } from '@nestjs/swagger';
 
+import { HealthReportDto } from './health-report.dto.js';
 import { HealthService } from './health.service.js';
 import type { HealthReport } from './health.service.js';
 
@@ -21,6 +23,8 @@ export class HealthController {
 
   @Get()
   @Header('Cache-Control', 'no-store')
+  @ApiOkResponse({ type: HealthReportDto })
+  @ApiServiceUnavailableResponse({ type: HealthReportDto })
   async check(): Promise<HealthReport> {
     const report = await this.health.check();
     if (report.status !== 'ok') {
