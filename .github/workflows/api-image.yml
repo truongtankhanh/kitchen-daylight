@@ -1,0 +1,101 @@
+name: api-image
+
+# API image build check on pull requests (P5-T3, decision 0005 section 9, Docker repository api-contract.md "Image").
+# Builds apps/api/Dockerfile without pushing and checks the container contract offline.
+# No secrets and no privileged pull-request trigger: fork pull requests run the same check (ADR-0010 control 4).
+#
+# linux/amd64 only. linux/arm64 is built by the publish workflow (P5-T4): on these amd64 runners it needs
+# QEMU emulation, which makes the pnpm install and the TypeScript build several times slower, too slow
+# for a per-pull-request check. The Dockerfile has no architecture-specific step.
+on:
+  pull_request:
+    paths:
+      - apps/api/**
+      - packages/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - package.json
+      - .dockerignore
+      - .github/workflows/api-image.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-image-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # Local tag only; nothing is pushed.
+      IMAGE: kd-api:pr-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          # Pinned BuildKit (decision 0001) instead of the moving buildx-stable-1 default.
+          driver-opts: image=moby/buildkit:v0.34.2@sha256:c5f8862f52499773af85bc07695b2379ef08e8002352b0df2c4864c91d78dabe
+
+      - name: Build the API image (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha,scope=api-image-amd64
+          cache-to: type=gha,mode=max,scope=api-image-amd64
+
+      # Every check runs with --network none and no environment: no database, no registry.
+      - name: Check the container contract
+        run: |
+          set -eu
+          run() { docker run --rm --network none "$IMAGE" "$@"; }
+
+          node_version="$(run node -v)"
+          echo "node: $node_version"
+
+          uid="$(run id -u)"
+          echo "uid: $uid"
+          if [ "$uid" = "0" ]; then
+            echo '::error title=Image user::the image runs as root (decision 0005 section 9)'
+            exit 1
+          fi
+
+          # /app is the only content this Dockerfile adds to the base image.
+          env_files="$(run find /app \( -name '.env' -o -name '.env.*' \) ! -name '.env.example' -print)"
+          if [ -n "$env_files" ]; then
+            echo "$env_files"
+            echo '::error title=Env file::the image contains a .env file (ADR-0010, decision 0005 section 9)'
+            exit 1
+          fi
+          echo 'env files: none'
+
+          if ! run node dist/cli.js --help; then
+            echo '::error title=CLI::node dist/cli.js --help did not exit 0 (decision 0005 section 8)'
+            exit 1
+          fi
+
+          size_bytes="$(docker image inspect --format '{{.Size}}' "$IMAGE")"
+          size_mib="$(awk -v b="$size_bytes" 'BEGIN { printf "%.1f", b / 1048576 }')"
+          {
+            echo '### API image (linux/amd64, not pushed)'
+            echo ''
+            echo '| Check | Result |'
+            echo '|---|---|'
+            echo "| node -v | \`$node_version\` |"
+            echo "| uid | \`$uid\` (non-root) |"
+            echo '| .env files | none |'
+            echo '| node dist/cli.js --help | exit 0 |'
+            echo "| size | ${size_mib} MiB (${size_bytes} bytes) |"
+          } >> "$GITHUB_STEP_SUMMARY"
