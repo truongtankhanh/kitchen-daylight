@@ -250,3 +250,16 @@ export interface ProblemDetails<Code extends string = string> {
   - the generator triggers in section 4;
   - preview mode stops covering every route;
   - a `v2` of the API, which needs a second released snapshot.
+
+## Implementation notes (P4-T8, 2026-11-04)
+
+Recorded when the contract was wired. The sections above keep their wording; where the implementation differs, this section is the reference.
+
+- **Preview mode works (section 1).** `SwaggerModule.createDocument` reads every route and DTO from `NestFactory.create(AppModule.forRoot(config), { preview: true, logger: false, abortOnError: false })`. The `manualInitialization` fallback is not used.
+- **No environment assignment (section 1).** `AppModule.forRoot` takes the validated config as an argument, so the generator passes `loadConfig` a placeholder object (`APP_ENV=test`, a database URL on `127.0.0.1:1`) and neither reads nor writes `process.env`. No dynamic `import()` is needed.
+- **Files.** `apps/api/src/configure-app.ts` (shared by `main.ts` and the generator), `apps/api/src/openapi/document.ts` and `generate.ts` (`--out` and `--check`), `packages/contracts/scripts/client.mjs` (`generate` and `check`), `scripts/openapi-breaking.sh`.
+- **Shared schemas (section 7).** `ProblemDetailsDto` and `FieldErrorDto` in `apps/api/src/openapi/problem-details.dto.ts` implement the contract types and are listed through `extraModels`, so `components.schemas` holds them before any route declares an error. The type-level test is `packages/contracts/test/problem-schema.type-test.ts`, checked by `tsconfig.test.json` under `typecheck`. The index signature of `ProblemDetails` is not represented in the schema.
+- **TypeScript peer (section 4).** Generation and `typecheck` pass with TypeScript 6.0.3. The scoped exception is `peerDependencyRules.allowedVersions` `'openapi-typescript>typescript': 6.0.3` in `pnpm-workspace.yaml`; pnpm 12 reads it there (`pnpm peers check` is clean for `@kd/contracts`).
+- **Client base URL (section 5).** The paths of the document carry the global prefix (`/api/health`). The apps keep their API root ending in `/api` (admin `environment.apiBaseUrl`, mobile `extra.apiBaseUrl`, decision 0006 item 9), and `toClientBaseUrl` in `@kd/contracts/client` strips that suffix. `apps/mobile/app.config.ts` rejects an API root that does not end with `/api`.
+- **Before the first release (section 3b).** `scripts/openapi-breaking.sh` prints `breaking-change check inactive: no released snapshot yet`.
+- **Still open:** the CI job that runs `openapi:check` without a database service or secrets (CI/CD tasks).
