@@ -60,8 +60,11 @@ Collected 2026-11-03 with read-only `npm view <pkg>@<version> version peerDepend
 | vite (P4-T1, required peer of vitest) | 8.3.5 | https://registry.npmjs.org/vite | 2026-11-04 | engines `node ^20.19.0 \|\| >=22.12.0`; every peer optional (`@types/node ^20.19.0 \|\| >=22.12.0` among them) | |
 | class-validator (P4-T2) | 0.15.1 | https://registry.npmjs.org/class-validator | 2026-11-04 | no `engines` field and no peers; depends on `validator ^13.15.22`, `libphonenumber-js ^1.11.1`; satisfies the `@nestjs/common` 12.3.2 peer `>=0.13.2`; chosen in decision 0005 section 4 | |
 | class-transformer (P4-T2) | 0.5.1 | https://registry.npmjs.org/class-transformer | 2026-11-04 | no `engines` field, no peers and no dependencies; satisfies the `@nestjs/common` 12.3.2 peer `>=0.4.1`; chosen in decision 0005 section 4 | |
+| @angular/cdk (P4-T6) | 22.2.5 | https://registry.npmjs.org/@angular/cdk | 2026-11-04 | peers `@angular/core`, `@angular/common`, `@angular/forms`, `@angular/platform-browser` `^22.0.0 \|\| ^23.0.0`, `rxjs ^6.5.3 \|\| ^7.4.0`; satisfies the `primeng` 22.1.4 peer `^22.1.0`; versioned apart from the framework lockstep group | |
+| tslib (P4-T6) | 2.9.1 | https://registry.npmjs.org/tslib | 2026-11-04 | no `engines` field and no peers; satisfies the `@angular/core` 22.2.4 and `primeng` 22.1.4 range `^2.3.0`; needed by `importHelpers` in `@kd/tsconfig/web.json` | |
+| jsdom (P4-T6) | 30.1.3 | https://registry.npmjs.org/jsdom | 2026-11-04 | engines `node ^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0`; optional peer `canvas`, not installed; the Node test environment of `ng test` with Vitest (decision 0002) | |
 
-Rows marked P1-T3 and P1-T4 were recorded at the Phase 1 review (2026-11-03); each was the registry `latest` on that day. Rows marked P4-T1 and P4-T2 were recorded on 2026-11-04, each the registry `latest` on that day; they are pinned in `apps/api` only until a second workspace package uses them, when they move to the catalog (decision 0003, section 3).
+Rows marked P1-T3 and P1-T4 were recorded at the Phase 1 review (2026-11-03); each was the registry `latest` on that day. Rows marked P4-T1, P4-T2 and P4-T6 were recorded on 2026-11-04, each the registry `latest` on that day; they are pinned in `apps/api` only until a second workspace package uses them, when they move to the catalog (decision 0003, section 3).
 
 ### Node range intersection
 

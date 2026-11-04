@@ -1,0 +1,14 @@
+/* Design-token CSS variables (--kd-*), imported once for the whole admin. */
+@import '@kd/design-tokens/css';
+
+/*
+ * Fonts: system fonts for now. The stack in --kd-font-family names "Be Vietnam Pro" first;
+ * self-hosting its files with OFL.txt (decision 0006 item 6) is deferred to the first UI
+ * task, so the fallback (system-ui and the rest) renders until then.
+ */
+body {
+  margin: 0;
+  font-family: var(--kd-font-family);
+  background: var(--kd-color-bg);
+  color: var(--kd-color-text);
+}

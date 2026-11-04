@@ -20,8 +20,8 @@
     "@types/node": "26.6.6",
     "eslint": "catalog:",
     "typescript": "catalog:",
-    "vite": "8.3.5",
-    "vitest": "5.1.0"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@nestjs/common": "12.3.2",
