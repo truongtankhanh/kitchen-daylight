@@ -18,9 +18,9 @@
 # names is the table of ADR 0005 section 2. .env.example lists every name of
 # that table (names not read by any code yet are commented out). The
 # validation schema of apps/api (P4-T2) validates a subset of the active
-# names of .env.example, and P4-T2 adds the check that compares the two lists.
-# A new name lands in ADR 0005, .env.example and the schema in the same pull
-# request.
+# names of .env.example. No automated check compares the two lists yet (a
+# follow-up of the Phase 4 review); until then review enforces it: a new name
+# lands in ADR 0005, .env.example and the schema in the same pull request.
 #
 # Never prints a value, never writes outside the repository root.
 set -euo pipefail

@@ -7,7 +7,8 @@ import { createDataSourceOptions } from './data-source.js';
 
 /**
  * The server's connection, as `kd_app` (decision 0005, section 7). Needs `AppConfigModule`.
- * Not imported by `AppModule` yet: importing it makes the server require a database to boot.
+ * Imported by `AppModule` (since P4-T4), so the server connects at start-up. The OpenAPI
+ * generator builds the app in preview mode, where this factory never runs (decision 0004).
  */
 @Module({
   imports: [
