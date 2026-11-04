@@ -7,6 +7,11 @@
   },
   "scripts": {
     "prepare": "node .husky/install.mjs",
+    "bootstrap": "scripts/bootstrap.sh",
+    "env:sync": "scripts/env-sync.sh",
+    "dev:infra": "scripts/dev-infra.sh up",
+    "dev:infra:down": "scripts/dev-infra.sh down",
+    "dev:infra:status": "scripts/dev-infra.sh status",
     "build": "turbo run build --concurrency=2",
     "lint": "turbo run lint --concurrency=2",
     "typecheck": "turbo run typecheck --concurrency=2",
