@@ -1,0 +1,13 @@
+# Build context of apps/api/Dockerfile (repository root). The image is public (ADR-0010):
+# nothing secret, personal or unused enters the context.
+.git
+**/node_modules
+**/dist
+**/.turbo
+**/.env*
+!**/.env.example
+docs
+designs
+apps/admin
+apps/mobile
+.kd-docker
