@@ -13,12 +13,14 @@
     "openapi:check": "node dist/openapi/generate.js --check ../../packages/contracts/openapi.json",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --maxWorkers=2"
+    "test": "vitest run --maxWorkers=2",
+    "test:int": "vitest run --config vitest.int.config.ts --maxWorkers=1 --no-file-parallelism"
   },
   "devDependencies": {
     "@kd/eslint-config": "workspace:*",
     "@kd/tsconfig": "workspace:*",
     "@nestjs/cli": "12.0.11",
+    "@nestjs/testing": "12.3.2",
     "@types/node": "26.6.6",
     "eslint": "catalog:",
     "typescript": "catalog:",
