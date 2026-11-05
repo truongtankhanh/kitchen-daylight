@@ -8,7 +8,14 @@ export type {
   StaleVersionPayload,
 } from './errors.js';
 export { ERROR_CODES, ERROR_STATUS, FIELD_ERROR_CODES } from './errors.js';
-export type { RealtimeEventMap } from './events.js';
+export type {
+  OutboxAudience,
+  OutboxAudienceScope,
+  OutboxEventInput,
+  OutboxEventOf,
+  RealtimeEventMap,
+} from './events.js';
+export { OUTBOX_AUDIENCES, outboxEvent } from './events.js';
 export type { CursorPage, CursorQuery, EstimatedTotal, PageQuery, Paged } from './pagination.js';
 export type { FieldError, ProblemDetails } from './problem.js';
 export { isProblemDetails } from './problem.js';
