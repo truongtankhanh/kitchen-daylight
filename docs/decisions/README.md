@@ -28,3 +28,5 @@ An accepted record is not rewritten: a change of decision is a new record that s
 | [0004](0004-contract-and-client.md) | Contract workflow and client generator | accepted | 2026-11-03 | P0-T5 |
 | [0005](0005-api-foundation-conventions.md) | API foundation conventions | accepted | 2026-11-03 | P0-T6 |
 | [0006](0006-admin-and-mobile-platform-facts.md) | Admin and mobile platform facts | accepted | 2026-11-03 | P0-T7 |
+
+Not a decision record: [follow-ups.md](follow-ups.md) holds the paste-ready text that P6-T4 hands to the Docker repository and the design documents, and the slice 1 readiness checklist.
