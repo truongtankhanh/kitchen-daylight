@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
 import { createDataSourceOptions, describeDatabaseTarget, MIGRATIONS_DIR } from './data-source.js';
 
 const URL_WITH_SECRET =
   'postgres://kd_migrator:CHANGE_ME_LOCAL@127.0.0.1:5452/kd_dev?sslmode=disable';
 
 describe('createDataSourceOptions', () => {
-  it('never synchronizes or runs TypeORM migrations, and has no entity yet', () => {
+  it('never synchronizes or runs TypeORM migrations, and lists its entities explicitly', () => {
     const options = createDataSourceOptions({ appEnv: 'dev', database: { url: URL_WITH_SECRET } });
 
     expect(options).toMatchObject({
@@ -15,7 +16,7 @@ describe('createDataSourceOptions', () => {
       synchronize: false,
       migrationsRun: false,
       migrations: [],
-      entities: [],
+      entities: [OutboxEvent],
     });
   });
 

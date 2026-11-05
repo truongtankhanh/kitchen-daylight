@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import type { PostgresDataSourceOptions } from 'typeorm/driver/postgres/PostgresDataSourceOptions.js';
 
 import type { CliConfig } from '../config/load-config.js';
+import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
 
 /** `apps/api/migrations/` from `src/database/` and `dist/database/` alike; `/app/migrations/` in the image. */
 export const MIGRATIONS_DIR = fileURLToPath(new URL('../../migrations/', import.meta.url));
@@ -19,8 +20,8 @@ export function createDataSourceOptions(config: CliConfig): PostgresDataSourceOp
     synchronize: false,
     migrationsRun: false,
     migrations: [],
-    // Listed explicitly, never globbed; none in the foundation.
-    entities: [],
+    // Listed explicitly, never globbed.
+    entities: [OutboxEvent],
     logging: false,
   };
 }
