@@ -17,6 +17,7 @@ A ruleset, not a classic branch protection rule: decision 0002 section 7 places 
   - `verify` (`ci.yml`): lint, format, typecheck, test, build, OpenAPI check, commit messages (decision 0002, P5-T1).
   - `gitleaks (full history, blocking)` (`security.yml`): decision 0002 section 7, ADR-0010 control 1.
   - `dependency review (blocking)` (`security.yml`): decision 0002 section 7.
+  - [ ] **Pending:** `api-integration` (`api-integration.yml`): the API integration suite against the Docker repository's stack (A0-T11). Make it required only after its first green run on `main`, then tick this item. Safe to require: the workflow has no `paths:` filter, so it starts on every pull request; when no API input changed it skips the suite and passes in seconds.
 
   Up to date: a pull request is checked against the `main` it will land on, so two green pull requests cannot combine into a red `main`.
 
