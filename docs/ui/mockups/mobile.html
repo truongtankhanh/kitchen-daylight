@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen Daylight – Mockup mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap&subset=vietnamese" rel="stylesheet">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+
+<!-- Icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-9-9.5C2 7.2 4 4.5 7 4.5c1.9 0 3.4 1 5 3 1.6-2 3.1-3 5-3 3 0 5 2.7 4 6C19.5 15.4 12 20 12 20z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="i-nav" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-8z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <h1>Kitchen Daylight – Mockup mobile (nháp bước 2)</h1>
+  <p class="note">
+    Mỗi màn hình hiển thị bản sáng (trái) và tối (phải). Màu, bo góc, cỡ chữ lấy từ <code>../tokens/tokens.css</code>.
+    <strong>Toàn bộ dữ liệu là minh họa</strong> (tên quán, điểm, khoảng cách đều giả). Ảnh món ăn là hình vẽ bằng gradient,
+    không phải ảnh thật. Hiệu ứng kính ở thanh tab và các nút nổi chỉ mô phỏng gần đúng bằng làm mờ nền của trình duyệt;
+    trên iOS 26 sẽ là Liquid Glass của hệ thống. Font Be Vietnam Pro nạp từ Google Fonts; khi ngoại tuyến sẽ dùng font hệ thống.
+  </p>
+
+  <!-- 1. HOME -->
+  <section class="screen-block">
+    <h2>1. Khám phá (Trang chủ)</h2>
+    <p class="desc">Tiêu đề lớn, ô tìm kiếm, chip lọc nhanh, lưới bento 6 ô theo sở thích, rồi các hàng cuộn ngang. Thanh tab là kính nổi.</p>
+    <div class="pair">
+      <div class="phone-wrap">
+        <div class="phone" data-theme="light">
+          <div class="statusbar"><span>9:41</span><span class="sb-r"><i></i><i></i><i></i></span></div>
+          <div class="screen">
+            <div class="home-head">
+              <div><div class="cap">Khu vực</div><div class="area">TP. Hồ Chí Minh <svg class="ic sm"><use href="#i-chev"/></svg></div></div>
+              <div class="avatar" aria-label="Tài khoản"><svg class="ic"><use href="#i-user"/></svg></div>
+            </div>
+            <h2 class="display">Hôm nay ăn gì?</h2>
+            <div class="search"><svg class="ic"><use href="#i-search"/></svg><span class="txt">Tìm quán, món, khu vực…</span><span class="sl"><svg class="ic"><use href="#i-sliders"/></svg></span></div>
+            <div class="chips" style="margin-top:12px">
+              <span class="chip sel"><svg class="ic sm"><use href="#i-check"/></svg>Gần tôi</span><span class="chip">Đang mở</span><span class="chip">Chay</span><span class="chip">Buffet</span><span class="chip">Ăn vặt</span>
+            </div>
+            <div class="sec-title"><span class="headline">Khám phá theo sở thích</span><a>Xem tất cả</a></div>
+            <div class="bento">
+              <div class="tile a big ph ph-veg"><div class="scrim"></div><div class="lab">Món chay<small>53 địa điểm</small></div></div>
+              <div class="tile b ph ph-buffet"><div class="scrim"></div><div class="lab">Buffet<small>27 địa điểm</small></div></div>
+              <div class="tile c ph ph-snack"><div class="scrim"></div><div class="lab">Ăn vặt</div></div>
+              <div class="tile d ph ph-bbq"><div class="scrim"></div><div class="lab">Nướng</div></div>
+              <div class="tile e ph ph-pho"><div class="scrim"></div><div class="lab">Phở và bún</div></div>
+              <div class="tile f ph ph-pizza"><div class="scrim"></div><div class="lab">Pizza và Âu</div></div>
+            </div>
+            <div class="sec-title"><span class="headline">Gần bạn</span><a>Xem tất cả</a></div>
+            <div class="rail">
+              <div class="card-r"><div class="ph ph-pho" style="height:150px;border-radius:20px"></div><span class="heart glass"><svg class="ic sm"><use href="#i-heart"/></svg></span><div class="nm">Phở Bò Gia Truyền Cô Lan</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,5</span> (128) · 350 m</div></div>
+              <div class="card-r"><div class="ph ph-bbq" style="height:150px;border-radius:20px"></div><span class="heart glass"><svg class="ic sm"><use href="#i-heart"/></svg></span><div class="nm">Lẩu Nướng Sao Mai</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,3</span> (64) · 820 m</div></div>
+            </div>
+          </div>
+          <nav class="tabbar glass" aria-label="Điều hướng chính">
+            <div class="tab active"><span class="pi"><svg class="ic fill"><use href="#i-compass"/></svg></span>Khám phá</div>
+            <div class="tab"><span class="pi"><svg class="ic"><use href="#i-pin"/></svg></span>Gần tôi</div>
+            <div class="tab"><span class="pi"><svg class="ic"><use href="#i-heart"/></svg></span>Đã lưu</div>
+            <div class="tab"><span class="pi"><svg class="ic"><use href="#i-user"/></svg></span>Tôi</div>
+          </nav>
+          <div class="home-ind"></div>
+        </div>
+        <div class="cap-mode">Sáng</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. DETAIL -->
+  <section class="screen-block">
+    <h2>2. Chi tiết địa điểm</h2>
+    <p class="desc">Ảnh bìa tràn viền với nút kính nổi (quay lại, chia sẻ, lưu). Thẻ nội dung bo 28 đè lên ảnh. Trạng thái mở cửa và thẻ "Chay" đã xác minh hiển thị ngay đầu trang; giờ chưa xác minh được nói rõ.</p>
+    <div class="pair">
+      <div class="phone-wrap">
+        <div class="phone" data-theme="light">
+          <div class="statusbar on-photo"><span>9:41</span><span class="sb-r"><i></i><i></i><i></i></span></div>
+          <div class="screen detail">
+            <div class="hero ph ph-veg"><div class="scrim" style="background:linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0) 35%)"></div>
+              <button class="gbtn glass" style="left:16px;top:58px" aria-label="Quay lại"><svg class="ic"><use href="#i-back"/></svg></button>
+              <button class="gbtn glass" style="right:70px;top:58px" aria-label="Chia sẻ"><svg class="ic"><use href="#i-share"/></svg></button>
+              <button class="gbtn glass" style="right:16px;top:58px;color:var(--color-primary-strong)" aria-label="Lưu"><svg class="ic fill"><use href="#i-heart"/></svg></button>
+              <span class="count glass">1 / 6</span>
+            </div>
+            <div class="sheet-body">
+              <h2 class="title">Cơm Chay Sen Vàng</h2>
+              <div class="rowm"><span>Nhà hàng · Món Việt</span></div>
+              <div class="rowm" style="margin-top:0"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,6</span><span>(87)</span><span>·</span><span>45.000đ – 120.000đ</span></div>
+              <div class="pills"><span class="pill open">Đang mở · đóng cửa lúc 21:30</span><span class="pill verified"><svg class="ic xs"><use href="#i-check"/></svg>Chay · đã xác minh</span></div>
+              <div class="actions">
+                <div class="act"><span class="round"><svg class="ic"><use href="#i-phone"/></svg></span>Gọi</div>
+                <div class="act main"><span class="round"><svg class="ic"><use href="#i-nav"/></svg></span>Chỉ đường</div>
+                <div class="act"><span class="round"><svg class="ic"><use href="#i-share"/></svg></span>Chia sẻ</div>
+                <div class="act"><span class="round"><svg class="ic fill"><use href="#i-heart"/></svg></span>Đã lưu</div>
+              </div>
+              <div class="infoline"><svg class="ic"><use href="#i-pin"/></svg><div><b>58 Đường Mẫu, P. Mẫu</b>TP. Hồ Chí Minh</div></div>
+              <div class="infoline"><svg class="ic"><use href="#i-clock"/></svg><div><b>Mỗi ngày 08:00 – 21:30</b><span class="pill closed" style="margin-top:4px"><svg class="ic xs"><use href="#i-info"/></svg>Giờ chưa được xác minh</span></div></div>
+              <div class="rev-row"><span class="l"><svg class="ic fill" style="color:var(--color-star);width:18px;height:18px"><use href="#i-star"/></svg>4,6 · 87 đánh giá</span><a>Xem tất cả</a></div>
+            </div>
+            <div class="cta"><button class="btn primary">Viết đánh giá</button></div>
+          </div>
+          <div class="home-ind"></div>
+        </div>
+        <div class="cap-mode">Sáng</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. SEARCH + FILTER SHEET -->
+  <section class="screen-block">
+    <h2>3. Tìm kiếm và bộ lọc</h2>
+    <p class="desc">Tìm không dấu ("bo nuong" ra "bò nướng"). Bảng lọc là sheet bo 28, nền đặc vì chứa chữ. Thanh trượt, công tắc và nút dùng đúng token.</p>
+    <div class="pair">
+      <div class="phone-wrap">
+        <div class="phone" data-theme="light">
+          <div class="statusbar"><span>9:41</span><span class="sb-r"><i></i><i></i><i></i></span></div>
+          <div class="screen">
+            <div class="searchbar">
+              <span class="back"><svg class="ic"><use href="#i-back"/></svg></span>
+              <div class="search"><svg class="ic"><use href="#i-search"/></svg><span class="txt val">bo nuong</span><svg class="ic sm"><use href="#i-x"/></svg></div>
+            </div>
+            <div class="chips">
+              <span class="chip sel"><svg class="ic sm"><use href="#i-sliders"/></svg>Bộ lọc · 2</span><span class="chip sel"><svg class="ic sm"><use href="#i-check"/></svg>Đang mở</span><span class="chip">Gần nhất <svg class="ic sm"><use href="#i-chev"/></svg></span>
+            </div>
+            <div class="count-line"><b>24</b> kết quả</div>
+            <div class="list">
+              <div class="lc"><div class="ph ph-bbq"></div><div class="body"><div class="nm">Lẩu Nướng Sao Mai</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,3</span> (64) · 820 m</div><div class="meta">120.000đ – 350.000đ</div></div><span class="hrt"><svg class="ic"><use href="#i-heart"/></svg></span></div>
+              <div class="lc"><div class="ph ph-bbq" style="filter:hue-rotate(-12deg)"></div><div class="body"><div class="nm">Quán Nướng Than Hồng</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,1</span> (38) · 1,4 km</div><div class="meta">90.000đ – 250.000đ</div></div><span class="hrt"><svg class="ic"><use href="#i-heart"/></svg></span></div>
+              <div class="lc"><div class="ph ph-bbq" style="filter:saturate(.8)"></div><div class="body"><div class="nm">Bò Nướng Lá Lốt Hẻm Nhỏ</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,4</span> (112) · 1,9 km</div><div class="meta">60.000đ – 180.000đ</div></div><span class="hrt"><svg class="ic"><use href="#i-heart"/></svg></span></div>
+            </div>
+            <div class="overlay"></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <h3>Bộ lọc <a>Xóa tất cả</a></h3>
+              <div class="grp">Loại hình</div>
+              <div class="chips"><span class="chip">Nhà hàng</span><span class="chip">Quán ăn</span><span class="chip sel"><svg class="ic xs"><use href="#i-check"/></svg>Buffet</span><span class="chip">Ăn vặt</span></div>
+              <div class="grp">Chế độ ăn</div>
+              <div class="chips"><span class="chip sel"><svg class="ic xs"><use href="#i-check"/></svg>Chay</span><span class="chip">Thuần chay</span><span class="chip">Halal</span></div>
+              <div class="slider"><div class="grp" style="margin-bottom:0">Mức giá tối đa</div><div class="row"><span class="meta">Từ 0đ</span><b>200.000đ</b></div><div class="track"></div></div>
+              <div class="toggle-row"><span>Chỉ hiện quán đang mở cửa</span><span class="switch"></span></div>
+              <button class="btn primary">Xem 24 kết quả</button>
+            </div>
+          </div>
+          <div class="home-ind"></div>
+        </div>
+        <div class="cap-mode">Sáng</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. FAVORITES -->
+  <section class="screen-block">
+    <h2>4. Đã lưu</h2>
+    <p class="desc">Chuyển giữa "Đã lưu" và "Đã xem" bằng điều khiển phân đoạn. Hàng thứ hai đang vuốt để bỏ lưu. Nhãn "Đã đóng cửa" hiện ngay trên thẻ khi quán không mở.</p>
+    <div class="pair">
+      <div class="phone-wrap">
+        <div class="phone" data-theme="light">
+          <div class="statusbar"><span>9:41</span><span class="sb-r"><i></i><i></i><i></i></span></div>
+          <div class="screen">
+            <h2 class="display" style="padding:14px 20px 12px">Đã lưu</h2>
+            <div class="seg"><span class="on">Đã lưu</span><span>Đã xem</span></div>
+            <div class="count-line"><b>12</b> địa điểm</div>
+            <div class="list">
+              <div class="lc"><div class="ph ph-pho"></div><div class="body"><div class="nm">Phở Bò Gia Truyền Cô Lan</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,5</span> (128) · 350 m</div><div><span class="pill open">Đang mở</span></div></div><span class="hrt on"><svg class="ic fill"><use href="#i-heart"/></svg></span></div>
+              <div class="swipe"><div class="reveal"><svg class="ic"><use href="#i-trash"/></svg>Bỏ lưu</div>
+                <div class="lc"><div class="ph ph-veg"></div><div class="body"><div class="nm">Cơm Chay Sen Vàng</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,6</span> (87) · 1,2 km</div><div><span class="pill closed">Đã đóng cửa</span></div></div><span class="hrt on"><svg class="ic fill"><use href="#i-heart"/></svg></span></div>
+              </div>
+              <div class="lc"><div class="ph ph-snack"></div><div class="body"><div class="nm">Bánh Mì Hẻm 22</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,2</span> (210) · 1,6 km</div><div><span class="pill open">Đang mở</span></div></div><span class="hrt on"><svg class="ic fill"><use href="#i-heart"/></svg></span></div>
+              <div class="lc"><div class="ph ph-buffet"></div><div class="body"><div class="nm">Buffet Hải Sản Biển Xanh</div><div class="meta"><span class="rating"><svg class="ic fill"><use href="#i-star"/></svg>4,4</span> (356) · 2,1 km</div><div><span class="pill warn">Tạm đóng cửa</span></div></div><span class="hrt on"><svg class="ic fill"><use href="#i-heart"/></svg></span></div>
+            </div>
+          </div>
+          <nav class="tabbar glass" aria-label="Điều hướng chính">
+            <div class="tab"><span class="pi"><svg class="ic"><use href="#i-compass"/></svg></span>Khám phá</div>
+            <div class="tab"><span class="pi"><svg class="ic"><use href="#i-pin"/></svg></span>Gần tôi</div>
+            <div class="tab active"><span class="pi"><svg class="ic fill"><use href="#i-heart"/></svg></span>Đã lưu</div>
+            <div class="tab"><span class="pi"><svg class="ic"><use href="#i-user"/></svg></span>Tôi</div>
+          </nav>
+          <div class="home-ind"></div>
+        </div>
+        <div class="cap-mode">Sáng</div>
+      </div>
+    </div>
+  </section>
+
+  <p class="note" style="margin-top:8px">
+    Chưa có trong bước này: màn Gần tôi (bản đồ), Viết đánh giá, Đăng nhập, Tôi, các trạng thái rỗng và lỗi.
+    Chúng dùng cùng token và thành phần; sẽ làm sau khi Sếp duyệt phong cách của các màn trên.
+  </p>
+</div>
+
+<script>
+  // Each .pair contains one light phone in the markup; clone it to show the dark version beside it.
+  document.querySelectorAll('.pair').forEach(function (pair) {
+    var wrap = pair.querySelector('.phone-wrap');
+    var clone = wrap.cloneNode(true);
+    clone.querySelector('.phone').setAttribute('data-theme', 'dark');
+    clone.querySelector('.cap-mode').textContent = 'Tối';
+    pair.appendChild(clone);
+  });
+</script>
+</body>
+</html>

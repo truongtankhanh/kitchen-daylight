@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen Daylight – Xem thử bảng màu</title>
+<style>
+  /* Preview only. Tokens match docs/ui/style-direction.md. Font Be Vietnam Pro is not loaded here;
+     the system font is used, so spacing and glyph shapes will differ from the real app. */
+  :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: #E3EAF2; color: #222; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.note { margin: 0 0 20px; font-size: 14px; color: #444; max-width: 860px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; max-width: 1000px; }
+
+  .theme { border-radius: 24px; padding: 20px; background: var(--bg); color: var(--text); }
+  .theme.light {
+    --bg:#F3F7FB; --surface:#FFFFFF; --variant:#E6EDF5; --text:#0B1B2E; --text2:#44566C; --outline:#667A93; --divider:#D3DEEA;
+    --primary:#1560C8; --onprimary:#FFFFFF; --ps:#0F4FA8; --pc:#D6E7FF; --onpc:#0A2E5C;
+    --sec:#0B7A83; --onsec:#FFFFFF; --secc:#D3F1F0; --onsecc:#063D3F; --warn:#6B3FA0; --warnc:#EDE5FA; --error:#B3261E; --star:#2F6FB5;
+    --shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+  .theme.dark {
+    --bg:#07111D; --surface:#0E1C2E; --variant:#16293F; --text:#E7F0FA; --text2:#A8BACF; --outline:#7087A3; --divider:#213A58;
+    --primary:#5CA8FF; --onprimary:#04213F; --ps:#5CA8FF; --pc:#0E3463; --onpc:#D3E6FF;
+    --sec:#4FD1C5; --onsec:#022B2A; --secc:#0C3F3F; --onsecc:#B6F0EA; --warn:#CDB6FF; --warnc:#2E2054; --error:#FFB4AB; --star:#5CA8FF;
+    --shadow: none;
+  }
+  .label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text2); margin: 0 0 12px; }
+  .brand { font-size: 24px; font-weight: 800; margin: 0 0 12px; }
+
+  .search { display:flex; align-items:center; gap:8px; background: var(--surface); border: 1.5px solid var(--outline); border-radius: 12px; padding: 12px 14px; color: var(--text2); font-size: 15px; margin-bottom: 12px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 16px; }
+  .chip { border-radius: 999px; padding: 8px 14px; font-size: 14px; background: var(--variant); color: var(--text); }
+  .chip.sel { background: var(--pc); color: var(--onpc); font-weight: 600; }
+  .chip.sel::before { content: "✓ "; }
+
+  .card { background: var(--surface); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .photo { height: 150px; background: linear-gradient(135deg,#2f566b 0%,#4d7f93 55%,#9cc3cf 100%); position: relative; }
+  .photo .save { position:absolute; top:10px; right:10px; width:44px; height:44px; border-radius:50%; background: rgba(255,255,255,.55); backdrop-filter: blur(10px); display:grid; place-items:center; color:#0B1B2E; font-size:20px; }
+  .body { padding: 14px 16px 16px; }
+  .name { font-size: 18px; font-weight: 700; line-height: 1.4; margin: 0 0 4px; }
+  .meta { font-size: 14px; color: var(--text2); line-height: 1.5; }
+  .stars { color: var(--star); font-weight: 700; }
+  .meta strong { color: var(--text); }
+  .pills { display:flex; flex-wrap:wrap; gap:8px; margin-top: 10px; }
+  .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; display:inline-flex; gap:6px; align-items:center; }
+  .pill.open { background: var(--secc); color: var(--onsecc); }
+  .pill.open::before { content:"●"; font-size: 8px; }
+  .pill.closed { background: var(--variant); color: var(--text2); }
+  .pill.pause { background: var(--warnc); color: var(--warn); }
+  .pill.pause::before { content:"Ⅱ"; font-weight:800; }
+  .pill.verified { background: var(--secc); color: var(--onsecc); }
+  .pill.verified::before { content:"✓"; }
+
+  .buttons { display:flex; flex-direction:column; gap:10px; margin-bottom: 16px; }
+  .btn { height: 52px; border-radius: 999px; border: 0; font-size: 16px; font-weight: 600; cursor: default; font-family: inherit; }
+  .btn.primary { background: var(--primary); color: var(--onprimary); }
+  .btn.secondary { background: var(--sec); color: var(--onsec); }
+  .btn.outline { background: transparent; color: var(--ps); border: 1.5px solid var(--outline); }
+  .link { color: var(--ps); font-weight: 600; text-decoration: underline; font-size: 15px; }
+  .err { color: var(--error); font-size: 14px; margin-top: 6px; }
+
+  .tabbar { display:flex; justify-content:space-around; align-items:center; background: var(--surface); border-radius: 28px; padding: 10px 8px; box-shadow: var(--shadow); margin-bottom: 20px; }
+  .tab { text-align:center; font-size: 12px; color: var(--text2); width: 72px; }
+  .tab .ic { display:block; margin: 0 auto 2px; width: 56px; height: 30px; border-radius: 999px; line-height: 30px; font-size: 16px; }
+  .tab.active { color: var(--ps); font-weight: 700; }
+  .tab.active .ic { background: var(--pc); }
+
+  .swatches { display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .sw { border-radius: 12px; border: 1px solid var(--divider); overflow: hidden; background: var(--surface); }
+  .sw i { display:block; height: 36px; }
+  .sw span { display:block; padding: 6px 8px; font-size: 11px; line-height: 1.35; color: var(--text); }
+  .sw b { display:block; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>Kitchen Daylight – Xem thử bảng màu (nháp)</h1>
+<p class="note">
+  Trang này chỉ để Sếp nhìn thử màu: xanh ocean (hành động), teal (đang mở, đã xác minh) và tím (cảnh báo), sáng và tối cạnh nhau.
+  Đây <strong>không phải mockup cuối</strong>: chưa có ảnh thật (ô ảnh là dải màu giả), chưa dùng font Be Vietnam Pro,
+  và hiệu ứng kính ở nút lưu chỉ là mô phỏng gần đúng. Giá trị khớp với <code>docs/ui/style-direction.md</code>.
+</p>
+
+<div class="grid">
+
+  <section class="theme light" aria-label="Giao diện sáng">
+    <p class="label">Giao diện sáng</p>
+    <p class="brand">Kitchen Daylight</p>
+    <div class="search">Tìm quán, món, khu vực…</div>
+    <div class="chips"><span class="chip sel">Đang mở</span><span class="chip">Chay</span><span class="chip">Buffet</span><span class="chip">Ăn vặt</span></div>
+
+    <div class="card">
+      <div class="photo"><div class="save" aria-hidden="true">♡</div></div>
+      <div class="body">
+        <p class="name">Bò nướng Hàn Quốc Gogi House</p>
+        <div class="meta"><span class="stars">★ 4,5</span> <strong>(128)</strong> · Quán ăn · 350 m<br>50.000đ – 200.000đ</div>
+        <div class="pills"><span class="pill open">Đang mở · đóng cửa lúc 22:00</span><span class="pill verified">Chay</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="body">
+        <p class="name">Quán cơm chay An Lạc</p>
+        <div class="meta"><span class="stars">★ 4,2</span> <strong>(41)</strong> · 1,2 km</div>
+        <div class="pills"><span class="pill pause">Tạm đóng cửa</span><span class="pill closed">Giờ chưa xác minh</span></div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn primary">Viết đánh giá</button>
+      <button class="btn secondary">Chỉ đường</button>
+      <button class="btn outline">Chia sẻ</button>
+      <div><a class="link">Xem tất cả đánh giá</a></div>
+      <div class="err">Email hoặc mật khẩu không đúng.</div>
+    </div>
+
+    <div class="tabbar">
+      <div class="tab active"><span class="ic">●</span>Khám phá</div>
+      <div class="tab"><span class="ic">○</span>Gần tôi</div>
+      <div class="tab"><span class="ic">○</span>Đã lưu</div>
+      <div class="tab"><span class="ic">○</span>Tôi</div>
+    </div>
+
+    <p class="label">Token</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:#F3F7FB"></i><span><b>bg</b>#F3F7FB</span></div>
+      <div class="sw"><i style="background:#FFFFFF"></i><span><b>surface</b>#FFFFFF</span></div>
+      <div class="sw"><i style="background:#E6EDF5"></i><span><b>surface-variant</b>#E6EDF5</span></div>
+      <div class="sw"><i style="background:#0B1B2E"></i><span><b>text</b>#0B1B2E</span></div>
+      <div class="sw"><i style="background:#1560C8"></i><span><b>primary</b>#1560C8</span></div>
+      <div class="sw"><i style="background:#0F4FA8"></i><span><b>primary-strong</b>#0F4FA8</span></div>
+      <div class="sw"><i style="background:#D6E7FF"></i><span><b>primary-container</b>#D6E7FF</span></div>
+      <div class="sw"><i style="background:#0B7A83"></i><span><b>secondary</b>#0B7A83</span></div>
+      <div class="sw"><i style="background:#D3F1F0"></i><span><b>secondary-container</b>#D3F1F0</span></div>
+      <div class="sw"><i style="background:#2F6FB5"></i><span><b>star</b>#2F6FB5</span></div>
+    </div>
+  </section>
+
+  <section class="theme dark" aria-label="Giao diện tối">
+    <p class="label">Giao diện tối</p>
+    <p class="brand">Kitchen Daylight</p>
+    <div class="search">Tìm quán, món, khu vực…</div>
+    <div class="chips"><span class="chip sel">Đang mở</span><span class="chip">Chay</span><span class="chip">Buffet</span><span class="chip">Ăn vặt</span></div>
+
+    <div class="card">
+      <div class="photo"><div class="save" aria-hidden="true">♡</div></div>
+      <div class="body">
+        <p class="name">Bò nướng Hàn Quốc Gogi House</p>
+        <div class="meta"><span class="stars">★ 4,5</span> <strong>(128)</strong> · Quán ăn · 350 m<br>50.000đ – 200.000đ</div>
+        <div class="pills"><span class="pill open">Đang mở · đóng cửa lúc 22:00</span><span class="pill verified">Chay</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="body">
+        <p class="name">Quán cơm chay An Lạc</p>
+        <div class="meta"><span class="stars">★ 4,2</span> <strong>(41)</strong> · 1,2 km</div>
+        <div class="pills"><span class="pill pause">Tạm đóng cửa</span><span class="pill closed">Giờ chưa xác minh</span></div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn primary">Viết đánh giá</button>
+      <button class="btn secondary">Chỉ đường</button>
+      <button class="btn outline">Chia sẻ</button>
+      <div><a class="link">Xem tất cả đánh giá</a></div>
+      <div class="err">Email hoặc mật khẩu không đúng.</div>
+    </div>
+
+    <div class="tabbar">
+      <div class="tab active"><span class="ic">●</span>Khám phá</div>
+      <div class="tab"><span class="ic">○</span>Gần tôi</div>
+      <div class="tab"><span class="ic">○</span>Đã lưu</div>
+      <div class="tab"><span class="ic">○</span>Tôi</div>
+    </div>
+
+    <p class="label">Token</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:#07111D"></i><span><b>bg</b>#07111D</span></div>
+      <div class="sw"><i style="background:#0E1C2E"></i><span><b>surface</b>#0E1C2E</span></div>
+      <div class="sw"><i style="background:#16293F"></i><span><b>surface-variant</b>#16293F</span></div>
+      <div class="sw"><i style="background:#E7F0FA"></i><span><b>text</b>#E7F0FA</span></div>
+      <div class="sw"><i style="background:#5CA8FF"></i><span><b>primary</b>#5CA8FF</span></div>
+      <div class="sw"><i style="background:#0E3463"></i><span><b>primary-container</b>#0E3463</span></div>
+      <div class="sw"><i style="background:#4FD1C5"></i><span><b>secondary</b>#4FD1C5</span></div>
+      <div class="sw"><i style="background:#0C3F3F"></i><span><b>secondary-container</b>#0C3F3F</span></div>
+      <div class="sw"><i style="background:#CDB6FF"></i><span><b>warning</b>#CDB6FF</span></div>
+      <div class="sw"><i style="background:#FFB4AB"></i><span><b>error</b>#FFB4AB</span></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
