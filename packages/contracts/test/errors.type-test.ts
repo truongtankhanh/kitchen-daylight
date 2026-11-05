@@ -28,8 +28,11 @@ export type StatusesAreErrors = Assert<
 /** 18 codes "unchanged from v2" plus the 26 of the table; a duplicate would leave the union shorter. */
 export type ErrorCatalogueLength = Assert<Equal<(typeof ERROR_CODES)['length'], 44>>;
 
-/** The 29 field-level codes of the outline plus `INVALID` (api-divergences D-001). */
-export type FieldCatalogueLength = Assert<Equal<(typeof FIELD_ERROR_CODES)['length'], 30>>;
+/**
+ * The 29 field-level codes of the outline plus `INVALID` (api-divergences D-001) and
+ * `INVALID_FORMAT` (decision 0007 row 14, D-022).
+ */
+export type FieldCatalogueLength = Assert<Equal<(typeof FIELD_ERROR_CODES)['length'], 31>>;
 
 /** The unions are exactly the arrays. */
 export type ErrorCodeIsTheArray = Assert<Equal<ErrorCode, (typeof ERROR_CODES)[number]>>;
