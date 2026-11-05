@@ -1,0 +1,32 @@
+{
+  "name": "@kd/seed",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "default": "./dist/cli.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "seed": "node --env-file-if-exists=../../.env dist/cli.js",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --maxWorkers=2"
+  },
+  "dependencies": {
+    "@kd/seed-data": "workspace:*",
+    "pg": "catalog:"
+  },
+  "devDependencies": {
+    "@kd/eslint-config": "workspace:*",
+    "@kd/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

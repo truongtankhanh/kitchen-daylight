@@ -6,7 +6,9 @@ packages:
 # External packages used by two or more workspace packages (decision 0003).
 # Exact versions from decision 0001 only.
 catalog:
+  '@types/node': 26.6.6
   eslint: 10.14.0
+  pg: 8.23.1
   prettier: 3.9.10
   rxjs: 7.8.2
   typescript: 6.0.3

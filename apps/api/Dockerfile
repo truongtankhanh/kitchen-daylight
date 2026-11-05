@@ -9,7 +9,8 @@
 # and no wget. Digest resolved by the first green build (2026-11-04, multi-platform index):
 #   node:26.13.0-trixie-slim@sha256:e4db4c914bf8ad241bd24804fc25d272d89bad97e68cdc8a1414862790a02c39
 
-# --- build: install with the lockfile, compile the API and its workspace dependencies ---
+# --- build: install with the lockfile, compile the API, the seed tool and their workspace
+# dependencies ---
 FROM node:26.13.0-trixie-slim AS build
 
 # CI=true: non-interactive pnpm. HUSKY=0: no git hooks in the image (decision 0002).
@@ -28,9 +29,11 @@ RUN pnpm fetch
 COPY . .
 # deploy is not --offline: it checks the lockfile it writes against the supply-chain
 # policies, which needs registry metadata that `pnpm fetch` does not store.
-RUN pnpm install --offline --frozen-lockfile --filter "@kd/api..." \
-    && pnpm --filter "@kd/api..." run build \
-    && pnpm --filter @kd/api deploy --prod /prod/api
+# @kd/seed ships in the same image (decision 0005, contradiction 6 and section 9).
+RUN pnpm install --offline --frozen-lockfile --filter "@kd/api..." --filter "@kd/seed..." \
+    && pnpm --filter "@kd/api..." --filter "@kd/seed..." run build \
+    && pnpm --filter @kd/api deploy --prod /prod/api \
+    && pnpm --filter @kd/seed deploy --prod /prod/seed
 
 # --- runtime: production dependencies and compiled output only ---
 FROM node:26.13.0-trixie-slim AS runtime
@@ -44,9 +47,15 @@ COPY --from=build /prod/api/package.json ./package.json
 COPY --from=build /prod/api/node_modules ./node_modules
 COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/migrations ./migrations
+# /app/seed holds the seed tool with the @kd/seed-data fixtures in its node_modules, so
+# `node seed/dist/cli.js <mode> [--commit]` works from /app (the API_SEED_CMD default).
+COPY --from=build /prod/seed/package.json ./seed/package.json
+COPY --from=build /prod/seed/node_modules ./seed/node_modules
+COPY --from=build /repo/tools/seed/dist ./seed/dist
 
-# The non-root `node` user of the official image.
-USER node
+# The non-root `node` user of the official image (uid and gid 1000), written numerically so a
+# runtime can verify it is not root before starting the container (hadolint DL3066).
+USER 1000:1000
 
 EXPOSE 3000
 
