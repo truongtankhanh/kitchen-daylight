@@ -18,6 +18,31 @@ There is no migration in the foundation. The first one arrives with the first sl
 - **Do not create extensions.** `postgis`, `pg_trgm`, `unaccent` and `citext` are created by the database provisioning, and the preflight checks them. `CREATE EXTENSION IF NOT EXISTS` is allowed only as a no-op safety.
 - **`uuidv7()`** comes from PostgreSQL 18 core; no application-side fallback.
 
+## Helpers in use
+
+Created by `0001_database_helpers.sql`, owned by `kd_migrator`, granted to `kd_app` (`EXECUTE`, `USAGE`).
+
+| Object                         | Use                                                                                                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.kd_unaccent(text)`     | Immutable wrapper of `unaccent` for index expressions and the matching `WHERE`: `gin (public.kd_unaccent(name) gin_trgm_ops)`. REINDEX those indexes after a change to `unaccent.rules` or a major upgrade |
+| `public.kd_set_updated_at()`   | `BEFORE UPDATE` row trigger, `updated_at = now()`                                                                                                                                                          |
+| `public.kd_bump_row_version()` | `BEFORE UPDATE` row trigger, `row_version = OLD.row_version + 1` (decision 0007 section 8)                                                                                                                 |
+| `public.e164_phone`            | Domain over `text`, `^\+[1-9][0-9]{1,14}$`; the Vietnamese mobile rule stays in the API                                                                                                                    |
+| `public.vnd`                   | Domain over `integer`, `>= 0`, for every money column; a stricter rule is a column `CHECK`                                                                                                                 |
+
+Attaching the triggers, in the migration that creates the table:
+
+```sql
+CREATE TRIGGER menu_items_row_version
+  BEFORE UPDATE OF slug, category_id, base_price, is_active ON public.menu_items
+  FOR EACH ROW EXECUTE FUNCTION public.kd_bump_row_version();
+```
+
+- **List the editable columns.** A column updated in the background (the branch `review_count` and `rating_sum`) must not bump the version, or a recalculation makes a staff edit stale. The same list usually suits `kd_set_updated_at`; the table's migration says when it differs.
+- `UPDATE OF` fires when a listed column is in the `SET` list, even with an unchanged value, so a service sets only the columns it changes.
+- The trigger owns the counter: a service writes `WHERE id = $1 AND row_version = $2` and reads the new value with `RETURNING row_version`; the value it sets is overwritten.
+- An edit stored in a child table (translations, options, photos) that must move the parent's `updated_at` or `row_version` updates the parent row in the same transaction.
+
 ## Roles
 
 - Migrations run as **`kd_migrator`**, the only role with DDL. The preflight refuses any other `current_user`.
