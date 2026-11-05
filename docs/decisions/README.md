@@ -2,6 +2,8 @@
 
 Decisions taken while building this repository. Product-wide architecture decisions live in the project ADRs; the records here pin how this repository implements them.
 
+Since P6-T1 (2026-11-05) the project ADRs are in this repository: [../adr/](../adr/), ADR-0001 to ADR-0010, indexed in [../README.md](../README.md#decisions). The records below were not moved or renumbered, because code, CI and configuration cite them by number: they stay a separate series, cited as "decision NNNN", while the project records are cited as "ADR-NNNN".
+
 ## Format
 
 One file per decision, named `NNNN-short-title.md`, numbered in order and never reused. Each record has:

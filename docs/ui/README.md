@@ -7,6 +7,7 @@ Status: **step 1 of 2 is this folder (principles, flows, inventory); step 2 is t
 - [Mobile flows](mobile.md)
 - [Admin web flows and wireframes](admin.md)
 - [Style direction and design tokens](style-direction.md)
+- Design tokens: `docs/ui/tokens/` moved to [packages/design-tokens](../../packages/design-tokens/README.md) (P6-T1, 2026-11-05); `tokens.json` there is the only source.
 
 Built on: [data-model.md](../data-model.md), [api-outline.md](../api-outline.md), [ADR-0003](../adr/0003-authentication.md), [ADR-0009](../adr/0009-owner-business-pivot.md) (ADR-0006 is superseded in part).
 
