@@ -195,3 +195,16 @@ The choices above stand; the section 7 fallback is **not** used.
 - **Dependabot and commitlint.** Dependabot commit bodies carry release notes longer than `body-max-line-length` (100). `commitlint.config.mjs` skips only messages whose header starts with `chore(deps): bump ` and that carry Dependabot's `Signed-off-by` line; any other message is checked as before. Checked locally: a Dependabot-shaped message passes, the same body without the sign-off fails `body-max-line-length`, another header with the sign-off fails.
 - **Node pin drift.** A Dependabot `docker` pull request bumps `apps/api/Dockerfile` only. The CI `verify` job checks that `.nvmrc`, `engines.node` and every `FROM node:` line name the same version, so such a pull request stays red until `.nvmrc`, `engines` and decision 0001 follow in the same pull request.
 - **Expo SDK set and TypeScript in Dependabot.** The Expo-managed packages are ignored (they move with `expo install --fix`, decision 0001), and `typescript >= 6.1.0` is ignored until Angular and `typescript-eslint` accept it. `cooldown.default-days: 1` matches pnpm's default `minimumReleaseAge`.
+
+## Implementation notes (Phase 5 review, 2026-11-05)
+
+- **Design-tokens drift in CI.** The `verify` job runs `pnpm --filter @kd/design-tokens tokens:check` right after the install, before lint, typecheck, test and build: the design-tokens build rewrites the committed files under `src/` and would hide a hand edit. Checked locally on 2026-11-05: an appended line in `src/tokens.css` exits 1, the clean tree exits 0. The i18n completeness check (`@kd/i18n` `check`) is not in CI either; it is left for a follow-up.
+- **Dependabot alerts triaged (section 7).** Dependabot security updates failed on every push to `main` from 2026-11-04 (`security_update_not_possible`). Three open alerts, all transitive, all in development and build tooling, none in the API image or an app bundle; their inputs (glob patterns, configuration) come from the repository, not from users:
+
+| Alert | Vulnerable versions in the lockfile | Pulled in by | Fix | Decision |
+|---|---|---|---|---|
+| minimatch, medium, GHSA-g3hv-75wg-m249 | 10.2.6, 9.0.9 | `@eslint/config-array` (requires `^10`), `test-exclude` (Jest coverage) | 11.0.1, outside the parents' ranges | dismiss as tolerable risk |
+| glob, medium, GHSA-3g3m-2fjr-6pw4 | 13.0.6, 10.5.0 | `@expo/cli` (Expo-managed set, decision 0003), `test-exclude` | 14.0.2, outside the parents' ranges | dismiss as tolerable risk |
+| deepmerge, low, GHSA-gcqx-w48m-w2h4 | 4.3.1 | `jest-config` | none published | dismiss as tolerable risk |
+
+  No `pnpm.overrides`: each would force a major outside the parent's declared range, or move a package of the Expo-managed set. Below the `high` threshold of this section, so nothing was blocking. **Revisit** when ESLint, Jest or the Expo SDK moves to a fixed version (the weekly Dependabot version updates bring it), or when an alert reaches `high`; the owner dismisses the three alerts in the Security tab with the reason "risk is tolerable" and a link to this note; a dismissed alert can be reopened.
