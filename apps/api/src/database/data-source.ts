@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { PostgresDataSourceOptions } from 'typeorm/driver/postgres/PostgresDataSourceOptions.js';
 
+import { IdempotencyKeyRecord } from '../common/idempotency/entities/idempotency-key.entity.js';
 import type { CliConfig } from '../config/load-config.js';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
@@ -22,7 +23,7 @@ export function createDataSourceOptions(config: CliConfig): PostgresDataSourceOp
     migrationsRun: false,
     migrations: [],
     // Listed explicitly, never globbed.
-    entities: [OutboxEvent, AuditLog],
+    entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord],
     logging: false,
   };
 }

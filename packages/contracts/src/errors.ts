@@ -111,7 +111,8 @@ export type ErrorStatus = (typeof ERROR_STATUS)[ErrorCode];
 
 /**
  * Every `errors[].code` inside `VALIDATION_FAILED`: the 29 field-level codes of the outline, in its
- * order, then `INVALID` for a rule the catalogue has no code for (api-divergences D-001).
+ * order, then `INVALID` for a rule the catalogue has no code for (api-divergences D-001), then
+ * `INVALID_FORMAT` for a malformed header value (decision 0007 row 14; api-divergences D-022).
  */
 export const FIELD_ERROR_CODES = [
   'REQUIRED',
@@ -145,6 +146,8 @@ export const FIELD_ERROR_CODES = [
   'PARTY_TOO_LARGE',
   // Not in the outline: the generic code of api-divergences D-001.
   'INVALID',
+  // Not in the outline: a malformed header value such as `Idempotency-Key` (decision 0007 row 14).
+  'INVALID_FORMAT',
 ] as const;
 
 export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[number];
