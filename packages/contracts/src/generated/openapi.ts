@@ -24,6 +24,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Stable code of the catalogue (decision 0007 section 9).
+         * @enum {string}
+         */
+        ErrorCode: "VALIDATION_FAILED" | "CODE_INVALID" | "UNAUTHENTICATED" | "TOKEN_EXPIRED" | "INVALID_CREDENTIALS" | "FORBIDDEN" | "EMAIL_NOT_VERIFIED" | "ACCOUNT_SUSPENDED" | "NOT_FOUND" | "STALE_VERSION" | "ALREADY_EXISTS" | "IN_USE" | "UPGRADE_REQUIRED" | "RATE_LIMITED" | "MAINTENANCE" | "LAST_ADMIN" | "SELF_CHANGE" | "REVIEW_EXISTS" | "BRANCH_CLOSED" | "ITEM_UNAVAILABLE" | "PRICE_CHANGED" | "OPTION_INVALID" | "OUT_OF_ZONE" | "BELOW_MIN_ORDER" | "PHONE_REQUIRED" | "VOUCHER_INVALID" | "INSUFFICIENT_POINTS" | "INVALID_TRANSITION" | "ORDER_NOT_CANCELLABLE" | "PAYMENT_NOT_CONFIRMED" | "ORDER_NOT_REVIEWABLE" | "SLOT_UNAVAILABLE" | "HAS_ACTIVE_ORDERS" | "MFA_REQUIRED" | "ORDER_NOT_EDITABLE" | "INVALID_STATE" | "MFA_NOT_ENABLED" | "REVIEW_NOT_PUBLISHED" | "DUPLICATE_REPORT" | "IDEMPOTENCY_CONFLICT" | "DUPLICATE_RESERVATION" | "TOO_LARGE" | "UNSUPPORTED_TYPE" | "INTERNAL_ERROR";
         FieldError: {
             code: string;
             field: string;
@@ -39,7 +44,8 @@ export interface components {
             status: "error" | "ok";
         };
         ProblemDetails: {
-            code: string;
+            /** @description Stable code of the catalogue (decision 0007 section 9). */
+            code: components["schemas"]["ErrorCode"];
             detail?: string;
             errors?: components["schemas"]["FieldError"][];
             status: number;
