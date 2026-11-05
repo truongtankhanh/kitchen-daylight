@@ -1,5 +1,7 @@
 // Root entry of @kd/contracts (decision 0004 section 5): hand-written shared types only.
 // It must never import `src/client.ts` or `src/generated/**`, so `@kd/api` never loads the client.
+export type { AuditAction, AuditEntityType } from './audit.js';
+export { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from './audit.js';
 export type {
   ErrorCode,
   ErrorStatus,
