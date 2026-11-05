@@ -57,6 +57,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # Before every step that may build: the design-tokens build rewrites the committed files under
+      # src/, which would hide a hand edit. The check regenerates in memory and writes nothing.
+      - name: Generated design tokens match tokens.json
+        run: pnpm --filter @kd/design-tokens tokens:check
+
       - name: Restore and save the Turborepo cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
