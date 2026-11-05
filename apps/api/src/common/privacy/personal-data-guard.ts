@@ -34,7 +34,11 @@ export class PersonalDataError extends Error {
   }
 }
 
-function words(key: string): string[] {
+/**
+ * Splits a key into lower-case words: camelCase, PascalCase, snake_case and kebab-case alike
+ * (`customerPhone`, `contact_name`, `ACCOUNT_NUMBER`). Shared with the audit `sanitizeDiff`.
+ */
+export function keyWords(key: string): string[] {
   return key
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
@@ -43,13 +47,18 @@ function words(key: string): string[] {
     .filter((word) => word !== '');
 }
 
-function isRefused(key: string, refused: ReadonlySet<string>): boolean {
-  return words(key).some(
+/** True when one of `words` is in `set`, plural included (`tokens`, `addresses`). */
+export function hasKeyWord(words: readonly string[], set: ReadonlySet<string>): boolean {
+  return words.some(
     (word) =>
-      refused.has(word) ||
-      (word.endsWith('es') && refused.has(word.slice(0, -2))) ||
-      (word.endsWith('s') && refused.has(word.slice(0, -1))),
+      set.has(word) ||
+      (word.endsWith('es') && set.has(word.slice(0, -2))) ||
+      (word.endsWith('s') && set.has(word.slice(0, -1))),
   );
+}
+
+function isRefused(key: string, refused: ReadonlySet<string>): boolean {
+  return hasKeyWord(keyWords(key), refused);
 }
 
 function walk(
