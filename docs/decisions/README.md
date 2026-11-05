@@ -28,5 +28,6 @@ An accepted record is not rewritten: a change of decision is a new record that s
 | [0004](0004-contract-and-client.md) | Contract workflow and client generator | accepted | 2026-11-03 | P0-T5 |
 | [0005](0005-api-foundation-conventions.md) | API foundation conventions | accepted | 2026-11-03 | P0-T6 |
 | [0006](0006-admin-and-mobile-platform-facts.md) | Admin and mobile platform facts | accepted | 2026-11-03 | P0-T7 |
+| [0007](0007-api-platform-libraries-and-rules.md) | API platform libraries and rules | proposed | 2026-11-05 | A0-T1 |
 
-Not a decision record: [follow-ups.md](follow-ups.md) holds the paste-ready text that P6-T4 hands to the Docker repository and the design documents, and the slice 1 readiness checklist.
+Not a decision record: [follow-ups.md](follow-ups.md) holds the paste-ready text that P6-T4 hands to the Docker repository and the design documents, and the slice 1 readiness checklist. [api-divergences.md](api-divergences.md) lists where the API as built differs from `data-model.md` or `api-outline.md` (decision 0007, section 13).
