@@ -1,0 +1,9 @@
+# Code owners (P5-T6). GitHub login only, never an email (ADR-0010 control 2).
+# The last matching pattern wins. The explicit lines repeat the owner on purpose: CI, the cloud
+# infrastructure, the Docker contract and the published image stay with the owner even if a later
+# change gives other paths to someone else.
+*                       @truongtankhanh
+/.github/               @truongtankhanh
+/infra/                 @truongtankhanh
+/docker-repo.version    @truongtankhanh
+/apps/api/Dockerfile    @truongtankhanh
