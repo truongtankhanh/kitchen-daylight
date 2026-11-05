@@ -23,11 +23,11 @@ Owner checklist for the blockers of P6-T2. It closes the gaps that the README an
 
 | Field | Value |
 |---|---|
-| Date | |
-| Machine / OS / chip / RAM | |
-| Monorepo commit (`git rev-parse --short HEAD`) | |
-| Sibling commit (`git -C ../kitchen-daylight-docker rev-parse --short HEAD`) | |
-| `docker-repo.version` | |
+| Date | 2026-11-05 |
+| Machine / OS / chip / RAM | Owner's MacBook, Apple Silicon (details as in the phase 4 sheet) |
+| Monorepo commit (`git rev-parse --short HEAD`) | not recorded; the working copy's `main` was at `84ce318` |
+| Sibling commit (`git -C ../kitchen-daylight-docker rev-parse --short HEAD`) | not recorded (`VERSION` 0.0.0) |
+| `docker-repo.version` | `0.0.0` |
 
 ## Step 0. pnpm 12.16.1 for Node 26
 
@@ -44,12 +44,24 @@ pnpm --version
 
 Expected: before the install, `which -a pnpm` lists only paths outside `v26.13.0` (or nothing). The install exits 0. After it, `which pnpm` prints a path under `.nvm/versions/node/v26.13.0/bin/` and `pnpm --version` prints `12.16.1`.
 
-Result (pass / fail): 
+Result (pass / fail): **pass**
 
 ```text
+Now using node v26.13.0 (npm v11.20.0)
+<home>/.nvm/versions/node/v24.22.2/bin/pnpm
+<home>/.nvm/versions/node/v24.22.2/bin/pnpm
+
+added 2 packages in 2s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   pnpm@12.16.1 (preinstall: node install.js; postinstall: node install.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install -g --allow-scripts=pnpm` to allow these scripts once, or `npm config set allow-scripts=pnpm --location=user` to allow them for all global installs.
+exit=0
+<home>/.nvm/versions/node/v26.13.0/bin/pnpm
+12.16.1
 ```
 
-Notes:
+Notes: before the install `pnpm` resolved only to the Node 24.22.2 install; after it, to the Node 26.13.0 install, version 12.16.1. npm 11.20.0 did not run pnpm's `preinstall`/`postinstall` scripts (not covered by `allowScripts`); `pnpm --version` and every later step work without them, so they were not allowed. Closes the phase 4 follow-up 3.
 
 ## Step 1. Fresh clone: install, local stack, `.env`
 
@@ -77,12 +89,49 @@ Expected:
 - `env:sync`: `wrote $SMOKE_ROOT/kd/.env (mode 600)`; `exit=0`.
 - `dev:infra:status`: postgres, mailpit and s3 healthy; `exit=0`.
 
-Result (pass / fail): 
+Result (pass / fail): **pass**
 
 ```text
+Now using node v26.13.0 (npm v11.20.0)
+Cloning into '$SMOKE_ROOT/kd'...
+done.
+ls: packages/contracts/dist: No such file or directory
+exit=1
+Scope: all 10 workspace projects
+✓ Lockfile passes supply-chain policies (verified 22h ago)
+Lockfile is up to date, resolution step is skipped
+Packages: +1254
+Progress: resolved 1254, reused 1254, downloaded 0, added 1254, done
+. prepare$ node .husky/install.mjs
+└─ Done in 115ms
+(devDependencies list as in the phase 1 sheet)
+Done in 4.8s using pnpm v12.16.1
+exit=0
+[kd] prerequisites ok: Docker Engine 28.3.2, Compose 2.38.2-desktop.1, bash 3.2.57(1)-release, git, curl
+[kd] folder exists, not cloned: <repo>/../kitchen-daylight-docker (left on its current ref)
+[kd] already initialised: <repo>/../kitchen-daylight-docker/.env exists
+[kd] Docker repository compatible: VERSION 0.0.0, required 0.0.0 (<repo>/../kitchen-daylight-docker)
+[kd] starting the stack (up -d)
+[+] Running 4/4
+ ✔ Container kd-docker-postgres-1  Started   0.6s
+ ✔ Container kd-docker-s3-1        Healthy  11.1s
+ ✔ Container kd-docker-mailpit-1   Started   0.6s
+ ✔ Container kd-docker-s3-init-1   Started   0.1s
+[kd] all services ready
+(print-env.sh output, passwords as ***)
+exit=0
+$ scripts/env-sync.sh
+[kd] wrote $SMOKE_ROOT/kd/.env (mode 600): print-env.sh block replaced, monorepo block created
+exit=0
+$ scripts/dev-infra.sh status
+[kd] s3-init    exited(0)    -          -
+[kd] s3         running      healthy    127.0.0.1:9020->8333/tcp
+[kd] postgres   running      healthy    127.0.0.1:5452->5432/tcp
+[kd] mailpit    running      healthy    127.0.0.1:1045->1025/tcp 127.0.0.1:8045->8025/tcp
+exit=0
 ```
 
-Notes:
+Notes: the clone had no build output; the install took 4.8 s with a warm store (1254 packages, all workspace projects). `KD_DOCKER_DIR` pointed `bootstrap.sh` at the existing sibling, as intended. The pasted `print-env.sh` lines held the local placeholder credentials; they are shown as `***` here.
 
 ## Step 2. Fresh clone: build the API with its dependencies, migrate, start
 
@@ -106,12 +155,18 @@ pnpm dev:api
 
 Expected: the build exits 0 and prints `@kd/contracts` before `@kd/api`; `migrate` prints `migrate: nothing to apply` (the stack's database is shared with the working copy) and `exit=0`; `dev:api` starts on port 3001 with no error and no variable value in the log.
 
-Result (pass / fail): 
+Result (pass / fail): **pass**
 
 ```text
+$ tsc -p tsconfig.json
+$ nest build
+exit=0
+migrate: nothing to apply
+exit=0
+(second terminal: `pnpm dev:api`, output not pasted)
 ```
 
-Notes:
+Notes: `pnpm --filter "@kd/api..." build` built `@kd/contracts` (`tsc`) before `@kd/api` (`nest build`) on a clone with no `dist/`, the case where `--filter @kd/api` alone fails. The `dev:api` log was not pasted; the watcher served the requests of steps 3 and 4.
 
 ## Step 3. `GET /api/health` from the fresh clone
 
@@ -123,12 +178,20 @@ curl -i http://127.0.0.1:3001/api/health; echo; echo "exit=$?"
 
 Expected: `HTTP/1.1 200 OK`, `Cache-Control: no-store`, body `{"status":"ok","checks":{"database":"up"}}`.
 
-Result (pass / fail): 
+Result (pass / fail): **pass**
 
 ```text
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Cache-Control: no-store
+Content-Type: application/json; charset=utf-8
+Content-Length: 42
+
+{"status":"ok","checks":{"database":"up"}}
+exit=0
 ```
 
-Notes:
+Notes: `ETag`, `Date` and connection headers omitted.
 
 ## Step 4. `pnpm dev:admin` and the admin shell in a browser
 
@@ -167,12 +230,33 @@ Expected:
 
 Then **stop `pnpm dev:admin` (third terminal) and `pnpm dev:api` (second terminal) with Ctrl-C.**
 
-Result (pass / fail): 
+Result (pass / fail): **pass for the HTTP checks; browser check not reported**
 
 ```text
+packages/contracts build$ tsc -p tsconfig.json
+└─ Done in 276ms
+packages/design-tokens build$ node scripts/build.mjs && tsc -p tsconfig.json
+│ wrote src/tokens.css
+│ wrote src/index.ts
+│ wrote src/primeng-preset.ts
+│ wrote src/react-native.ts
+└─ Done in 468ms
+exit=0
+(third terminal: `pnpm dev:admin`, output not pasted)
+200
+exit=0
+HTTP/1.1 200 OK
+Vary: Origin
+x-powered-by: Express
+cache-control: no-store
+content-type: application/json; charset=utf-8
+content-length: 42
+
+{"status":"ok","checks":{"database":"up"}}
+exit=0
 ```
 
-Notes:
+Notes: `ng serve` answered on port 4200 and its proxy reached the API (`/api/health` 200 with the same body as step 3). **Not reported yet:** whether the browser showed the admin shell without a console error, and whether a PrimeNG license notice appeared. The `dev:admin` log was not pasted.
 
 ## Step 5. `pnpm dev:mobile`
 
@@ -197,12 +281,41 @@ Expected:
 
 Then **stop `pnpm dev:mobile` with Ctrl-C.**
 
-Result (pass / fail): 
+Result (pass / fail): **pass**
 
 ```text
+.gitignore:157:.env.*   apps/mobile/.env.local
+packages/i18n build$ tsc -p tsconfig.json
+└─ Done in 447ms
+packages/contracts build$ tsc -p tsconfig.json
+└─ Done in 334ms
+packages/design-tokens build$ node scripts/build.mjs && tsc -p tsconfig.json
+│ wrote src/tokens.css
+│ wrote src/index.ts
+│ wrote src/primeng-preset.ts
+│ wrote src/react-native.ts
+└─ Done in 356ms
+exit=0
+$ pnpm --filter @kd/mobile start
+
+$ expo start
+env: load .env.local
+env: export KD_MOBILE_DEV_API_URL
+Starting project at $SMOKE_ROOT/kd/apps/mobile
+Expo Autolinking module resolution enabled
+Starting Metro Bundler
+(QR code omitted)
+› Scan the QR code above to open in Expo Go.
+› Metro: exp://<lan-ip>:8081
+› Web: http://localhost:8081
+
+› Using Expo Go (Press s to switch to development build)
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
 ```
 
-Notes:
+Notes: Expo loaded `KD_MOBILE_DEV_API_URL` from `apps/mobile/.env.local` and Metro started on 8081 with no error. **No warning about the pending SDK 58 patch set was printed** by `expo start` (`expo-doctor` reports it, phase 4 step 10). The app was not opened in Expo Go. The LAN address is replaced with `<lan-ip>`.
 
 ## Final check and cleanup
 
@@ -214,19 +327,20 @@ rm -rf "$SMOKE_ROOT" "$TMPDIR/kd-smoke-root"
 
 Expected: `lsof` prints nothing (no API, admin or Metro process left). The local stack keeps running; stop it from the working copy with `pnpm dev:infra:down` if wanted.
 
-Result (pass / fail): 
+Result (pass / fail): **pass**
 
 ```text
+(lsof printed nothing; cd and rm printed nothing)
 ```
 
-Notes:
+Notes: no process listens on 3001, 4200 or 8081, so `dev:api`, `dev:admin` and `dev:mobile` were stopped. The throw-away clone and `$TMPDIR/kd-smoke-root` are removed. The local stack keeps running.
 
 ## Sign-off
 
 | Field | Value |
 |---|---|
-| All steps pass (yes / no) | |
-| Failed or skipped steps | |
-| Follow-up tasks opened | |
-| Owner | |
-| Date | |
+| All steps pass (yes / no) | yes: steps 0 to 5 and the final check pass; the browser check of step 4 is not reported yet |
+| Failed or skipped steps | none failed; step 4 browser check (admin shell, console errors, PrimeNG license notice) pending |
+| Follow-up tasks opened | none so far |
+| Owner | `truongtankhanh` (repository owner) |
+| Date | 2026-11-05 |

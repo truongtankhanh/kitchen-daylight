@@ -185,9 +185,9 @@ Slice 1 is "Auth and users" (scaffold-plan section 9). It starts when every box 
 ### B. Open follow-ups to clear or plan into slice 1
 
 - [ ] Move the SDK 58 patch set to `expo` 58.0.23 with `expo install --fix` and update decision 0001 (phase 4, follow-up 2).
-- [ ] Install pnpm 12.16.1 for Node 26 on the owner's machine; it runs the Node 24 Corepack shim today (phase 4, follow-up 3): [phase 6 smoke sheet](../smoke-runs/foundation/phase6.md), step 0.
+- [x] Install pnpm 12.16.1 for Node 26 on the owner's machine (phase 4, follow-up 3): done 2026-11-05, [phase 6 smoke sheet](../smoke-runs/foundation/phase6.md), step 0.
 - [ ] Send the `api-contract.md` differences to the Docker repository (phase 4, follow-up 1) and fix the documents of decision 0005's contradictions table (P6-T4).
-- [ ] Run the quick start on a fresh clone, `pnpm dev:admin` with the admin shell in a browser, and `pnpm dev:mobile`: [phase 6 smoke sheet](../smoke-runs/foundation/phase6.md), steps 1 to 5. A throw-away clone at `ba45b29` showed that `pnpm --filter @kd/api build` fails there (`TS2307`, no `@kd/contracts` build) and that `pnpm --filter "@kd/api..." build` passes; the README uses the second.
+- [x] Run the quick start on a fresh clone, `pnpm dev:admin` and `pnpm dev:mobile`: done 2026-11-05 ([phase 6 smoke sheet](../smoke-runs/foundation/phase6.md), steps 1 to 5; `pnpm --filter "@kd/api..." build` passes on a clone with no `dist/`). Still to report: the admin shell in a browser (step 4).
 - [ ] Decide where the PrimeNG license key is read, before the first admin release (decision 0001).
 - [ ] `X-Powered-By: Express` is sent (phase 4, step 5 notes): a hardening item for a later slice.
 
