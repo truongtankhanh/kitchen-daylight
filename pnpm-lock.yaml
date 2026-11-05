@@ -345,6 +345,9 @@ importers:
       '@nestjs/cli':
         specifier: 12.0.11
         version: 12.0.11(@types/node@26.6.6)(prettier@3.9.10)
+      '@nestjs/testing':
+        specifier: 12.3.2
+        version: 12.3.2(@nestjs/common@12.3.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.3.2)(@nestjs/platform-express@12.3.2)
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
@@ -2493,6 +2496,19 @@ packages:
       class-validator:
         optional: true
       typescript:
+        optional: true
+
+  '@nestjs/testing@12.3.2':
+    resolution: {integrity: sha512-l1m+uHTp4hJ1K+Gw8ENrLSj2TxZlKVre7aoluUdxMHCodK2kZnpjvD8H8Oh460hj/Z6PDJ/m9r6t8NIK6OyDxA==}
+    peerDependencies:
+      '@nestjs/common': ^12.0.0
+      '@nestjs/core': ^12.0.0
+      '@nestjs/microservices': ^12.0.0
+      '@nestjs/platform-express': ^12.0.0
+    peerDependenciesMeta:
+      '@nestjs/microservices':
+        optional: true
+      '@nestjs/platform-express':
         optional: true
 
   '@nestjs/typeorm@12.0.2':
@@ -9791,6 +9807,14 @@ snapshots:
       class-transformer: 0.5.1
       class-validator: 0.15.1
       typescript: 6.0.3
+
+  '@nestjs/testing@12.3.2(@nestjs/common@12.3.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.3.2)(@nestjs/platform-express@12.3.2)':
+    dependencies:
+      '@nestjs/common': 12.3.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
+      '@nestjs/core': 12.3.2(@nestjs/common@12.3.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@12.3.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      tslib: 2.8.1
+    optionalDependencies:
+      '@nestjs/platform-express': 12.3.2(@nestjs/common@12.3.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.3.2)(supports-color@8.1.1)
 
   '@nestjs/typeorm@12.0.2(@nestjs/common@12.3.2(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.3.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@1.1.2(pg@8.23.1)(supports-color@8.1.1))':
     dependencies:
