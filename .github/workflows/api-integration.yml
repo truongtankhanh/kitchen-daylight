@@ -1,0 +1,195 @@
+name: api-integration
+
+# API integration suite (A0-T11): `pnpm --filter @kd/api test:int` against the Docker repository's own
+# dependency stack (PostgreSQL 18 + PostGIS with the kd_migrator / kd_app roles, the extensions and the empty
+# kd_scratch database), started with the sibling's scripts so CI and the owner's machine run the same thing
+# (Docker repository monorepo-integration.md M1/M5, decision 0005 sections 3 and 7). No hand-built
+# PostgreSQL service here.
+# No secrets and no privileged pull-request trigger: fork pull requests run the same checks (ADR-0010 control 4).
+#
+# Every run on a fresh hosted runner builds the thin PostgreSQL image (`scripts/up.sh` builds it when it
+# does not exist). Duration: not measured yet; the owner records it here after the first run. No registry
+# cache until the owner asks for one.
+#
+# Not here: the end-to-end suites (Playwright, Maestro) and the Docker repository's `test` profile (it needs
+# `seed`, A13); unit tests run in ci.yml.
+#
+# Why no `paths:` filter: this check is meant to be required (docs/runbooks/github-settings.md), and a
+# required check whose workflow never starts stays pending and blocks the pull request (the reason the
+# dependency review runs on every pull request, decision 0002 P5-T2 notes). The workflow therefore starts on
+# every pull request and the "Detect API-relevant changes" step decides: when no API input changed, every
+# later step is skipped and the job passes in seconds. Detection stays in this job, not in a separate job
+# with `needs`: a job skipped because the job it needs failed would still satisfy the required check, while
+# a failed step here turns this check red. A push to main always runs the suite (the merged result).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      HUSKY: '0'
+      DOCKER_REPO: truongtankhanh/kitchen-daylight-docker
+      # Inside the workspace (checkout cannot write outside it); ignored by git and by .dockerignore.
+      KD_DOCKER_DIR: .kd-docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Depth 2: on pull_request HEAD is the merge commit and HEAD^1 the base branch tip.
+          fetch-depth: 2
+          persist-credentials: false
+
+      # Keep this list in step with the API's inputs: its source and migrations, its workspace dependencies
+      # (@kd/contracts, @kd/tsconfig; add a package here when apps/api/package.json gains one), the seed tool,
+      # the lockfile, the Node and pnpm pins, the scripts this job calls and this workflow.
+      - name: Detect API-relevant changes
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != 'pull_request' ]; then
+            echo "$EVENT_NAME: the suite always runs"
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pattern='^(apps/api/|packages/contracts/|packages/tsconfig/|tools/seed/|pnpm-lock\.yaml$|package\.json$|\.nvmrc$|docker-repo\.version$|scripts/(env-sync|check-docker-repo)\.sh$|\.github/workflows/api-integration\.yml$)'
+          # Separate from the grep, so a failed diff fails the step instead of reading as "no change".
+          changed="$(git diff --name-only HEAD^1 HEAD)"
+          matched="$(printf '%s\n' "$changed" | grep -E "$pattern" || true)"
+          if [ -n "$matched" ]; then
+            echo 'API-relevant files changed:'
+            printf '%s\n' "$matched" | sed 's/^/  /'
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'No API-relevant change: the integration suite is skipped and the check passes.'
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      # Same resolution as docker-repo.yml; change both together (two copies: not worth a composite action
+      # yet). Fallback to main while the Docker repository has no tag at all.
+      # Remove the fallback the day the Docker repository publishes 0.1.0. Once any tag exists, a
+      # docker-repo.version with no matching tag fails here instead of falling back.
+      - name: Resolve the Docker repository ref from docker-repo.version
+        if: steps.changes.outputs.run == 'true'
+        id: ref
+        env:
+          # Fail instead of prompting if the repository cannot be read anonymously.
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          # pipefail: a failed ls-remote must fail the step, not look like "no tag yet".
+          set -euo pipefail
+          required="$(head -n 1 docker-repo.version | tr -d '[:space:]')"
+          url="https://github.com/$DOCKER_REPO.git"
+          tags="$(git ls-remote --tags --refs "$url" | sed 's#.*refs/tags/##')"
+          ref=''
+          for candidate in "v$required" "$required"; do
+            if printf '%s\n' "$tags" | grep -Fxq -- "$candidate"; then
+              ref="$candidate"
+              break
+            fi
+          done
+          if [ -z "$ref" ]; then
+            if [ -n "$tags" ]; then
+              echo "::error title=Docker repository ref::no tag v$required or $required in $DOCKER_REPO (docker-repo.version)"
+              exit 1
+            fi
+            ref='main'
+            echo "::warning title=Docker repository ref::$DOCKER_REPO has no tag yet; falling back to main instead of $required"
+          fi
+          echo "docker-repo.version=$required -> ref $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the Docker repository
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.DOCKER_REPO }}
+          ref: ${{ steps.ref.outputs.ref }}
+          path: ${{ env.KD_DOCKER_DIR }}
+          persist-credentials: false
+
+      - name: Docker repository version is compatible
+        if: steps.changes.outputs.run == 'true'
+        run: scripts/check-docker-repo.sh
+
+      - name: Set up pnpm (version from packageManager, store cached)
+        if: steps.changes.outputs.run == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: true
+          cache_dependency_path: pnpm-lock.yaml
+
+      - name: Set up Node (version from .nvmrc)
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Dependencies only (postgres, mailpit, s3, s3-init): no --apps. Slot 2, as bootstrap.sh and the
+      # Docker repository's own smoke workflow use.
+      - name: Initialise the Docker repository env (slot 2)
+        if: steps.changes.outputs.run == 'true'
+        run: bash "$KD_DOCKER_DIR/scripts/init-env.sh" 2
+
+      - name: Start the dependency stack
+        if: steps.changes.outputs.run == 'true'
+        run: bash "$KD_DOCKER_DIR/scripts/up.sh"
+
+      # Writes the root .env (mode 600) from the sibling's print-env.sh. Never printed.
+      - name: Write the root .env
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm env:sync
+
+      - name: Build the API and its workspace dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm --filter "@kd/api..." build
+
+      # The real runner on the dev database: proves every migration applies to a fresh stack.
+      - name: Migrate
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm --filter @kd/api migrate
+
+      # One worker, no file parallelism (the test:int script, decision 0002 section 1). The global setup
+      # resets kd_scratch and migrates it again, so this does not depend on the step above.
+      - name: Integration tests
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm --filter @kd/api test:int
+
+      # Before the down step: down.sh removes the containers and their logs.
+      - name: Service status and logs on failure
+        if: failure()
+        run: |
+          if [ ! -f "$KD_DOCKER_DIR/.env" ]; then
+            echo 'no Docker repository .env: the stack was never started'
+            exit 0
+          fi
+          bash "$KD_DOCKER_DIR/scripts/status.sh" || true
+          cd "$KD_DOCKER_DIR"
+          docker compose --env-file .env --env-file versions.env -f compose.yaml \
+            logs --no-color --timestamps --tail=100 || true
+
+      - name: Stop the dependency stack
+        if: always()
+        run: |
+          if [ ! -f "$KD_DOCKER_DIR/.env" ]; then
+            echo 'no Docker repository .env: nothing to stop'
+            exit 0
+          fi
+          bash "$KD_DOCKER_DIR/scripts/down.sh"
