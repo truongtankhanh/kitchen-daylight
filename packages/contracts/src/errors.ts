@@ -148,3 +148,22 @@ export const FIELD_ERROR_CODES = [
 ] as const;
 
 export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[number];
+
+/** Who last changed a record: the display name, never an email. */
+export interface StaleVersionActor {
+  id: string;
+  name: string;
+}
+
+/**
+ * Code-specific member of `STALE_VERSION` (409): the record as it is now (api-outline, "Payloads
+ * added to existing codes"; decision 0007 section 7). `updatedBy` is `null` for a system change;
+ * `updatedAt` is an ISO 8601 instant. A settings key adds its current `value` (A4-T2).
+ */
+export interface StaleVersionPayload {
+  current: {
+    rowVersion: number;
+    updatedBy: StaleVersionActor | null;
+    updatedAt: string;
+  };
+}
