@@ -9,6 +9,7 @@ import { KeySet } from '../../src/modules/auth/key-set.js';
 import { REFRESH_GRACE_WINDOW_MS } from '../../src/modules/auth/refresh-grace.js';
 import {
   hashRefreshToken,
+  LIVE_FAMILY_LIMITS,
   RefreshTokenService,
 } from '../../src/modules/auth/refresh-token.service.js';
 import type { SessionTokens } from '../../src/modules/auth/refresh-token.service.js';
@@ -111,6 +112,28 @@ describe('RefreshTokenService (kd_app, real PostgreSQL)', () => {
     );
   }
 
+  /** Families of the user with a live head row (unused, unrevoked, unexpired). */
+  async function liveFamilies(userId: string): Promise<string[]> {
+    const rows = await dataSource.query<{ family_id: string }[]>(
+      `SELECT family_id FROM public.refresh_tokens
+        WHERE user_id = $1 AND used_at IS NULL AND revoked_at IS NULL
+          AND expires_at > $2 AND family_expires_at > $2
+        ORDER BY family_id`,
+      [userId, clock.now()],
+    );
+    return rows.map((row) => row.family_id);
+  }
+
+  /** One sign-in per second, so every family has its own `last_used_at`. */
+  async function signInTimes(userId: string, count: number): Promise<SessionTokens[]> {
+    const sessions: SessionTokens[] = [];
+    for (let index = 0; index < count; index += 1) {
+      sessions.push(await tokens.issue(userId));
+      clock.advance(SECOND);
+    }
+    return sessions;
+  }
+
   async function expectUnauthenticated(work: Promise<unknown>): Promise<void> {
     await expect(work).rejects.toMatchObject({ code: 'UNAUTHENTICATED', detail: undefined });
   }
@@ -153,6 +176,80 @@ describe('RefreshTokenService (kd_app, real PostgreSQL)', () => {
       const second = await tokens.issue(CUSTOMER);
 
       expect(first.sessionId).not.toBe(second.sessionId);
+    });
+  });
+
+  describe('live-family limit (decision 0008 section 1)', () => {
+    it('keeps 10 customer families: the 11th sign-in revokes the least recently used one', async () => {
+      const sessions = await signInTimes(CUSTOMER, LIVE_FAMILY_LIMITS.customer);
+      const [oldest, secondOldest] = sessions;
+      if (oldest === undefined || secondOldest === undefined) {
+        throw new Error('fixture: sessions missing');
+      }
+      // Using the oldest family makes the second one the least recently used.
+      await tokens.rotate(oldest.refreshToken);
+      clock.advance(SECOND);
+
+      const eleventh = await tokens.issue(CUSTOMER);
+
+      const live = await liveFamilies(CUSTOMER);
+      expect(live).toHaveLength(LIVE_FAMILY_LIMITS.customer);
+      expect(live).toContain(eleventh.sessionId);
+      expect(live).toContain(oldest.sessionId);
+      expect(live).not.toContain(secondOldest.sessionId);
+      const revoked = await familyRows(secondOldest.sessionId);
+      expect(revoked.every((row) => row.revoked_at !== null)).toBe(true);
+      await expectUnauthenticated(tokens.rotate(secondOldest.refreshToken));
+      expect(await reuseAuditRows()).toEqual([]);
+    });
+
+    it('keeps 5 staff families: the 6th sign-in revokes the oldest one', async () => {
+      const sessions = await signInTimes(STAFF, LIVE_FAMILY_LIMITS.staff);
+
+      const sixth = await tokens.issue(STAFF);
+
+      const live = await liveFamilies(STAFF);
+      expect(live).toHaveLength(LIVE_FAMILY_LIMITS.staff);
+      expect(live).toContain(sixth.sessionId);
+      expect(live).not.toContain(sessions[0]?.sessionId);
+    });
+
+    it('does not count revoked families, nor the families of another user', async () => {
+      const sessions = await signInTimes(CUSTOMER, LIVE_FAMILY_LIMITS.customer);
+      await signInTimes(OTHER_CUSTOMER, 3);
+      const loggedOut = sessions[4];
+      if (loggedOut === undefined) {
+        throw new Error('fixture: session missing');
+      }
+      await tokens.revokeFamily(loggedOut.sessionId);
+
+      await tokens.issue(CUSTOMER);
+
+      const live = await liveFamilies(CUSTOMER);
+      expect(live).toHaveLength(LIVE_FAMILY_LIMITS.customer);
+      for (const session of sessions) {
+        if (session !== loggedOut) {
+          expect(live).toContain(session.sessionId);
+        }
+      }
+      expect(await liveFamilies(OTHER_CUSTOMER)).toHaveLength(3);
+    });
+
+    it('does not count families past their idle expiry', async () => {
+      await signInTimes(STAFF, LIVE_FAMILY_LIMITS.staff);
+      clock.advance(DAY);
+      const fresh = await signInTimes(STAFF, LIVE_FAMILY_LIMITS.staff);
+
+      expect((await liveFamilies(STAFF)).sort()).toEqual(
+        fresh.map((session) => session.sessionId).sort(),
+      );
+      const expiredStillOpen = await dataSource.query<{ count: string }[]>(
+        `SELECT count(*)::text AS count FROM public.refresh_tokens
+          WHERE user_id = $1 AND revoked_at IS NULL AND expires_at <= $2`,
+        [STAFF, clock.now()],
+      );
+      // Expired families are left as they are: the limit revokes live families only.
+      expect(expiredStillOpen[0]?.count).toBe(String(LIVE_FAMILY_LIMITS.staff));
     });
   });
 

@@ -88,7 +88,7 @@ export class UsersService {
    * transaction usable after a taken email.
    */
   async createCustomer(input: NewCustomer, manager?: EntityManager): Promise<User> {
-    assertPasswordPolicy(input.password, 'CUSTOMER');
+    assertPasswordPolicy(input.password, 'CUSTOMER', input.email);
     const passwordHash = await this.hasher.hash(input.password);
     return this.insertUser(manager ?? this.dataSource.manager, {
       email: normalizeEmail(input.email),
@@ -131,7 +131,7 @@ export class UsersService {
   async setPassword(userId: string, password: string, manager?: EntityManager): Promise<void> {
     const em = manager ?? this.dataSource.manager;
     const user = await this.requireUser(em, userId);
-    assertPasswordPolicy(password, user.role);
+    assertPasswordPolicy(password, user.role, user.email);
     const passwordHash = await this.hasher.hash(password);
     await em
       .createQueryBuilder()
@@ -288,8 +288,8 @@ export class UsersService {
   }
 }
 
-function assertPasswordPolicy(password: string, role: UserRole): void {
-  const errors = checkPasswordPolicy(password, passwordAudienceOf(role));
+function assertPasswordPolicy(password: string, role: UserRole, email: string): void {
+  const errors = checkPasswordPolicy(password, passwordAudienceOf(role), email);
   if (errors.length > 0) {
     throw new ApiError('VALIDATION_FAILED', { errors });
   }

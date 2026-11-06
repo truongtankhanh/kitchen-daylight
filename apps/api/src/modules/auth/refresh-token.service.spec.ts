@@ -6,6 +6,8 @@ import {
   DEVICE_LABEL_FALLBACK,
   generateRefreshToken,
   hashRefreshToken,
+  LIVE_FAMILY_LIMITS,
+  liveFamilyLimitOf,
   normalizeDeviceLabel,
   SESSION_PROFILES,
   sessionProfileOf,
@@ -41,6 +43,16 @@ describe('session profiles', () => {
     expect(sessionProfileOf('STAFF')).toBe(SESSION_PROFILES.staff);
     expect(sessionProfileOf('MANAGER')).toBe(SESSION_PROFILES.staff);
     expect(sessionProfileOf('ADMIN')).toBe(SESSION_PROFILES.staff);
+  });
+});
+
+describe('live-family limits', () => {
+  it('allows 10 live families per customer and 5 per staff member (decision 0008 section 1)', () => {
+    expect(LIVE_FAMILY_LIMITS).toEqual({ customer: 10, staff: 5 });
+    expect(liveFamilyLimitOf('CUSTOMER')).toBe(10);
+    expect(liveFamilyLimitOf('STAFF')).toBe(5);
+    expect(liveFamilyLimitOf('MANAGER')).toBe(5);
+    expect(liveFamilyLimitOf('ADMIN')).toBe(5);
   });
 });
 

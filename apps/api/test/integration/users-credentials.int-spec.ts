@@ -149,6 +149,35 @@ describe('UsersService credentials (kd_app, real PostgreSQL)', () => {
       ).rejects.toBeInstanceOf(EmailTakenError);
     });
 
+    it('refuses a password equal to the account email or its local part, writing nothing', async () => {
+      await expect(
+        users.createCustomer({
+          email: 'fixture-policy-customer@example.com',
+          password: 'Fixture-Policy-Customer',
+          displayName: 'Người dùng mẫu',
+          locale: 'vi',
+        }),
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        errors: [{ field: 'password', code: 'INVALID' }],
+      });
+      await expect(dataSource.manager.count(User)).resolves.toBe(0);
+
+      const staff = await users.createInvitedStaff({
+        email: 'fixture-policy-staff@example.com',
+        displayName: 'Nhân viên mẫu',
+        locale: 'vi',
+        role: 'STAFF',
+      });
+      await expect(
+        users.setPassword(staff.id, 'FIXTURE-POLICY-STAFF@EXAMPLE.COM'),
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        errors: [{ field: 'password', code: 'INVALID' }],
+      });
+      expect((await reload(staff.id)).passwordHash).toBeNull();
+    });
+
     it('sets a password with the staff minimum and clears the lockout', async () => {
       const staff = await users.createInvitedStaff({
         email: 'fixture-staff@kd.example',

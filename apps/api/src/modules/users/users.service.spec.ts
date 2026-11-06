@@ -90,6 +90,50 @@ describe('UsersService', () => {
     expect(manager.createQueryBuilder).not.toHaveBeenCalled();
   });
 
+  it('refuses a customer password equal to the email local part before hashing', async () => {
+    const { manager, em } = fakeManager(null);
+    const { service, hasher } = serviceWith(em);
+    const hash = vi.spyOn(hasher, 'hash');
+
+    const error = await apiErrorOf(
+      service.createCustomer({
+        email: 'Fixture.Policy.Customer@Example.com',
+        password: 'fixture.policy.customer',
+        displayName: 'Người dùng mẫu',
+        locale: 'vi',
+      }),
+    );
+
+    expect(error.code).toBe('VALIDATION_FAILED');
+    expect(error.errors).toEqual([
+      {
+        field: 'password',
+        code: 'INVALID',
+        message: 'must not be the account email or the part before @',
+      },
+    ]);
+    expect(hash).not.toHaveBeenCalled();
+    expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('checks a new password against the stored email of the user', async () => {
+    const { manager, em } = fakeManager({
+      id: USER_ID,
+      role: 'STAFF',
+      status: 'ACTIVE',
+      email: 'fixture.policy.staff@example.com',
+    });
+    const { service } = serviceWith(em);
+
+    const error = await apiErrorOf(
+      service.setPassword(USER_ID, 'FIXTURE.POLICY.STAFF@EXAMPLE.COM'),
+    );
+
+    expect(error.code).toBe('VALIDATION_FAILED');
+    expect(error.errors?.[0]?.code).toBe('INVALID');
+    expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
   it('applies the staff minimum when a staff member sets a password', async () => {
     const { manager, em } = fakeManager({ id: USER_ID, role: 'MANAGER', status: 'INVITED' });
     const { service } = serviceWith(em);

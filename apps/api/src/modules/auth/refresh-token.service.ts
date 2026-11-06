@@ -30,6 +30,17 @@ export function sessionProfileOf(role: UserRole): SessionProfile {
   return role === 'CUSTOMER' ? SESSION_PROFILES.customer : SESSION_PROFILES.staff;
 }
 
+/**
+ * Live families per user (decision 0008 section 1): a new sign-in beyond the limit silently revokes
+ * the least recently used family; the sign-in itself never fails because of it.
+ */
+export const LIVE_FAMILY_LIMITS = { customer: 10, staff: 5 } as const;
+
+/** The role at issue time selects the limit, like the session profile. */
+export function liveFamilyLimitOf(role: UserRole): number {
+  return role === 'CUSTOMER' ? LIVE_FAMILY_LIMITS.customer : LIVE_FAMILY_LIMITS.staff;
+}
+
 export const DEVICE_LABEL_MAX_LENGTH = 60;
 export const DEVICE_LABEL_FALLBACK = 'unknown';
 
@@ -117,15 +128,42 @@ export class RefreshTokenService extends UserSessionRevoker {
 
   /**
    * Opens a new family for `userId` (sign-in, registration): idle and absolute expiry from the
-   * user's role. The family limit of decision 0008 section 1 is not applied here.
+   * user's role. Then applies the live-family limit of decision 0008 section 1 in the same
+   * transaction: the families beyond it, least recently used first, are revoked. The user row is
+   * locked first, so two parallel sign-ins of one user count each other. Joins the caller's
+   * transaction when given (it must be a transactional manager: the row lock needs one), otherwise
+   * opens one.
    */
   async issue(
     userId: string,
     options: { readonly deviceLabel?: string | null } = {},
     manager?: EntityManager,
   ): Promise<SessionTokens> {
-    const em = manager ?? this.dataSource.manager;
-    const user = await em.findOne(User, { where: { id: userId } });
+    const issued = await (manager === undefined
+      ? this.dataSource.transaction((em) => this.issueInTransaction(em, userId, options))
+      : this.issueInTransaction(manager, userId, options));
+    for (const familyId of issued.revokedFamilyIds) {
+      this.grace.forgetFamily(familyId);
+    }
+    return this.tokensFor(issued);
+  }
+
+  private async issueInTransaction(
+    em: EntityManager,
+    userId: string,
+    options: { readonly deviceLabel?: string | null },
+  ): Promise<{
+    readonly userId: string;
+    readonly role: UserRole;
+    readonly familyId: string;
+    readonly refreshToken: string;
+    readonly expiresAt: Date;
+    readonly revokedFamilyIds: readonly string[];
+  }> {
+    const user = await em.findOne(User, {
+      where: { id: userId },
+      lock: { mode: 'pessimistic_write' },
+    });
     if (user === null) {
       throw new ApiError('NOT_FOUND');
     }
@@ -157,7 +195,49 @@ export class RefreshTokenService extends UserSessionRevoker {
     if (familyId === undefined) {
       throw new Error('The refresh token insert returned no family id.');
     }
-    return this.tokensFor({ userId, role: user.role, familyId, refreshToken, expiresAt });
+    const revokedFamilyIds = await this.revokeFamiliesBeyondLimit(
+      em,
+      userId,
+      liveFamilyLimitOf(user.role),
+      now,
+    );
+    return { userId, role: user.role, familyId, refreshToken, expiresAt, revokedFamilyIds };
+  }
+
+  /**
+   * A live family has one head row: unused, not revoked, inside both its idle and absolute expiry.
+   * Heads are ranked by `last_used_at`, then `created_at` and the time-ordered `id` (UUIDv7), newest
+   * first; the families past `limit` are revoked. The family just issued is the newest, so it is
+   * always kept.
+   */
+  private async revokeFamiliesBeyondLimit(
+    em: EntityManager,
+    userId: string,
+    limit: number,
+    now: Date,
+  ): Promise<string[]> {
+    const surplus = await em
+      .createQueryBuilder(RefreshToken, 'token')
+      .select('token.familyId', 'familyId')
+      .where('token.userId = :userId', { userId })
+      .andWhere('token.usedAt IS NULL AND token.revokedAt IS NULL')
+      .andWhere('token.expiresAt > :now AND token.familyExpiresAt > :now', { now })
+      .orderBy('token.lastUsedAt', 'DESC')
+      .addOrderBy('token.createdAt', 'DESC')
+      .addOrderBy('token.id', 'DESC')
+      .offset(limit)
+      .getRawMany<{ familyId: string }>();
+    const familyIds = surplus.map((row) => row.familyId);
+    if (familyIds.length > 0) {
+      await em
+        .createQueryBuilder()
+        .update(RefreshToken)
+        .set({ revokedAt: now })
+        .where('family_id IN (:...familyIds) AND revoked_at IS NULL', { familyIds })
+        .updateEntity(false)
+        .execute();
+    }
+    return familyIds;
   }
 
   /**
