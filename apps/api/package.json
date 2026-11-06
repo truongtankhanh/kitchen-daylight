@@ -36,6 +36,7 @@
     "@nestjs/typeorm": "12.0.2",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
+    "jose": "6.2.15",
     "nestjs-pino": "5.3.1",
     "pg": "catalog:",
     "pino": "10.4.0",

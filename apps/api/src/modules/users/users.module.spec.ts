@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Clock, SystemClock } from '../../common/time/clock.js';
 import { PasswordHasher } from './password-hasher.js';
-import { PendingUserSessionRevoker, UserSessionRevoker, UsersService } from './users.service.js';
+import { UserSessionRevoker, UsersService } from './users.service.js';
 import { UsersModule } from './users.module.js';
 
 /** Stands in for the global `DataSource` that TypeORM registers in the application. */
@@ -16,19 +16,37 @@ import { UsersModule } from './users.module.js';
 })
 class StubDataSourceModule {}
 
+class StubRevoker extends UserSessionRevoker {
+  revokeAllSessions(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/** Stands in for the global `AuthModule`, which exports the real `UserSessionRevoker`. */
+@Global()
+@Module({
+  providers: [{ provide: UserSessionRevoker, useClass: StubRevoker }],
+  exports: [UserSessionRevoker],
+})
+class StubAuthModule {}
+
 describe('UsersModule', () => {
-  it('provides UsersService and PasswordHasher, with the fail-closed session revoker', async () => {
+  it('provides UsersService and PasswordHasher with the session revoker of the auth module', async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [StubDataSourceModule, UsersModule],
+      imports: [StubDataSourceModule, StubAuthModule, UsersModule],
     }).compile();
 
     expect(moduleRef.get(UsersService)).toBeInstanceOf(UsersService);
     expect(moduleRef.get(PasswordHasher)).toBeInstanceOf(PasswordHasher);
-    expect(moduleRef.get(UserSessionRevoker, { strict: false })).toBeInstanceOf(
-      PendingUserSessionRevoker,
-    );
+    expect(moduleRef.get(UserSessionRevoker, { strict: false })).toBeInstanceOf(StubRevoker);
     expect(moduleRef.get(Clock, { strict: false })).toBeInstanceOf(SystemClock);
 
     await moduleRef.close();
+  });
+
+  it('does not resolve without a UserSessionRevoker, so it cannot run without revocation', async () => {
+    await expect(
+      Test.createTestingModule({ imports: [StubDataSourceModule, UsersModule] }).compile(),
+    ).rejects.toThrow(/UserSessionRevoker/);
   });
 });
