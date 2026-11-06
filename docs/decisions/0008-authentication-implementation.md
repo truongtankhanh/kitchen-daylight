@@ -1,6 +1,6 @@
 # 0008. Authentication implementation
 
-Status: **proposed** (A1-T1, 2026-11-06). Fixes how the API implements [ADR-0003](../adr/0003-authentication.md) as amended by [ADR-0008](../adr/0008-open-items-resolution.md) and [ADR-0009](../adr/0009-owner-business-pivot.md): token lifetimes and sessions, the refresh grace window, password hashing and lockout, email codes and staff links, throttle figures, TOTP and recovery codes, the TOTP secret encryption, the JWT, the staff refresh cookie, social sign-in and the library pins. **Every number in this record is a proposal for the owner**, because ADR-0003 open item 3 leaves the final token lifetimes to "after UX review"; rows and sections marked **owner** need an answer before acceptance (section 13). No code, package or environment variable is written by this task; A1-T2 writes the variables from section 12.
+Status: **accepted** (A1-T1, proposed 2026-11-06; accepted by the owner 2026-11-06 at the phase A1 gate: "OK all" to every proposal of section 13 and to the three answers added there, questions 15 to 17). Before acceptance the text was aligned with what A1 built (sections 2, 6 and 12; api-divergences D-032 and D-042). Fixes how the API implements [ADR-0003](../adr/0003-authentication.md) as amended by [ADR-0008](../adr/0008-open-items-resolution.md) and [ADR-0009](../adr/0009-owner-business-pivot.md): token lifetimes and sessions, the refresh grace window, password hashing and lockout, email codes and staff links, throttle figures, TOTP and recovery codes, the TOTP secret encryption, the JWT, the staff refresh cookie, social sign-in and the library pins. **Every number in this record is a proposal for the owner**, because ADR-0003 open item 3 leaves the final token lifetimes to "after UX review"; rows and sections marked **owner** need an answer before acceptance (section 13). No code, package or environment variable is written by this task; A1-T2 writes the variables from section 12.
 
 ## Contradictions and tightenings
 
@@ -28,6 +28,8 @@ Each row names a document that this record contradicts (**C**) or makes stricter
 | 18 | T | api-outline, `/admin/app-settings`, read-only `security` block | one `accessTokenMinutes`, `sessionIdleDays`, `sessionAbsoluteDays` | Two session profiles (customer and staff), and the staff idle time is in hours. The settings slice (A4) shapes the block from the constants of section 1 |
 | 19 | T | `kitchen-daylight-docker/docs/api-contract.md`, environment table; [decision 0005](0005-api-foundation-conventions.md), sections 2 and 3 | JWT and OTP variables only | New variables `JWT_PREVIOUS_PUBLIC_KEYS`, `MFA_ENCRYPTION_KEY`, `MFA_ENCRYPTION_PREVIOUS_KEYS`, `ADMIN_ORIGINS`, `GOOGLE_CLIENT_IDS`, `APPLE_CLIENT_IDS`; `env:sync` and `gen-dev-secrets.sh` also generate a dev `MFA_ENCRYPTION_KEY` (section 12) |
 | 20 | T | ADR-0003, social sign-in: "a `nonce` we issued" | no lifetime or storage | 256-bit nonce, 10 minutes, single use, held in process memory (section 11) |
+| 21 | C, **owner** (answered 2026-11-06) | ADR-0003, Email flows: "Responses are generic and never reveal whether an email exists" (login, register, reset) | register gives the same answer for a new and an existing email | `POST /auth/register` returns tokens for a new account, which an existing email cannot receive, so a generic answer is impossible without changing the flow. An existing email gets `409 ALREADY_EXISTS` with no detail, behind the strict register throttle (10 per hour per IP, section 7). Login, send-code and forgot stay generic (section 5) |
+| 22 | T, **owner** (answered 2026-11-06) | api-outline, staff transport: `MFA_REQUIRED`, then `/admin/auth/mfa/verify`; `/me/mfa/setup` and `/me/mfa/confirm` | how a `MANAGER` or `ADMIN` who never enrolled (the first `ADMIN` included) reaches `/me/mfa/*` without a session | A short-lived enrolment token, accepted by those two routes only (section 8) |
 
 ## Context
 
@@ -111,12 +113,12 @@ Read on 2026-11-06. Registry data from read-only `npm view <pkg> version engines
 - Refresh token: 32 bytes from the CSPRNG, base64url (43 characters). `token_hash` = SHA-256 of the raw token (high entropy, so no slow hash and no key). Lookup by the unique hash.
 - On `/auth/refresh` (or `/admin/auth/refresh`), the service first looks in a process map `presentedHash → Promise<result>`. A hit within 10 s returns that result. Otherwise it stores its own promise, then in one transaction: `SELECT … FOR UPDATE` the row; checks not revoked, not expired (`expires_at` and `family_expires_at`); marks it used (`used_at`, `replaced_by_id`); inserts the successor with `expires_at = min(now + idle, family_expires_at)`. The entry stays 10 s after success and is removed at once on failure.
 - The result returned within the window is the **same successor refresh token** and the access token signed for the first request (still valid for about 15 minutes).
-- A row already used: if `now − used_at ≤ 10 s` and the map has the entry and the successor is neither used nor revoked → the grace answer. Otherwise it is **reuse**: every row of the family gets `revoked_at`, the event `auth.refresh_reuse` is logged and audited (no token value), and the answer is `401 UNAUTHENTICATED`.
+- A row already used: if `now − used_at ≤ 10 s` and the map has the entry and the successor is neither used nor revoked → the grace answer. Otherwise it is **reuse**: every row of the family gets `revoked_at`, the event `auth.refresh_reuse` is logged at `warn` (the user id only) and audited (api-divergences D-040), never with a token, hash or family id, and the answer is `401 UNAUTHENTICATED`.
 - **Restart rule (owner):** a used row inside the 10 s window with no map entry (the process restarted) is refused with `401 UNAUTHENTICATED` **without** revoking the family. Reason: the only possible callers are the device that just rotated (it already holds the successor) or an attacker inside a 10-second window right after a restart; revoking would sign out a real user for a deploy. Alternative for the owner: treat it as reuse.
 - Revoking a family deletes its map entries. The map holds at most one entry per refresh in the last 10 s.
 - **Second instance:** this is a blocking condition like throttling (0007 section 5). Option (b) or a shared store is then decided in a new record.
 
-**Columns A1-T4 needs** (`refresh_tokens`; header row 6): `id` (uuidv7), `user_id`, `family_id`, `token_hash` (`bytea`, 32 bytes, unique), `device_label`, `created_at`, `expires_at` (idle end), `family_expires_at` (absolute end, copied), `used_at`, `replaced_by_id` (nullable self-reference), `revoked_at`, `last_used_at` (set at issue; the session list's "last active" is the live row's value). Indexes: unique `token_hash`; `(user_id)` where `revoked_at IS NULL`; `(family_id)`. No raw token, no IP.
+**Columns A1-T4 needs** (`refresh_tokens`; header row 6): `id` (uuidv7), `user_id`, `family_id`, `token_hash` (`bytea`, 32 bytes, unique), `device_label`, `created_at`, `expires_at` (idle end), `family_expires_at` (absolute end, copied), `used_at`, `replaced_by_id` (nullable self-reference), `revoked_at`, `last_used_at` (set at issue; the session list's "last active" is the live row's value). Indexes: unique `token_hash`; `(user_id)`, not partial, so the per-user revocation, the account deletion and the purge also find revoked rows (api-divergences D-032); `(family_id)`. No raw token, no IP.
 
 ## 3. Where state lives
 
@@ -167,16 +169,17 @@ Read on 2026-11-06. Registry data from read-only `npm view <pkg> version engines
 ## 5. Generic responses
 
 - Login (both transports), whatever the cause (unknown email, wrong password, wrong second factor, locked, staff account on the customer transport and the reverse, social-only account): `401 INVALID_CREDENTIALS`. `ACCOUNT_SUSPENDED` only after a correct password (api-outline, W02A decision).
-- Register with an existing email, send-code, forgot-password (both transports): the same `202` body whether or not the email exists. The HTTP response never waits for the mail transport (the message is queued and sent after the response), so timing does not reveal the account.
+- Send-code and forgot-password (both transports): the same `202` body whether or not the email exists.
+- Register with an existing email: `409 ALREADY_EXISTS` with no detail (header row 21, owner): a new account receives tokens in the body, which an existing email cannot. The strict register throttle (section 7) bounds enumeration through this route. The HTTP response never waits for the mail transport (the message is queued and sent after the response), so timing does not reveal the account.
 - Code, reset and link failures (wrong, expired, used, dead after 5 attempts, unknown): `CODE_INVALID` (api-outline).
 
 ## 6. Email codes and staff links
 
 **Customer codes** (ADR-0008 #1; `email_tokens.channel = CODE`):
 - Generation: `crypto.randomInt(0, 1_000_000)`, left-padded to 6 digits.
-- Stored value: `token_hash` = HMAC-SHA-256, key = the 32 bytes decoded from `OTP_HMAC_SECRET`, message = `"kd.email-code.v1\n" + user_id + "\n" + type + "\n" + code`. The version prefix lets the input change later without ambiguity; the user id and type bind a code to one account and one purpose.
+- Stored value: `token_hash` = HMAC-SHA-256, key = the bytes decoded from `OTP_HMAC_SECRET` (at least 32), message = `"kd.email-code.v1\n" + user_id + "\n" + type + "\n" + code`. The version prefix lets the input change later without ambiguity; the user id and type bind a code to one account and one purpose.
 - Verification: the live row for (`user_id`, `type`) is loaded; the submitted code is normalised (spaces removed; not exactly six ASCII digits → `VALIDATION_FAILED`, no attempt counted); the HMAC is recomputed and compared with `crypto.timingSafeEqual`. A wrong code runs `UPDATE … SET attempts = attempts + 1 WHERE id = $1 AND attempts < max_attempts`; at `max_attempts` (5) the code is dead. Success sets `used_at` in the same transaction as its effect.
-- Lifetime 10 minutes; issuing a new code expires the previous one (ADR-0008 #1).
+- Lifetime 10 minutes; issuing a new code makes the previous one dead (ADR-0008 #1): in the same transaction the old row gets `used_at`, so one live row per user and type is kept by the partial unique index on `used_at IS NULL` (api-divergences D-042). `used_at` therefore means consumed or superseded.
 - Rotating `OTP_HMAC_SECRET` invalidates live codes only (at most 10 minutes); the user asks for a new one.
 
 **Staff links** (ADR-0008 #2; `channel = LINK`):
@@ -186,7 +189,7 @@ Read on 2026-11-06. Registry data from read-only `npm view <pkg> version engines
 
 **Resend and caps:**
 - At most one message per user and type every **60 s**, from `created_at` of the newest `email_tokens` row (0007 section 5 and row 15; api-outline). The `created_at` column is confirmed for A1-T4.
-- **Daily cap (owner, header row 11):** at most **5** messages per user and type in a rolling 24 hours (counted from `email_tokens.created_at`; codes are purged after 1 day, so the count is still available). Beyond it the endpoint answers as if it had sent the message (generic, section 5) and sends nothing; the event is logged. Reason: bounds SES cost and mailbox flooding by a third party; 5 covers a lost or late mail several times over.
+- **Daily cap (owner, header row 11):** at most **5** messages per user and type in a rolling 24 hours (counted from `email_tokens.created_at`; codes are purged after 1 day, so the count is still available). Beyond it the endpoint answers as if it had sent the message (generic, section 5) and sends nothing; the event is logged. Reason: bounds SES cost and mailbox flooding by a third party; 5 covers a lost or late mail several times over. Built by A2-T2 for codes and by the staff link task of A3 for links (accepted 2026-11-06).
 
 ## 7. Throttle figures (owner)
 
@@ -223,6 +226,8 @@ Per-IP counters are the `@nestjs/throttler` memory store (0007 section 5) [S20];
 **Replay rule:** the accepted step is `counter(now) + delta`. The code is accepted only if `UPDATE mfa_credentials SET last_used_step = $step WHERE user_id = $1 AND (last_used_step IS NULL OR last_used_step < $step)` changes one row [S3, S11]; otherwise it is a wrong code.
 
 **Enrolment:** `/me/mfa/setup` stores a new encrypted secret with `enabled_at` null and returns the URI; `/me/mfa/confirm` with a valid code sets `enabled_at`. A `MANAGER` or `ADMIN` without `enabled_at` cannot finish a sign-in except into enrolment (api-outline `MFA_REQUIRED`).
+
+**Enrolment token** (header row 22, owner, answered 2026-11-06): a correct password of a `MANAGER` or `ADMIN` who has no `enabled_at` (the first `ADMIN` created by the seed, or anyone after an MFA reset) answers `MFA_REQUIRED` with a short-lived **enrolment token** instead of a session. It is a JWT signed like the access token (section 9) but with `typ: mfa-enrol+jwt`, claims `iss`, `aud`, `sub`, `iat`, `exp`, 10 minutes, no `sid`; the access-token verifier refuses it by its `typ`, and only `/me/mfa/setup` and `/me/mfa/confirm` accept it. A successful confirm starts the session (family and cookie) and returns the recovery codes once. The staff auth task of A3 fixes the response shape and the contract.
 
 **Recovery codes** (`WA20`, data-model `mfa_credentials`):
 - Ten codes, each 10 characters of Crockford Base32 from the CSPRNG (50 bits), shown as `XXXXX-XXXXX`, once.
@@ -279,13 +284,13 @@ Per-IP counters are the `@nestjs/throttler` memory store (0007 section 5) [S20];
 
 ## 12. Variables and pins
 
-**Variables for A1-T2** (each validated by `loadConfig` only when the code reading it ships, 0005 section 4):
+**Variables** (each validated by `loadConfig` only when the code reading it ships, 0005 section 4). A1-T2 built the JWT, OTP and MFA rows; `ADMIN_ORIGINS` arrives with the staff auth task of A3 (cookie, CSRF, staff links), `GOOGLE_CLIENT_IDS` and `APPLE_CLIENT_IDS` with A2-T6:
 
 | Name | Format | Tiers | Dev value |
 |---|---|---|---|
 | `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, `JWT_KEY_ID` | as `api-contract.md` | required everywhere | `env:sync` / `gen-dev-secrets.sh` (existing) |
 | `JWT_PREVIOUS_PUBLIC_KEYS` | `<kid>:<base64 SPKI PEM>`, comma-separated | optional | unset |
-| `OTP_HMAC_SECRET` | 32 bytes, base64 | required everywhere | existing |
+| `OTP_HMAC_SECRET` | at least 32 bytes, base64 | required everywhere | existing |
 | `MFA_ENCRYPTION_KEY` | 32 bytes, base64 | required everywhere | **new** in `env:sync` and `gen-dev-secrets.sh` |
 | `MFA_ENCRYPTION_PREVIOUS_KEYS` | base64 keys, comma-separated | optional | unset |
 | `ADMIN_ORIGINS` | origins, comma-separated; `https` in `demo`/`prod` | required everywhere | the `ng serve` and Caddy origins |
@@ -301,10 +306,10 @@ Lifetimes, thresholds, throttle figures, argon2 and TOTP parameters are code con
 | `jose` | 6.2.15 | 2026-11-01 | no `engines` field; MIT [S9] | the first auth task that signs a token |
 | `otpauth` | 9.6.0 (alternative 9.5.2) | 2026-11-02 | no `engines`; depends on `@noble/hashes` 2.4.0 (`node >= 20.19.0`); MIT [S13] | the MFA task |
 | `nodemailer` | 10.3.1 | 2026-10-29 | `node >=20.0.0`; MIT-0 [S19] | A1-T8 (`smtp` adapter) |
-| `@aws-sdk/client-sesv2` | 3.1163.0 | 2026-11-05 | `node >=20.0.0`; Apache-2.0 [S19] | A1-T8 (`ses` adapter); the version is fixed on the day of install, since a new one ships almost daily |
+| `@aws-sdk/client-sesv2` | 3.1163.0 | 2026-11-05 | `node >=20.0.0`; Apache-2.0 [S19] | A12-T4 (`ses` adapter; A1-T8 built only the `smtp` adapter); the version is fixed on the day of install, since a new one ships almost daily |
 | `@nestjs/jwt` | not installed (12.0.3 seen) | 2026-10-12 | [S10] | — |
 
-Whether A1-T8 uses `nodemailer`'s SES transport or the SES client directly is A1-T8's choice; both rows are listed so the mail transport has a dated source.
+Whether the `ses` adapter uses `nodemailer`'s SES transport or the SES client directly is A12-T4's choice; both rows are listed so the mail transport has a dated source. A1-T8 installed `nodemailer` 10.3.1 (decision 0001).
 
 ## 13. Questions only the owner can answer
 
@@ -322,13 +327,19 @@ Whether A1-T8 uses `nodemailer`'s SES transport or the SES client directly is A1
 12. Throttle figures of section 7, to be reviewed after real traffic?
 13. Authenticator issuer `Kitchen Daylight` until the real brand is chosen (`WA1`)?
 14. `otpauth` 9.6.0, or 9.5.2 for a release with more field time (section 8)?
+15. Register with an existing email: `409 ALREADY_EXISTS` behind the strict throttle, or a generic answer that changes the register flow (header row 21)?
+16. How a `MANAGER` or `ADMIN` who never enrolled reaches `/me/mfa/*`: the enrolment token of section 8 (header row 22)?
+17. Who builds the daily cap of section 6 (A1-T7 deferred it)?
+
+**Answers (owner, 2026-11-06, "OK all"):** questions 1 to 14 as proposed (15 minutes; 24 h / 7 d staff, 30 d / 90 d customers; 10 and 5 live families; refuse without revoking after a restart; `node:crypto`; 10 and 12 characters; no breached-password check in phase 1; the lockout of section 4; one identical `INVALID_CREDENTIALS`; the daily cap of 5; the figures of section 7, reviewed after real traffic; issuer `Kitchen Daylight`; `otpauth` 9.6.0). Question 15: `409 ALREADY_EXISTS`. Question 16: the enrolment token. Question 17: A2-T2 for codes, the staff link task of A3 for links. A1 already built questions 1, 2, 3, 5, 6, 9 and 12 as proposed (A1-T5 to A1-T7, A1-T10).
 
 ## Consequences
 
 - **A1-T2:** the variables of section 12 with their validation, `.env.example`, the 0005 table rows and the dev generation in `env:sync`; text for the Docker repository (`gen-dev-secrets.sh`, `api-contract.md`) in [follow-ups.md](follow-ups.md) through P6-T4.
 - **A1-T4:** the `refresh_tokens` columns of section 2 and `email_tokens.created_at`; each column not in data-model is logged in [api-divergences.md](api-divergences.md).
 - **Auth tasks:** the constants of sections 1 and 7, the PHC helper with a known-answer test, the single-flight refresh map, the lockout formula, the code HMAC, the link fragment, the cookie and CSRF checks, the JWT claims and `kid` lookup; tests per testing-strategy "Auth and sessions" plus: re-hash on login, dummy-hash timing path, NFC and code-point length, grace window after a simulated restart, family limit eviction, recovery-code normalisation and single use, TOTP replay across one step, ciphertext bound to the user id, previous-key decryption, `kid` rotation, missing `X-Client` or foreign `Origin`.
-- **A1-T8:** the mail transport pins of section 12.
+- **A1-T8:** the `nodemailer` pin of section 12; the SES pin moves to A12-T4.
+- **A2-T1:** register answers `409 ALREADY_EXISTS` for an existing email (section 5). **A2-T2:** the daily cap for codes (section 6). **A3:** the enrolment token (section 8), `ADMIN_ORIGINS` and the daily cap for staff links.
 - **A2-T4:** the session list over families with `device_label` and `last_used_at`.
 - **Logging:** the redaction list of 0005 section 11 gains the secret field names these flows introduce (`*.code`, `*.recoveryCode`, `*.nonce`); the `kd_refresh` cookie is already covered by the `cookie` and `set-cookie` header rules.
 - **Revisit triggers:** a second API instance (grace map, nonces and throttle counters move to a shared store, new record); a production hash time far from the measured target (section 4 parameters); NIST or OWASP changing the argon2id minimums; the real brand (issuer string); a provider SDK that cannot pass the nonce unchanged.
