@@ -139,6 +139,9 @@ export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   'POST /api/v1/auth/login',
   'POST /api/v1/auth/refresh',
   'POST /api/v1/auth/logout',
+  // Email codes (A2-T2); `email/send-code` and `email/verify` need a token and are not listed.
+  'POST /api/v1/auth/password/forgot',
+  'POST /api/v1/auth/password/reset',
   'GET /api/v1/test-guards/public',
   'POST /api/v1/auth/test-throttle',
   'POST /api/v1/admin/auth/test-throttle',

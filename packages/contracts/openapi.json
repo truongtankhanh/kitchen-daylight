@@ -125,6 +125,20 @@
         ],
         "type": "object"
       },
+      "ForgotPasswordDto": {
+        "properties": {
+          "email": {
+            "description": "Trimmed before validation, as at registration.",
+            "format": "email",
+            "maxLength": 254,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
       "HealthChecks": {
         "properties": {
           "database": {
@@ -280,6 +294,56 @@
           "acceptedDocumentIds"
         ],
         "type": "object"
+      },
+      "ResetPasswordDto": {
+        "properties": {
+          "code": {
+            "description": "The 6-digit code from the mail; spaces are ignored.",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 254,
+            "type": "string"
+          },
+          "newPassword": {
+            "description": "10 to 128 Unicode code points after NFC; not the email or its local part.",
+            "format": "password",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "newPassword",
+          "email",
+          "code"
+        ],
+        "type": "object"
+      },
+      "SendEmailCodeDto": {
+        "properties": {
+          "email": {
+            "description": "Another address to verify instead of the account email (the \"another email\" path), only while\nthe account is unverified. Trimmed and lower-cased; absent sends the code to the account email.",
+            "format": "email",
+            "maxLength": 254,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "VerifyEmailDto": {
+        "properties": {
+          "code": {
+            "description": "The 6-digit code from the mail; spaces are ignored.",
+            "maxLength": 16,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -327,6 +391,144 @@
         "security": [],
         "tags": [
           "Health"
+        ]
+      }
+    },
+    "/api/v1/auth/email/send-code": {
+      "post": {
+        "operationId": "AuthCodesController_sendCode_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendEmailCodeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "The same answer whether or not a message was sent."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "INVALID_STATE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "tags": [
+          "AuthCodes"
+        ]
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "operationId": "AuthCodesController_verifyEmail_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "tags": [
+          "AuthCodes"
         ]
       }
     },
@@ -480,6 +682,96 @@
         "summary": "Signs the caller out of every device: every refresh-token family of the token's user.",
         "tags": [
           "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "operationId": "AuthCodesController_forgotPassword_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "The same answer whether or not the email has an account."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "AuthCodes"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "operationId": "AuthCodesController_resetPassword_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "AuthCodes"
         ]
       }
     },
