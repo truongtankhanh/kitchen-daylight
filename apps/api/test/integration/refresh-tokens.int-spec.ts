@@ -1,7 +1,8 @@
 import { generateKeyPairSync } from 'node:crypto';
 
+import { Logger } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FixedClock } from '../../src/common/time/testing.js';
 import { AccessTokenService } from '../../src/modules/auth/access-token.service.js';
@@ -10,6 +11,7 @@ import { REFRESH_GRACE_WINDOW_MS } from '../../src/modules/auth/refresh-grace.js
 import {
   hashRefreshToken,
   LIVE_FAMILY_LIMITS,
+  REFRESH_REUSE_EVENT,
   RefreshTokenService,
 } from '../../src/modules/auth/refresh-token.service.js';
 import type { SessionTokens } from '../../src/modules/auth/refresh-token.service.js';
@@ -68,6 +70,31 @@ describe('RefreshTokenService (kd_app, real PostgreSQL)', () => {
   afterAll(async () => {
     await dataSource.destroy();
   });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Captures the `warn` lines of Nest's logger (routed to pino in the app) and keeps them quiet. */
+  function captureWarnings() {
+    return vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+  }
+
+  /** The reuse line names the event and the user only (decision 0008 section 2). */
+  function expectOneReuseLine(
+    warn: ReturnType<typeof captureWarnings>,
+    userId: string,
+    secrets: readonly string[],
+  ): void {
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      { event: REFRESH_REUSE_EVENT, userId },
+      'refresh token reuse detected',
+    );
+    const logged = JSON.stringify(warn.mock.calls);
+    for (const secret of secrets) {
+      expect(logged).not.toContain(secret);
+    }
+  }
 
   beforeEach(async () => {
     await truncateAll();
@@ -280,8 +307,16 @@ describe('RefreshTokenService (kd_app, real PostgreSQL)', () => {
       const second = await tokens.rotate(first.refreshToken);
       const other = await tokens.issue(CUSTOMER);
       clock.advance(REFRESH_GRACE_WINDOW_MS + 1);
+      const warn = captureWarnings();
 
       await expectUnauthenticated(tokens.rotate(first.refreshToken));
+
+      expectOneReuseLine(warn, CUSTOMER, [
+        first.refreshToken,
+        second.refreshToken,
+        first.sessionId,
+        hashRefreshToken(first.refreshToken).toString('hex'),
+      ]);
 
       // The revocation committed although the call failed, including the successor.
       const family = await familyRows(first.sessionId);
@@ -343,6 +378,7 @@ describe('RefreshTokenService (kd_app, real PostgreSQL)', () => {
       const first = await tokens.issue(CUSTOMER);
       const second = await tokens.rotate(first.refreshToken);
       await tokens.rotate(second.refreshToken);
+      const warn = captureWarnings();
 
       await expectUnauthenticated(tokens.rotate(first.refreshToken));
 
@@ -350,6 +386,12 @@ describe('RefreshTokenService (kd_app, real PostgreSQL)', () => {
         true,
       );
       expect(await reuseAuditRows()).toHaveLength(1);
+      // The grace path (confirmGrace) logs as well.
+      expectOneReuseLine(warn, CUSTOMER, [
+        first.refreshToken,
+        second.refreshToken,
+        first.sessionId,
+      ]);
     });
 
     it('refuses without revoking a used token inside the window after a restart', async () => {

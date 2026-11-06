@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 
@@ -92,7 +92,7 @@ interface CachedRotation {
 
 type RotationOutcome =
   | { readonly kind: 'refused' }
-  | { readonly kind: 'reuse'; readonly familyId: string }
+  | { readonly kind: 'reuse'; readonly familyId: string; readonly userId: string }
   | {
       readonly kind: 'rotated';
       readonly userId: string;
@@ -108,6 +108,9 @@ function unauthenticated(): ApiError {
   return new ApiError('UNAUTHENTICATED');
 }
 
+/** The `event` field of the reuse log line (decision 0008 section 2); the audit action has the same name. */
+export const REFRESH_REUSE_EVENT = 'auth.refresh_reuse';
+
 /**
  * Refresh tokens (ADR-0003; decision 0008 sections 1 and 2): opaque, single use, stored as SHA-256
  * only, rotated in a family with reuse detection and the 10-second grace window. Also the
@@ -116,6 +119,9 @@ function unauthenticated(): ApiError {
 @Injectable()
 export class RefreshTokenService extends UserSessionRevoker {
   private readonly grace = new RefreshGrace<CachedRotation>();
+  // Nest's logger, routed to pino by `app.useLogger` (decision 0005 section 11); no constructor
+  // dependency, so the specs that build the service directly need no logger.
+  private readonly logger = new Logger(RefreshTokenService.name);
 
   constructor(
     @Inject(DataSource) private readonly dataSource: DataSource,
@@ -313,6 +319,7 @@ export class RefreshTokenService extends UserSessionRevoker {
     const outcome = await this.dataSource.transaction((em) => this.rotateInTransaction(em, hash));
     if (outcome.kind === 'reuse') {
       this.grace.forgetFamily(outcome.familyId);
+      this.logReuse(outcome.userId);
       throw unauthenticated();
     }
     if (outcome.kind === 'refused') {
@@ -341,7 +348,7 @@ export class RefreshTokenService extends UserSessionRevoker {
         return { kind: 'refused' };
       }
       await this.revokeForReuse(em, row, now);
-      return { kind: 'reuse', familyId: row.familyId };
+      return { kind: 'reuse', familyId: row.familyId, userId: row.userId };
     }
 
     if (
@@ -413,21 +420,30 @@ export class RefreshTokenService extends UserSessionRevoker {
         lock: { mode: 'pessimistic_write' },
       });
       if (successor === null || successor.revokedAt !== null) {
-        return 'refused' as const;
+        return { kind: 'refused' as const };
       }
       if (successor.usedAt !== null) {
         await this.revokeForReuse(em, successor, this.clock.now());
-        return 'reuse' as const;
+        return { kind: 'reuse' as const, userId: successor.userId };
       }
-      return 'grace' as const;
+      return { kind: 'grace' as const };
     });
-    if (outcome === 'grace') {
+    if (outcome.kind === 'grace') {
       return rotation.tokens;
     }
-    if (outcome === 'reuse') {
+    if (outcome.kind === 'reuse') {
       this.grace.forgetFamily(rotation.familyId);
+      this.logReuse(outcome.userId);
     }
     throw unauthenticated();
+  }
+
+  /**
+   * After the revocation has committed: one `warn` line with the event and the user id only, never
+   * the token, its hash or the family id (decision 0008 section 2).
+   */
+  private logReuse(userId: string): void {
+    this.logger.warn({ event: REFRESH_REUSE_EVENT, userId }, 'refresh token reuse detected');
   }
 
   /** Revokes every row of the family and writes `auth.refresh_reuse`, never the token. */
@@ -447,7 +463,7 @@ export class RefreshTokenService extends UserSessionRevoker {
       {
         // Detected by the system: the presenter may be the user or an attacker.
         actorUserId: null,
-        action: 'auth.refresh_reuse',
+        action: REFRESH_REUSE_EVENT,
         entityType: 'USER',
         entityId: row.userId,
       },
