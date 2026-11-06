@@ -5,7 +5,10 @@ import type { PostgresDataSourceOptions } from 'typeorm/driver/postgres/Postgres
 import { IdempotencyKeyRecord } from '../common/idempotency/entities/idempotency-key.entity.js';
 import type { CliConfig } from '../config/load-config.js';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity.js';
+import { Branch } from '../modules/branches/entities/branch.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
+import { StaffBranch } from '../modules/users/entities/staff-branch.entity.js';
+import { User } from '../modules/users/entities/user.entity.js';
 
 /** `apps/api/migrations/` from `src/database/` and `dist/database/` alike; `/app/migrations/` in the image. */
 export const MIGRATIONS_DIR = fileURLToPath(new URL('../../migrations/', import.meta.url));
@@ -23,7 +26,7 @@ export function createDataSourceOptions(config: CliConfig): PostgresDataSourceOp
     migrationsRun: false,
     migrations: [],
     // Listed explicitly, never globbed.
-    entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord],
+    entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord, Branch, User, StaffBranch],
     logging: false,
   };
 }
