@@ -25,8 +25,9 @@ export type ResendDecision =
  * `UsersService.recordFailedLogin` and `recordSuccessfulLogin`, A1-T5) and the newest
  * `email_tokens.created_at`. It decides; it never writes, so the lockout counter keeps one writer.
  *
- * Not built: the daily cap of 5 messages per user and type (decision 0008 section 6, header row
- * 11), an open item of the outline (open item 27).
+ * The daily cap of 5 messages per user and type (decision 0008 section 6, header row 11) is not
+ * here: `EmailCodeService` applies it to customer codes (A2-T2, under its row lock on the user),
+ * and the staff link task of A3 applies it to links.
  *
  * Every method takes an optional `EntityManager`, so a caller can read inside its own transaction.
  */
