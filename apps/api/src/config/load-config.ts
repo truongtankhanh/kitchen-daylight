@@ -18,9 +18,34 @@ export interface CliConfig {
   readonly database: { readonly url: string };
 }
 
+/**
+ * Auth settings as plain strings (decision 0008, section 12). The token and MFA services import
+ * the key objects at start-up (A1-T6), never at import time.
+ */
+export interface AuthConfig {
+  readonly jwt: {
+    /** Base64 of the PKCS#8 PEM. */
+    readonly privateKey: string;
+    /** Base64 of the SPKI PEM. */
+    readonly publicKey: string;
+    readonly keyId: string;
+    /** Accepted for verification only, until the access-token TTL has passed. */
+    readonly previousPublicKeys: readonly { readonly keyId: string; readonly publicKey: string }[];
+  };
+  /** Base64, at least 32 bytes. */
+  readonly otpHmacSecret: string;
+  readonly mfaEncryption: {
+    /** Base64, 32 bytes. */
+    readonly key: string;
+    /** Decrypt only. */
+    readonly previousKeys: readonly string[];
+  };
+}
+
 export interface ServerConfig extends CliConfig {
   readonly port: number;
   readonly logLevel: LogLevel;
+  readonly auth: AuthConfig;
 }
 
 export interface ConfigIssue {
@@ -46,6 +71,17 @@ const HOST_DATABASE_URL: Record<ConfigKind, string> = {
   server: 'DATABASE_URL_APP',
   cli: 'DATABASE_URL_MIGRATOR',
 };
+
+// Decision 0008, section 12. The CLI reads none of them.
+const AUTH_VARIABLES = [
+  'JWT_PRIVATE_KEY',
+  'JWT_PUBLIC_KEY',
+  'JWT_KEY_ID',
+  'JWT_PREVIOUS_PUBLIC_KEYS',
+  'OTP_HMAC_SECRET',
+  'MFA_ENCRYPTION_KEY',
+  'MFA_ENCRYPTION_PREVIOUS_KEYS',
+] as const;
 
 /** An empty value counts as unset. */
 function read(env: Environment, name: string): string | undefined {
@@ -80,6 +116,9 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
   if (kind === 'server') {
     raw['PORT'] = read(env, 'PORT');
     raw['LOG_LEVEL'] = read(env, 'LOG_LEVEL');
+    for (const name of AUTH_VARIABLES) {
+      raw[name] = read(env, name);
+    }
   }
 
   const schema = kind === 'server' ? ServerEnvironment : CliEnvironment;
@@ -117,9 +156,34 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
       database,
       port: instance.PORT ?? DEFAULT_PORT,
       logLevel: instance.LOG_LEVEL ?? DEFAULT_LOG_LEVEL,
+      auth: toAuthConfig(instance),
     });
   }
   return Object.freeze({ appEnv: instance.APP_ENV, database });
+}
+
+/** Splits the validated lists; `undefined` gives an empty list. */
+function toAuthConfig(env: ServerEnvironment): AuthConfig {
+  const previousPublicKeys = (env.JWT_PREVIOUS_PUBLIC_KEYS?.split(',') ?? []).map((entry) => {
+    const separator = entry.indexOf(':');
+    return Object.freeze({
+      keyId: entry.slice(0, separator),
+      publicKey: entry.slice(separator + 1),
+    });
+  });
+  return Object.freeze({
+    jwt: Object.freeze({
+      privateKey: env.JWT_PRIVATE_KEY,
+      publicKey: env.JWT_PUBLIC_KEY,
+      keyId: env.JWT_KEY_ID,
+      previousPublicKeys: Object.freeze(previousPublicKeys),
+    }),
+    otpHmacSecret: env.OTP_HMAC_SECRET,
+    mfaEncryption: Object.freeze({
+      key: env.MFA_ENCRYPTION_KEY,
+      previousKeys: Object.freeze(env.MFA_ENCRYPTION_PREVIOUS_KEYS?.split(',') ?? []),
+    }),
+  });
 }
 
 function firstRule(constraints: Record<string, string> | undefined): string {

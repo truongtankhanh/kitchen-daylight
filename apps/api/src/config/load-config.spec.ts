@@ -1,6 +1,13 @@
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
+import type { KeyObject } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
-import { PLACEHOLDER_PASSWORD_PREFIX } from './config.schema.js';
+import { AUTH_RULES, PLACEHOLDER_PASSWORD_PREFIX } from './config.schema.js';
+import {
+  REQUIRED_AUTH_VARIABLES,
+  createEphemeralAuthEnvironment,
+} from './ephemeral-auth-environment.js';
 import { ConfigValidationError, loadConfig } from './load-config.js';
 import type { ConfigIssue, ConfigKind, Environment } from './load-config.js';
 
@@ -8,11 +15,33 @@ const APP_URL = 'postgres://kd_app@127.0.0.1:5452/kd_dev';
 const MIGRATOR_URL = 'postgres://kd_migrator@127.0.0.1:5452/kd_dev';
 const PLACEHOLDER_URL = `postgres://kd_app:${PLACEHOLDER_PASSWORD_PREFIX}@127.0.0.1:5452/kd_dev`;
 
+// Keys and secrets are generated per run: no key literal is committed (gitleaks, public repository).
+const AUTH = createEphemeralAuthEnvironment('kd-spec-');
+const OTHER_AUTH = createEphemeralAuthEnvironment('kd-spec-other-');
+
+/** Base64 of the PKCS#8 and SPKI PEM of a key pair of another kind or curve. */
+function encodedPair(pair: {
+  readonly privateKey: KeyObject;
+  readonly publicKey: KeyObject;
+}): Readonly<{ privateKey: string; publicKey: string }> {
+  return {
+    privateKey: Buffer.from(pair.privateKey.export({ type: 'pkcs8', format: 'pem' })).toString(
+      'base64',
+    ),
+    publicKey: Buffer.from(pair.publicKey.export({ type: 'spki', format: 'pem' })).toString(
+      'base64',
+    ),
+  };
+}
+const RSA = encodedPair(generateKeyPairSync('rsa', { modulusLength: 2048 }));
+const P384 = encodedPair(generateKeyPairSync('ec', { namedCurve: 'secp384r1' }));
+
 const VALID_SERVER: Environment = {
   APP_ENV: 'dev',
   PORT: '3001',
   LOG_LEVEL: 'debug',
   DATABASE_URL_APP: APP_URL,
+  ...AUTH,
 };
 
 const VALID_CLI: Environment = { APP_ENV: 'dev', DATABASE_URL_MIGRATOR: MIGRATOR_URL };
@@ -37,6 +66,11 @@ function issues(env: Environment, kind: ConfigKind = 'server'): readonly ConfigI
   return failure(env, kind).issues;
 }
 
+/** Issues sorted by name, for cases with several offending variables. */
+function sortedIssues(env: Environment): readonly ConfigIssue[] {
+  return [...issues(env)].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 describe('loadConfig (server)', () => {
   it('maps a valid host environment to a frozen config', () => {
     const config = loadConfig(VALID_SERVER, 'server');
@@ -46,9 +80,22 @@ describe('loadConfig (server)', () => {
       port: 3001,
       logLevel: 'debug',
       database: { url: APP_URL },
+      auth: {
+        jwt: {
+          privateKey: AUTH.JWT_PRIVATE_KEY,
+          publicKey: AUTH.JWT_PUBLIC_KEY,
+          keyId: AUTH.JWT_KEY_ID,
+          previousPublicKeys: [],
+        },
+        otpHmacSecret: AUTH.OTP_HMAC_SECRET,
+        mfaEncryption: { key: AUTH.MFA_ENCRYPTION_KEY, previousKeys: [] },
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
+    expect(Object.isFrozen(config.auth)).toBe(true);
+    expect(Object.isFrozen(config.auth.jwt)).toBe(true);
+    expect(Object.isFrozen(config.auth.mfaEncryption)).toBe(true);
   });
 
   it('reads DATABASE_URL in a container', () => {
@@ -122,7 +169,140 @@ describe('loadConfig (server)', () => {
   it('reports every offending variable at once', () => {
     const names = issues({ PORT: 'abc', LOG_LEVEL: 'verbose' }).map(({ name }) => name);
 
-    expect(names.sort()).toEqual(['APP_ENV', 'DATABASE_URL_APP', 'LOG_LEVEL', 'PORT']);
+    expect(names.sort()).toEqual(
+      ['APP_ENV', 'DATABASE_URL_APP', 'LOG_LEVEL', 'PORT', ...REQUIRED_AUTH_VARIABLES].sort(),
+    );
+  });
+});
+
+describe('loadConfig (server auth variables)', () => {
+  it.each(REQUIRED_AUTH_VARIABLES)('requires %s, on one line naming it', (name) => {
+    const error = failure(without(VALID_SERVER, name));
+
+    expect(error.issues).toEqual([{ name, rule: 'required' }]);
+    expect(error.message).toBe(`${name}: required`);
+  });
+
+  it('accepts and splits the optional previous-key lists', () => {
+    const env = {
+      ...VALID_SERVER,
+      JWT_PREVIOUS_PUBLIC_KEYS: `${OTHER_AUTH.JWT_KEY_ID}:${OTHER_AUTH.JWT_PUBLIC_KEY}`,
+      MFA_ENCRYPTION_PREVIOUS_KEYS: OTHER_AUTH.MFA_ENCRYPTION_KEY,
+    };
+
+    const { auth } = loadConfig(env, 'server');
+
+    expect(auth.jwt.previousPublicKeys).toEqual([
+      { keyId: OTHER_AUTH.JWT_KEY_ID, publicKey: OTHER_AUTH.JWT_PUBLIC_KEY },
+    ]);
+    expect(auth.mfaEncryption.previousKeys).toEqual([OTHER_AUTH.MFA_ENCRYPTION_KEY]);
+  });
+
+  it.each([
+    ['JWT_PRIVATE_KEY', 'not base64!', AUTH_RULES.privateKey],
+    ['JWT_PRIVATE_KEY', Buffer.from('not a pem').toString('base64'), AUTH_RULES.privateKey],
+    ['JWT_PRIVATE_KEY', `${AUTH.JWT_PRIVATE_KEY}\n`, AUTH_RULES.privateKey],
+    ['JWT_PUBLIC_KEY', 'not base64!', AUTH_RULES.publicKey],
+    ['OTP_HMAC_SECRET', 'not base64!', AUTH_RULES.secret],
+    ['MFA_ENCRYPTION_KEY', 'not base64!', AUTH_RULES.encryptionKey],
+  ])('rejects bad base64 or a non-PEM value in %s', (name, value, rule) => {
+    expect(issues({ ...VALID_SERVER, [name]: value })).toEqual([{ name, rule }]);
+  });
+
+  it('rejects a private key given in place of the public key', () => {
+    expect(issues({ ...VALID_SERVER, JWT_PUBLIC_KEY: AUTH.JWT_PRIVATE_KEY })).toEqual([
+      { name: 'JWT_PUBLIC_KEY', rule: AUTH_RULES.publicKey },
+    ]);
+  });
+
+  it('rejects a non-EC key pair', () => {
+    const env = { ...VALID_SERVER, JWT_PRIVATE_KEY: RSA.privateKey, JWT_PUBLIC_KEY: RSA.publicKey };
+
+    expect(sortedIssues(env)).toEqual([
+      { name: 'JWT_PRIVATE_KEY', rule: AUTH_RULES.curve },
+      { name: 'JWT_PUBLIC_KEY', rule: AUTH_RULES.curve },
+    ]);
+  });
+
+  it('rejects an EC key pair on the wrong curve', () => {
+    const env = {
+      ...VALID_SERVER,
+      JWT_PRIVATE_KEY: P384.privateKey,
+      JWT_PUBLIC_KEY: P384.publicKey,
+    };
+
+    expect(sortedIssues(env)).toEqual([
+      { name: 'JWT_PRIVATE_KEY', rule: AUTH_RULES.curve },
+      { name: 'JWT_PUBLIC_KEY', rule: AUTH_RULES.curve },
+    ]);
+  });
+
+  it('rejects a public key that does not belong to the private key', () => {
+    expect(issues({ ...VALID_SERVER, JWT_PUBLIC_KEY: OTHER_AUTH.JWT_PUBLIC_KEY })).toEqual([
+      { name: 'JWT_PUBLIC_KEY', rule: AUTH_RULES.keyPair },
+    ]);
+  });
+
+  it.each(['', 'kd dev', 'kd/dev', 'kd:dev', 'k'.repeat(65)])('rejects JWT_KEY_ID=%j', (keyId) => {
+    const expected = keyId === '' ? 'required' : AUTH_RULES.keyId;
+
+    expect(issues({ ...VALID_SERVER, JWT_KEY_ID: keyId })).toEqual([
+      { name: 'JWT_KEY_ID', rule: expected },
+    ]);
+  });
+
+  it('rejects a secret shorter than 32 bytes', () => {
+    const short = randomBytes(31).toString('base64');
+
+    expect(issues({ ...VALID_SERVER, OTP_HMAC_SECRET: short })).toEqual([
+      { name: 'OTP_HMAC_SECRET', rule: AUTH_RULES.secret },
+    ]);
+  });
+
+  it('accepts a secret longer than 32 bytes', () => {
+    const long = randomBytes(64).toString('base64');
+
+    expect(
+      loadConfig({ ...VALID_SERVER, OTP_HMAC_SECRET: long }, 'server').auth.otpHmacSecret,
+    ).toBe(long);
+  });
+
+  it.each([16, 31, 33, 64])('rejects an encryption key of %i bytes', (size) => {
+    const key = randomBytes(size).toString('base64');
+
+    expect(issues({ ...VALID_SERVER, MFA_ENCRYPTION_KEY: key })).toEqual([
+      { name: 'MFA_ENCRYPTION_KEY', rule: AUTH_RULES.encryptionKey },
+    ]);
+  });
+
+  it.each([
+    ['without a kid', OTHER_AUTH.JWT_PUBLIC_KEY],
+    ['with the current kid', `${AUTH.JWT_KEY_ID}:${OTHER_AUTH.JWT_PUBLIC_KEY}`],
+    [
+      'with a repeated kid',
+      `kd-old:${OTHER_AUTH.JWT_PUBLIC_KEY},kd-old:${OTHER_AUTH.JWT_PUBLIC_KEY}`,
+    ],
+    ['with an empty entry', `kd-old:${OTHER_AUTH.JWT_PUBLIC_KEY},`],
+    ['with a key on the wrong curve', `kd-old:${P384.publicKey}`],
+  ])('rejects JWT_PREVIOUS_PUBLIC_KEYS %s', (_case, value) => {
+    expect(issues({ ...VALID_SERVER, JWT_PREVIOUS_PUBLIC_KEYS: value })).toEqual([
+      { name: 'JWT_PREVIOUS_PUBLIC_KEYS', rule: AUTH_RULES.previousPublicKeys },
+    ]);
+  });
+
+  it.each([
+    ['equal to the current key', AUTH.MFA_ENCRYPTION_KEY],
+    ['of the wrong size', randomBytes(16).toString('base64')],
+    ['with an empty entry', `${OTHER_AUTH.MFA_ENCRYPTION_KEY},`],
+  ])('rejects MFA_ENCRYPTION_PREVIOUS_KEYS %s', (_case, value) => {
+    expect(issues({ ...VALID_SERVER, MFA_ENCRYPTION_PREVIOUS_KEYS: value })).toEqual([
+      { name: 'MFA_ENCRYPTION_PREVIOUS_KEYS', rule: AUTH_RULES.previousEncryptionKeys },
+    ]);
+  });
+
+  it('is not read by the CLI', () => {
+    expect(() => loadConfig(VALID_CLI, 'cli')).not.toThrow();
+    expect(loadConfig(VALID_CLI, 'cli')).not.toHaveProperty('auth');
   });
 });
 
@@ -176,6 +356,28 @@ describe('placeholder password', () => {
   it('accepts a URL without the placeholder in prod', () => {
     expect(() => loadConfig({ ...VALID_SERVER, APP_ENV: 'prod' }, 'server')).not.toThrow();
   });
+
+  const PLACEHOLDER_KEY_ID = `kd-${PLACEHOLDER_PASSWORD_PREFIX}`;
+
+  it.each(['dev', 'test'])('is accepted in an auth value when APP_ENV=%s', (appEnv) => {
+    const env = { ...VALID_SERVER, APP_ENV: appEnv, JWT_KEY_ID: PLACEHOLDER_KEY_ID };
+
+    expect(loadConfig(env, 'server').auth.jwt.keyId).toBe(PLACEHOLDER_KEY_ID);
+  });
+
+  it.each(['demo', 'prod'])('is rejected in an auth value when APP_ENV=%s', (appEnv) => {
+    const env = {
+      ...VALID_SERVER,
+      APP_ENV: appEnv,
+      JWT_KEY_ID: PLACEHOLDER_KEY_ID,
+      OTP_HMAC_SECRET: PLACEHOLDER_PASSWORD_PREFIX,
+    };
+
+    expect(sortedIssues(env)).toEqual([
+      { name: 'JWT_KEY_ID', rule: AUTH_RULES.placeholder },
+      { name: 'OTP_HMAC_SECRET', rule: AUTH_RULES.placeholder },
+    ]);
+  });
 });
 
 describe('error text', () => {
@@ -185,14 +387,60 @@ describe('error text', () => {
       PORT: 'leak-check-port',
       LOG_LEVEL: 'leak-check-level',
       DATABASE_URL_APP: 'mysql://leak-check-user:leak-check-secret@leak-check-host/leak-check-db',
+      JWT_PRIVATE_KEY: 'leak-check-private',
+      JWT_PUBLIC_KEY: 'leak-check-public',
+      JWT_KEY_ID: 'leak check kid',
+      JWT_PREVIOUS_PUBLIC_KEYS: 'leak-check-previous',
+      OTP_HMAC_SECRET: 'leak-check-otp',
+      MFA_ENCRYPTION_KEY: 'leak-check-mfa',
+      MFA_ENCRYPTION_PREVIOUS_KEYS: 'leak-check-mfa-previous',
     };
     const error = failure(values);
     const text = [error.message, ...error.issues.map(({ name, rule }) => `${name} ${rule}`)].join(
       '\n',
     );
 
-    expect(error.issues).toHaveLength(4);
-    expect(text).not.toMatch(/leak-check/);
+    expect(error.issues).toHaveLength(11);
+    expect(text).not.toMatch(/leak.check/);
+  });
+
+  it('never contains a supplied auth value, valid or not', () => {
+    const cases: Environment[] = [
+      // Every value valid, but the pair mismatched and the previous lists broken.
+      {
+        ...VALID_SERVER,
+        APP_ENV: 'prod',
+        JWT_PUBLIC_KEY: OTHER_AUTH.JWT_PUBLIC_KEY,
+        JWT_PREVIOUS_PUBLIC_KEYS: `${AUTH.JWT_KEY_ID}:${OTHER_AUTH.JWT_PUBLIC_KEY}`,
+        MFA_ENCRYPTION_PREVIOUS_KEYS: AUTH.MFA_ENCRYPTION_KEY,
+      },
+      // Keys of the wrong kind and curve, short secrets.
+      {
+        ...VALID_SERVER,
+        JWT_PRIVATE_KEY: RSA.privateKey,
+        JWT_PUBLIC_KEY: P384.publicKey,
+        OTP_HMAC_SECRET: randomBytes(8).toString('base64'),
+        MFA_ENCRYPTION_KEY: randomBytes(8).toString('base64'),
+      },
+    ];
+
+    for (const env of cases) {
+      const error = failure(env);
+      const text = [error.message, ...error.issues.map(({ name, rule }) => `${name} ${rule}`)].join(
+        '\n',
+      );
+      const supplied = Object.entries(env)
+        .filter(
+          ([name]) => name.startsWith('JWT_') || name.includes('SECRET') || name.startsWith('MFA_'),
+        )
+        .flatMap(([, value]) => (value === undefined ? [] : [value, ...value.split(/[,:]/)]))
+        .filter((value) => value.length >= 8);
+
+      expect(error.issues.length).toBeGreaterThan(0);
+      for (const value of supplied) {
+        expect(text).not.toContain(value);
+      }
+    }
   });
 
   it('never contains the placeholder password', () => {
