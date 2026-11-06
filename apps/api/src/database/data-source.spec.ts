@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { IdempotencyKeyRecord } from '../common/idempotency/entities/idempotency-key.entity.js';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity.js';
+import { AuthIdentity } from '../modules/auth/entities/auth-identity.entity.js';
+import { EmailToken } from '../modules/auth/entities/email-token.entity.js';
+import { MfaCredential } from '../modules/auth/entities/mfa-credential.entity.js';
+import { RefreshToken } from '../modules/auth/entities/refresh-token.entity.js';
 import { Branch } from '../modules/branches/entities/branch.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
+import { ConsentDocument } from '../modules/users/entities/consent-document.entity.js';
 import { StaffBranch } from '../modules/users/entities/staff-branch.entity.js';
+import { UserConsent } from '../modules/users/entities/user-consent.entity.js';
 import { User } from '../modules/users/entities/user.entity.js';
 import { createDataSourceOptions, describeDatabaseTarget, MIGRATIONS_DIR } from './data-source.js';
 
@@ -21,7 +27,20 @@ describe('createDataSourceOptions', () => {
       synchronize: false,
       migrationsRun: false,
       migrations: [],
-      entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord, Branch, User, StaffBranch],
+      entities: [
+        OutboxEvent,
+        AuditLog,
+        IdempotencyKeyRecord,
+        Branch,
+        User,
+        StaffBranch,
+        AuthIdentity,
+        RefreshToken,
+        EmailToken,
+        MfaCredential,
+        ConsentDocument,
+        UserConsent,
+      ],
     });
   });
 
