@@ -30,27 +30,46 @@ interface ExpressLayer {
   readonly route?: { readonly path?: unknown; readonly methods?: Record<string, boolean> };
 }
 
+interface RouterEnumeration {
+  /** Controller endpoints, one entry per method. */
+  readonly routes: RouteEntry[];
+  /** Patterns registered with `app.all` (every method, `CONNECT` included). */
+  readonly allMethodPaths: string[];
+}
+
 /**
  * Every route of the running app, read from the Express router stack through the HTTP adapter
- * (Express 5: `app.router.stack`; a layer with a `route` is a registered endpoint).
+ * (Express 5: `app.router.stack`; a layer with a `route` is a registered route).
+ *
+ * Nest mounts a middleware bound to `RequestMethod.ALL` (the `nestjs-pino` logger, on
+ * `/api{/*splat}` and `/api/v1{/*splat}`) with Express `app.all`, which registers the pattern for
+ * every method Express knows, `CONNECT` included. A controller decorator never registers
+ * `CONNECT`, so a route that accepts it is an `app.all` registration, not an endpoint: it is kept
+ * apart and checked to be a wildcard mount below.
  */
-function listRoutes(app: INestApplication): RouteEntry[] {
+function enumerateRouter(app: INestApplication): RouterEnumeration {
   const instance = app.getHttpAdapter().getInstance() as {
     readonly router?: { readonly stack?: readonly ExpressLayer[] };
   };
   const routes: RouteEntry[] = [];
+  const allMethodPaths: string[] = [];
   for (const layer of instance.router?.stack ?? []) {
     const path = layer.route?.path;
+    const methods = layer.route?.methods ?? {};
     if (typeof path !== 'string') {
       continue;
     }
-    for (const [method, enabled] of Object.entries(layer.route?.methods ?? {})) {
+    if (methods['connect'] === true || methods['_all'] === true) {
+      allMethodPaths.push(path);
+      continue;
+    }
+    for (const [method, enabled] of Object.entries(methods)) {
       if (enabled) {
-        routes.push({ method: method === '_all' ? 'GET' : method.toUpperCase(), path });
+        routes.push({ method: method.toUpperCase(), path });
       }
     }
   }
-  return routes;
+  return { routes, allMethodPaths };
 }
 
 /** A requestable path: each parameter becomes a UUID, optional groups are kept. */
@@ -68,6 +87,7 @@ describe('deny by default (every route of the real app)', () => {
   let client: TestHttpClient;
   let clock: FixedClock;
   let routes: RouteEntry[];
+  let allMethodPaths: string[];
 
   async function bearer(role: UserRole): Promise<Record<string, string>> {
     const tokens = testApp?.app.get(AccessTokenService);
@@ -82,7 +102,7 @@ describe('deny by default (every route of the real app)', () => {
     clock = new FixedClock(NOW);
     testApp = await createTestApp({ clock, imports: [TestRoutesModule] });
     client = http(testApp.baseUrl);
-    routes = listRoutes(testApp.app);
+    ({ routes, allMethodPaths } = enumerateRouter(testApp.app));
   });
 
   afterAll(async () => {
@@ -104,6 +124,13 @@ describe('deny by default (every route of the real app)', () => {
         'DELETE /api/v1/admin/test-guards/items/:id',
       ]),
     );
+  });
+
+  it('sets apart only wildcard middleware mounts, never an @All() endpoint', () => {
+    // An `@All()` handler would also be an `app.all` registration; it must fail here rather than
+    // escape the 401 check below.
+    expect(allMethodPaths.length).toBeGreaterThan(0);
+    expect(allMethodPaths.filter((path) => !/\{\/\*[A-Za-z0-9_]+\}$/.test(path))).toEqual([]);
   });
 
   it('answers 401 UNAUTHENTICATED without a token on every route not marked @Public()', async () => {
