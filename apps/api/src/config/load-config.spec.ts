@@ -367,6 +367,9 @@ describe('loadConfig (cli)', () => {
 });
 
 describe('placeholder password', () => {
+  /** `VALID_SERVER` plus what `demo` and `prod` also require (decision 0007 section 5). */
+  const DEPLOYED_SERVER: Environment = { ...VALID_SERVER, TRUST_PROXY_HOPS: '1' };
+
   it.each(['dev', 'test'])('is accepted when APP_ENV=%s', (appEnv) => {
     const env = { ...VALID_SERVER, APP_ENV: appEnv, DATABASE_URL_APP: PLACEHOLDER_URL };
 
@@ -374,7 +377,7 @@ describe('placeholder password', () => {
   });
 
   it.each(['demo', 'prod'])('is rejected when APP_ENV=%s', (appEnv) => {
-    const env = { ...VALID_SERVER, APP_ENV: appEnv, DATABASE_URL_APP: PLACEHOLDER_URL };
+    const env = { ...DEPLOYED_SERVER, APP_ENV: appEnv, DATABASE_URL_APP: PLACEHOLDER_URL };
 
     expect(issues(env)).toEqual([
       {
@@ -393,7 +396,7 @@ describe('placeholder password', () => {
   });
 
   it('accepts a URL without the placeholder in prod', () => {
-    expect(() => loadConfig({ ...VALID_SERVER, APP_ENV: 'prod' }, 'server')).not.toThrow();
+    expect(() => loadConfig({ ...DEPLOYED_SERVER, APP_ENV: 'prod' }, 'server')).not.toThrow();
   });
 
   const PLACEHOLDER_KEY_ID = `kd-${PLACEHOLDER_PASSWORD_PREFIX}`;
@@ -406,7 +409,7 @@ describe('placeholder password', () => {
 
   it.each(['demo', 'prod'])('is rejected in an auth value when APP_ENV=%s', (appEnv) => {
     const env = {
-      ...VALID_SERVER,
+      ...DEPLOYED_SERVER,
       APP_ENV: appEnv,
       JWT_KEY_ID: PLACEHOLDER_KEY_ID,
       OTP_HMAC_SECRET: PLACEHOLDER_PASSWORD_PREFIX,
