@@ -72,6 +72,10 @@ export const AUDIT_ACTIONS = [
   // USER (the token owner), no token, hash or family id in the row. Name is a proposal (brief E17;
   // api-outline staff transport, "refresh-token reuse").
   'auth.refresh_reuse',
+  // A failed sign-in that locked the account (decision 0008 section 4): entity USER, no actor,
+  // diff { failedLoginCount, lockedUntil }; never the password or the email typed. Name is a
+  // proposal (brief E17; api-divergences D-050).
+  'auth.account_locked',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

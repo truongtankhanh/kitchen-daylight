@@ -134,6 +134,11 @@ export class TestRoutesModule {}
 /** Every `@Public()` route of the app with `TestRoutesModule`, as `METHOD path`. */
 export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   'GET /api/health',
+  // Customer transport (A2-T1); `POST /api/v1/auth/logout-all` needs a token and is not listed.
+  'POST /api/v1/auth/register',
+  'POST /api/v1/auth/login',
+  'POST /api/v1/auth/refresh',
+  'POST /api/v1/auth/logout',
   'GET /api/v1/test-guards/public',
   'POST /api/v1/auth/test-throttle',
   'POST /api/v1/admin/auth/test-throttle',
