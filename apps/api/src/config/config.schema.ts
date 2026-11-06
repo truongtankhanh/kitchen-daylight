@@ -7,10 +7,13 @@ import type { KeyObject } from 'node:crypto';
 
 import { Type } from 'class-transformer';
 import {
+  IsEmail,
   IsIn,
   IsInt,
   IsOptional,
+  IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   registerDecorator,
@@ -47,6 +50,42 @@ export const DEFAULT_TRUST_PROXY_HOPS: TrustProxyHops = 0;
 /** Required where a tier must never start with a silent default, like the `*_ADAPTER` variables. */
 const TRUST_PROXY_HOPS_REQUIRED_IN: readonly AppEnv[] = ['demo', 'prod'];
 const TRUST_PROXY_HOPS_RULE = 'must be 0 or 1';
+
+// --- Mail variables (decision 0005, section 2; A1-T8) ------------------------------------------
+
+/** `smtp`: Mailpit in `dev` and `test` (kind `emulator`). `ses`: arrives in A12-T4 (kind `real`). */
+export const MAIL_ADAPTERS = ['smtp', 'ses'] as const;
+export type MailAdapterName = (typeof MAIL_ADAPTERS)[number];
+/** Applies only in `dev` and `test` and only when `MAIL_ADAPTER` is unset. */
+export const DEFAULT_MAIL_ADAPTER: MailAdapterName = 'smtp';
+/** Fictional sender of `dev` and `test`; `demo` and `prod` set their own. */
+export const DEFAULT_MAIL_FROM = 'no-reply@kitchendaylight.example';
+/** `demo` and `prod` accept only adapters and senders named explicitly (decision 0005, section 5). */
+const MAIL_REQUIRED_IN: readonly AppEnv[] = ['demo', 'prod'];
+const MAIL_DEFAULTS_IN: readonly AppEnv[] = ['dev', 'test'];
+const MAIL_SMTP_HOST_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/;
+const MAIL_SMTP_HOST_RULE = 'must be a host name or an IPv4 address';
+
+/** The adapter the mail slice will use: the explicit one, else the `dev`/`test` default. */
+export function effectiveMailAdapter(
+  env: Pick<ServerEnvironment, 'APP_ENV' | 'MAIL_ADAPTER'>,
+): MailAdapterName | undefined {
+  if (env.MAIL_ADAPTER !== undefined) {
+    return env.MAIL_ADAPTER;
+  }
+  return MAIL_DEFAULTS_IN.includes(env.APP_ENV) ? DEFAULT_MAIL_ADAPTER : undefined;
+}
+
+/** Validated when set, and always in `demo` and `prod`. */
+function presentOrRequiredInDeployedTiers(property: 'MAIL_ADAPTER' | 'MAIL_FROM') {
+  return (env: ServerEnvironment): boolean =>
+    env[property] !== undefined || MAIL_REQUIRED_IN.includes(env.APP_ENV);
+}
+
+/** The SMTP variables are read only when the adapter is `smtp` (decision 0005, section 2). */
+function usesSmtp(env: ServerEnvironment): boolean {
+  return effectiveMailAdapter(env) === 'smtp';
+}
 
 function hasPlaceholderPassword(value: unknown): boolean {
   if (typeof value !== 'string' || !URL.canParse(value)) {
@@ -277,6 +316,28 @@ export class ServerEnvironment extends CliEnvironment {
   @IsInt({ message: TRUST_PROXY_HOPS_RULE })
   @IsIn(TRUST_PROXY_HOPS_VALUES, { message: TRUST_PROXY_HOPS_RULE })
   TRUST_PROXY_HOPS?: TrustProxyHops;
+
+  // `dev` and `test`: default `smtp`; `demo` and `prod`: required.
+  @ValidateIf(presentOrRequiredInDeployedTiers('MAIL_ADAPTER'))
+  @IsIn(MAIL_ADAPTERS, { message: `must be one of ${MAIL_ADAPTERS.join('|')}` })
+  MAIL_ADAPTER?: MailAdapterName;
+
+  @ValidateIf(usesSmtp)
+  @IsString({ message: MAIL_SMTP_HOST_RULE })
+  @Matches(MAIL_SMTP_HOST_PATTERN, { message: MAIL_SMTP_HOST_RULE })
+  MAIL_SMTP_HOST?: string;
+
+  @ValidateIf(usesSmtp)
+  @Type(() => Number)
+  @IsInt({ message: PORT_RULE })
+  @Min(1, { message: PORT_RULE })
+  @Max(65535, { message: PORT_RULE })
+  MAIL_SMTP_PORT?: number;
+
+  // `dev` and `test`: default `DEFAULT_MAIL_FROM`; `demo` and `prod`: required.
+  @ValidateIf(presentOrRequiredInDeployedTiers('MAIL_FROM'))
+  @IsEmail({}, { message: 'must be an email address' })
+  MAIL_FROM?: string;
 
   @AuthValue(checkPrivateKey)
   JWT_PRIVATE_KEY!: string;

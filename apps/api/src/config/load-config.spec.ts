@@ -3,7 +3,7 @@ import type { KeyObject } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_RULES, PLACEHOLDER_PASSWORD_PREFIX } from './config.schema.js';
+import { AUTH_RULES, DEFAULT_MAIL_FROM, PLACEHOLDER_PASSWORD_PREFIX } from './config.schema.js';
 import {
   REQUIRED_AUTH_VARIABLES,
   createEphemeralAuthEnvironment,
@@ -36,11 +36,16 @@ function encodedPair(pair: {
 const RSA = encodedPair(generateKeyPairSync('rsa', { modulusLength: 2048 }));
 const P384 = encodedPair(generateKeyPairSync('ec', { namedCurve: 'secp384r1' }));
 
+const SMTP_HOST = '127.0.0.1';
+const SMTP_PORT = 1045;
+
 const VALID_SERVER: Environment = {
   APP_ENV: 'dev',
   PORT: '3001',
   LOG_LEVEL: 'debug',
   DATABASE_URL_APP: APP_URL,
+  MAIL_SMTP_HOST: SMTP_HOST,
+  MAIL_SMTP_PORT: String(SMTP_PORT),
   ...AUTH,
 };
 
@@ -91,12 +96,18 @@ describe('loadConfig (server)', () => {
         otpHmacSecret: AUTH.OTP_HMAC_SECRET,
         mfaEncryption: { key: AUTH.MFA_ENCRYPTION_KEY, previousKeys: [] },
       },
+      mail: {
+        adapter: 'smtp',
+        from: DEFAULT_MAIL_FROM,
+        smtp: { host: SMTP_HOST, port: SMTP_PORT },
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
     expect(Object.isFrozen(config.auth)).toBe(true);
     expect(Object.isFrozen(config.auth.jwt)).toBe(true);
     expect(Object.isFrozen(config.auth.mfaEncryption)).toBe(true);
+    expect(Object.isFrozen(config.mail)).toBe(true);
   });
 
   it('reads DATABASE_URL in a container', () => {
@@ -345,6 +356,136 @@ describe('loadConfig (server auth variables)', () => {
   });
 });
 
+describe('loadConfig (mail variables)', () => {
+  /** What `demo` and `prod` require besides the mail variables (decision 0007 section 5). */
+  const DEPLOYED: Environment = { ...without(VALID_SERVER, 'APP_ENV'), TRUST_PROXY_HOPS: '1' };
+  const SES_FROM = 'no-reply@kitchendaylight.example';
+
+  it.each(['dev', 'test'])('defaults to smtp and the fictional sender in %s', (appEnv) => {
+    expect(loadConfig({ ...VALID_SERVER, APP_ENV: appEnv }, 'server').mail).toEqual({
+      adapter: 'smtp',
+      from: DEFAULT_MAIL_FROM,
+      smtp: { host: SMTP_HOST, port: SMTP_PORT },
+    });
+  });
+
+  it.each(['demo', 'prod'])('requires MAIL_ADAPTER and MAIL_FROM in %s', (appEnv) => {
+    expect(sortedIssues({ ...DEPLOYED, APP_ENV: appEnv })).toEqual([
+      { name: 'MAIL_ADAPTER', rule: 'required' },
+      { name: 'MAIL_FROM', rule: 'required' },
+    ]);
+  });
+
+  it.each(['demo', 'prod'])('accepts ses with a sender and no SMTP address in %s', (appEnv) => {
+    const env = {
+      ...without(without(DEPLOYED, 'MAIL_SMTP_HOST'), 'MAIL_SMTP_PORT'),
+      APP_ENV: appEnv,
+      MAIL_ADAPTER: 'ses',
+      MAIL_FROM: SES_FROM,
+    };
+
+    expect(loadConfig(env, 'server').mail).toEqual({ adapter: 'ses', from: SES_FROM });
+  });
+
+  it('ignores the SMTP variables when the adapter is ses', () => {
+    const env = { ...VALID_SERVER, MAIL_ADAPTER: 'ses', MAIL_SMTP_PORT: 'not-a-port' };
+
+    expect(loadConfig(env, 'server').mail).toEqual({ adapter: 'ses', from: DEFAULT_MAIL_FROM });
+  });
+
+  it.each(['MAIL_SMTP_HOST', 'MAIL_SMTP_PORT'])('requires %s for the smtp adapter', (name) => {
+    expect(issues(without(VALID_SERVER, name))).toEqual([{ name, rule: 'required' }]);
+  });
+
+  it('requires the SMTP address when smtp is named explicitly in prod', () => {
+    const env = {
+      ...without(without(DEPLOYED, 'MAIL_SMTP_HOST'), 'MAIL_SMTP_PORT'),
+      APP_ENV: 'prod',
+      MAIL_ADAPTER: 'smtp',
+      MAIL_FROM: SES_FROM,
+    };
+
+    expect(sortedIssues(env)).toEqual([
+      { name: 'MAIL_SMTP_HOST', rule: 'required' },
+      { name: 'MAIL_SMTP_PORT', rule: 'required' },
+    ]);
+  });
+
+  it.each(['0', '65536', '25.5', 'abc'])('rejects MAIL_SMTP_PORT=%s', (port) => {
+    expect(issues({ ...VALID_SERVER, MAIL_SMTP_PORT: port })).toEqual([
+      { name: 'MAIL_SMTP_PORT', rule: 'must be an integer from 1 to 65535' },
+    ]);
+  });
+
+  it.each(['1', '65535', '1025'])('accepts MAIL_SMTP_PORT=%s', (port) => {
+    const config = loadConfig({ ...VALID_SERVER, MAIL_SMTP_PORT: port }, 'server');
+
+    expect(config.mail).toMatchObject({ smtp: { port: Number(port) } });
+  });
+
+  it.each(['mailpit', 'smtp.example.com', '10.0.0.5'])('accepts MAIL_SMTP_HOST=%s', (host) => {
+    const config = loadConfig({ ...VALID_SERVER, MAIL_SMTP_HOST: host }, 'server');
+
+    expect(config.mail).toMatchObject({ smtp: { host } });
+  });
+
+  it.each(['smtp://mailpit', 'mail pit', '-mailpit', 'mailpit:1025'])(
+    'rejects MAIL_SMTP_HOST=%s',
+    (host) => {
+      expect(issues({ ...VALID_SERVER, MAIL_SMTP_HOST: host })).toEqual([
+        { name: 'MAIL_SMTP_HOST', rule: 'must be a host name or an IPv4 address' },
+      ]);
+    },
+  );
+
+  it('rejects an unknown MAIL_ADAPTER', () => {
+    expect(issues({ ...VALID_SERVER, MAIL_ADAPTER: 'sendgrid' })).toEqual([
+      { name: 'MAIL_ADAPTER', rule: 'must be one of smtp|ses' },
+    ]);
+  });
+
+  it.each(['no-reply', 'no-reply@', 'Kitchen <no-reply@kitchendaylight.example>'])(
+    'rejects MAIL_FROM=%s',
+    (from) => {
+      expect(issues({ ...VALID_SERVER, MAIL_FROM: from })).toEqual([
+        { name: 'MAIL_FROM', rule: 'must be an email address' },
+      ]);
+    },
+  );
+
+  it('never echoes a mail value', () => {
+    const error = failure({
+      ...VALID_SERVER,
+      MAIL_ADAPTER: 'leak-check-adapter',
+      MAIL_FROM: 'leak-check-from',
+    });
+    const smtpError = failure({
+      ...VALID_SERVER,
+      MAIL_SMTP_HOST: 'leak check host',
+      MAIL_SMTP_PORT: 'leak-check-port',
+    });
+
+    expect(error.issues.map(({ name }) => name).sort()).toEqual(['MAIL_ADAPTER', 'MAIL_FROM']);
+    expect(smtpError.issues.map(({ name }) => name).sort()).toEqual([
+      'MAIL_SMTP_HOST',
+      'MAIL_SMTP_PORT',
+    ]);
+    expect(`${error.message}\n${smtpError.message}`).not.toMatch(/leak.check/);
+  });
+
+  it('never reads MAIL_UI_URL', () => {
+    const config = loadConfig({ ...VALID_SERVER, MAIL_UI_URL: 'not a url' }, 'server');
+
+    expect(JSON.stringify(config)).not.toContain('not a url');
+  });
+
+  it('is not read by the CLI', () => {
+    const env = { ...VALID_CLI, MAIL_ADAPTER: 'sendgrid', MAIL_SMTP_PORT: 'abc', MAIL_FROM: 'x' };
+
+    expect(loadConfig(env, 'cli')).not.toHaveProperty('mail');
+  });
+});
+
 describe('loadConfig (cli)', () => {
   it('maps a valid host environment to a frozen config without server fields', () => {
     const config = loadConfig({ ...VALID_CLI, PORT: 'abc' }, 'cli');
@@ -367,8 +508,13 @@ describe('loadConfig (cli)', () => {
 });
 
 describe('placeholder password', () => {
-  /** `VALID_SERVER` plus what `demo` and `prod` also require (decision 0007 section 5). */
-  const DEPLOYED_SERVER: Environment = { ...VALID_SERVER, TRUST_PROXY_HOPS: '1' };
+  /** `VALID_SERVER` plus what `demo` and `prod` also require (decision 0007 section 5, A1-T8). */
+  const DEPLOYED_SERVER: Environment = {
+    ...VALID_SERVER,
+    TRUST_PROXY_HOPS: '1',
+    MAIL_ADAPTER: 'ses',
+    MAIL_FROM: 'no-reply@kitchendaylight.example',
+  };
 
   it.each(['dev', 'test'])('is accepted when APP_ENV=%s', (appEnv) => {
     const env = { ...VALID_SERVER, APP_ENV: appEnv, DATABASE_URL_APP: PLACEHOLDER_URL };

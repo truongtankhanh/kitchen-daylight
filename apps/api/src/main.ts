@@ -7,6 +7,7 @@ import { configureApp } from './configure-app.js';
 import { readEnvironment } from './config/env-file.js';
 import { ConfigValidationError, loadConfig } from './config/load-config.js';
 import type { ServerConfig } from './config/load-config.js';
+import { describeViolation, productionGuardViolations } from './config/production-guard.js';
 
 // The repository root `.env` (decision 0005, section 3), resolved from `dist/` and `src/` alike.
 const ROOT_ENV_FILE = new URL('../../../.env', import.meta.url);
@@ -24,8 +25,23 @@ function loadServerConfigOrExit(): ServerConfig {
   }
 }
 
+/**
+ * The production guard (decision 0005, section 5), before Nest boots: one stderr line per refused
+ * binding, naming the port, the adapter, its kind and `APP_ENV`, then exit code 1.
+ */
+function enforceProductionGuardOrExit(config: ServerConfig): void {
+  const violations = productionGuardViolations(config);
+  if (violations.length > 0) {
+    for (const violation of violations) {
+      process.stderr.write(`${describeViolation(violation)}\n`);
+    }
+    process.exit(1);
+  }
+}
+
 async function bootstrap(): Promise<void> {
   const config = loadServerConfigOrExit();
+  enforceProductionGuardOrExit(config);
   // Logs written while Nest boots are buffered, then flushed through pino (decision 0005, section 11).
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config), {
     bufferLogs: true,

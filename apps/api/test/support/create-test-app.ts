@@ -12,6 +12,7 @@ import { Clock } from '../../src/common/time/clock.js';
 import type { FixedClock } from '../../src/common/time/testing.js';
 import { createEphemeralAuthEnvironment } from '../../src/config/ephemeral-auth-environment.js';
 import { loadConfig } from '../../src/config/load-config.js';
+import { describeViolation, productionGuardViolations } from '../../src/config/production-guard.js';
 import { configureApp } from '../../src/configure-app.js';
 
 export interface TestAppOptions {
@@ -44,10 +45,19 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
       APP_ENV: 'test',
       DATABASE_URL_APP: appUrl,
       LOG_LEVEL: 'warn',
+      // `AppModule` binds no mail adapter yet; port 1 on loopback makes a stray send fail at once.
+      // `mail-smtp.int-spec.ts` reads the Mailpit address of the root `.env` instead.
+      MAIL_SMTP_HOST: '127.0.0.1',
+      MAIL_SMTP_PORT: '1',
       ...createEphemeralAuthEnvironment('kd-test-'),
     },
     'server',
   );
+  // The production guard of `main.ts` (decision 0005, section 5): `test` refuses a real adapter.
+  const violations = productionGuardViolations(config);
+  if (violations.length > 0) {
+    throw new Error(violations.map(describeViolation).join('\n'));
+  }
 
   const builder = Test.createTestingModule({
     imports: [AppModule.forRoot(config), ...(options.imports ?? [])],

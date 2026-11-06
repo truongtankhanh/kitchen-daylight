@@ -99,8 +99,9 @@ Read on 2026-11-03. Registry data from read-only `npm view <pkg> version peerDep
 | `DATABASE_URL_APP` | server on the host | from `print-env.sh` | not set | → `database.url` of the server when `DATABASE_URL` is unset |
 | `DATABASE_URL_MIGRATOR` | CLI on the host | from `print-env.sh` | not set | → `database.url` of the CLI when `DATABASE_URL` is unset |
 | `PORT` | server | `3001`, written by `env:sync` (section 10) | `3000` | optional, integer; default `3000` |
-| `MAIL_ADAPTER` | mail slice | not printed → default from `APP_ENV` | `smtp` | `dev`/`test`: default `smtp`; `demo`/`prod`: required (`ses`) |
-| `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT` | `smtp` adapter | from `print-env.sh` | `mailpit`, `1025` | read only by the `smtp` adapter |
+| `MAIL_ADAPTER` | server; mail module (A1-T8) | not printed → default from `APP_ENV` | `smtp` | one of `smtp\|ses`; `dev`/`test`: default `smtp`; `demo`/`prod`: required (`ses`). `ses` is accepted by the config but refused by the adapter factory as "not available yet" until A12-T4; kinds `smtp` emulator, `ses` real (section 5) |
+| `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT` | `smtp` adapter (A1-T8) | from `print-env.sh` | `mailpit`, `1025` | read only when the adapter is `smtp`, and then both required: a host name or IPv4 address, an integer from 1 to 65535 |
+| `MAIL_FROM` | server; mail module (A1-T8) | not printed → default in `dev`/`test` | not set → default in `dev`/`test` | sender address, a valid email address; `dev`/`test`: default `no-reply@kitchendaylight.example`; `demo`/`prod`: required |
 | `MAIL_UI_URL` | people, e2e tests | from `print-env.sh` | not set | **never read by the API** |
 | `STORAGE_ADAPTER` | media slice | not printed → default from `APP_ENV` | `s3` | `dev`/`test`: default `s3`; `demo`/`prod`: required |
 | `STORAGE_S3_ENDPOINT`, `STORAGE_S3_FORCE_PATH_STYLE` | `s3` adapter | from `print-env.sh` | `http://s3:8333`, `true` | must reach the S3 client (M4); **must be unset in `prod`** (guard) |

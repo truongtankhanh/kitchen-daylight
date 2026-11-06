@@ -24,6 +24,8 @@ const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'
 const PLACEHOLDER_ENV = {
   APP_ENV: 'test',
   DATABASE_URL_APP: 'postgres://openapi@127.0.0.1:1/openapi',
+  MAIL_SMTP_HOST: '127.0.0.1',
+  MAIL_SMTP_PORT: '1',
 } as const;
 
 /**

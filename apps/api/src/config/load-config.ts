@@ -4,8 +4,10 @@ import { validateSync } from 'class-validator';
 import {
   CliEnvironment,
   DEFAULT_LOG_LEVEL,
+  DEFAULT_MAIL_FROM,
   DEFAULT_PORT,
   DEFAULT_TRUST_PROXY_HOPS,
+  effectiveMailAdapter,
   ServerEnvironment,
 } from './config.schema.js';
 import type { AppEnv, LogLevel, TrustProxyHops } from './config.schema.js';
@@ -43,12 +45,25 @@ export interface AuthConfig {
   };
 }
 
+/**
+ * Mail settings (decision 0005, section 2). `smtp` carries the Mailpit address; `MAIL_UI_URL` is
+ * never read by the API.
+ */
+export type MailConfig =
+  | {
+      readonly adapter: 'smtp';
+      readonly from: string;
+      readonly smtp: { readonly host: string; readonly port: number };
+    }
+  | { readonly adapter: 'ses'; readonly from: string };
+
 export interface ServerConfig extends CliConfig {
   readonly port: number;
   readonly logLevel: LogLevel;
   /** Express `trust proxy`, applied in `main.ts` (decision 0007 section 5). */
   readonly trustProxyHops: TrustProxyHops;
   readonly auth: AuthConfig;
+  readonly mail: MailConfig;
 }
 
 export interface ConfigIssue {
@@ -86,6 +101,9 @@ const AUTH_VARIABLES = [
   'MFA_ENCRYPTION_PREVIOUS_KEYS',
 ] as const;
 
+// Decision 0005, section 2 (A1-T8). `MAIL_UI_URL` is for people and e2e tests, never read here.
+const MAIL_VARIABLES = ['MAIL_ADAPTER', 'MAIL_SMTP_HOST', 'MAIL_SMTP_PORT', 'MAIL_FROM'] as const;
+
 /** An empty value counts as unset. */
 function read(env: Environment, name: string): string | undefined {
   const value = env[name];
@@ -120,7 +138,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
     raw['PORT'] = read(env, 'PORT');
     raw['LOG_LEVEL'] = read(env, 'LOG_LEVEL');
     raw['TRUST_PROXY_HOPS'] = read(env, 'TRUST_PROXY_HOPS');
-    for (const name of AUTH_VARIABLES) {
+    for (const name of [...AUTH_VARIABLES, ...MAIL_VARIABLES]) {
       raw[name] = read(env, name);
     }
   }
@@ -162,6 +180,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
       logLevel: instance.LOG_LEVEL ?? DEFAULT_LOG_LEVEL,
       trustProxyHops: instance.TRUST_PROXY_HOPS ?? DEFAULT_TRUST_PROXY_HOPS,
       auth: toAuthConfig(instance),
+      mail: toMailConfig(instance),
     });
   }
   return Object.freeze({ appEnv: instance.APP_ENV, database });
@@ -188,6 +207,19 @@ function toAuthConfig(env: ServerEnvironment): AuthConfig {
       key: env.MFA_ENCRYPTION_KEY,
       previousKeys: Object.freeze(env.MFA_ENCRYPTION_PREVIOUS_KEYS?.split(',') ?? []),
     }),
+  });
+}
+
+/** Applies the `dev`/`test` defaults; the validation above guarantees every value read here. */
+function toMailConfig(env: ServerEnvironment): MailConfig {
+  const from = env.MAIL_FROM ?? DEFAULT_MAIL_FROM;
+  if (effectiveMailAdapter(env) === 'ses') {
+    return Object.freeze({ adapter: 'ses', from });
+  }
+  return Object.freeze({
+    adapter: 'smtp',
+    from,
+    smtp: Object.freeze({ host: env.MAIL_SMTP_HOST as string, port: env.MAIL_SMTP_PORT as number }),
   });
 }
 
