@@ -68,6 +68,10 @@ export const AUDIT_ACTIONS = [
   'reservation.edit',
   // Manual points adjustment. Marked "existing" by api-outline, not a gap proposal.
   'points.adjust',
+  // A used refresh token presented outside the grace window: the whole family is revoked. Entity
+  // USER (the token owner), no token, hash or family id in the row. Name is a proposal (brief E17;
+  // api-outline staff transport, "refresh-token reuse").
+  'auth.refresh_reuse',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
