@@ -10,6 +10,7 @@ import type {
 import { FixedClock } from '../../src/common/time/testing.js';
 import { openAppDataSource, openAppRole } from '../support/app-role.js';
 import type { RoleClient } from '../support/app-role.js';
+import { insertIdentityFixtures } from '../support/identity-fixtures.js';
 import { truncateAll } from '../support/truncate.js';
 
 // Migration 0004_idempotency_keys and IdempotencyService (A0-T8; decision 0007 section 10), as
@@ -60,6 +61,8 @@ describe('idempotency_keys (0004_idempotency_keys) and IdempotencyService', () =
 
   beforeEach(async () => {
     await truncateAll();
+    // idempotency_keys.actor_id references users since migration 0007.
+    await insertIdentityFixtures({ userIds: [ACTOR_A, ACTOR_B] });
     clock = new FixedClock(NOW);
     service = new IdempotencyService(clock);
   });

@@ -5,6 +5,7 @@ import { AuditService } from '../../src/modules/audit/audit.service.js';
 import type { AuditEntry } from '../../src/modules/audit/audit.service.js';
 import { openAppDataSource, openAppRole, openRoleClient } from '../support/app-role.js';
 import type { RoleClient } from '../support/app-role.js';
+import { insertIdentityFixtures } from '../support/identity-fixtures.js';
 import { truncateAll } from '../support/truncate.js';
 
 // Migration 0003_audit_logs (A0-T7): append-only for kd_app (testing-strategy, "Reviews and
@@ -47,6 +48,8 @@ describe('audit_logs (0003_audit_logs)', () => {
 
   beforeEach(async () => {
     await truncateAll();
+    // audit_logs.actor_user_id references users since migration 0007.
+    await insertIdentityFixtures({ userIds: [ACTOR_ID] });
   });
 
   it('lets kd_app insert (through AuditService) and select', async () => {

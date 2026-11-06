@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { IdempotencyKeyRecord } from '../common/idempotency/entities/idempotency-key.entity.js';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity.js';
+import { Branch } from '../modules/branches/entities/branch.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
+import { StaffBranch } from '../modules/users/entities/staff-branch.entity.js';
+import { User } from '../modules/users/entities/user.entity.js';
 import { createDataSourceOptions, describeDatabaseTarget, MIGRATIONS_DIR } from './data-source.js';
 
 const URL_WITH_SECRET =
@@ -18,7 +21,7 @@ describe('createDataSourceOptions', () => {
       synchronize: false,
       migrationsRun: false,
       migrations: [],
-      entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord],
+      entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord, Branch, User, StaffBranch],
     });
   });
 

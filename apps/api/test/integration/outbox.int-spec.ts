@@ -10,6 +10,7 @@ import {
   openAppRole,
 } from '../support/app-role.js';
 import type { RoleClient } from '../support/app-role.js';
+import { insertIdentityFixtures } from '../support/identity-fixtures.js';
 import { truncateAll } from '../support/truncate.js';
 
 // Migration 0002_outbox_events (A0-T6) and OutboxService, as kd_app. Fictional ids only.
@@ -70,6 +71,8 @@ describe('outbox_events (0002_outbox_events)', () => {
 
   beforeEach(async () => {
     await truncateAll();
+    // branch_id and audience_user_id reference branches and users since migration 0007.
+    await insertIdentityFixtures({ userIds: [USER_ID], branchIds: [BRANCH_ID] });
   });
 
   async function count(): Promise<number> {
