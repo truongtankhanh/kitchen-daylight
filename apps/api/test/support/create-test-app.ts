@@ -10,6 +10,7 @@ import { inject } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { Clock } from '../../src/common/time/clock.js';
 import type { FixedClock } from '../../src/common/time/testing.js';
+import { createEphemeralAuthEnvironment } from '../../src/config/ephemeral-auth-environment.js';
 import { loadConfig } from '../../src/config/load-config.js';
 import { configureApp } from '../../src/configure-app.js';
 
@@ -35,8 +36,14 @@ export interface TestApp {
  */
 export async function createTestApp(options: TestAppOptions = {}): Promise<TestApp> {
   const { appUrl } = inject('kdTestDatabase');
+  // Throw-away auth values for each app (decision 0008, section 12); no key literal in the repository.
   const config = loadConfig(
-    { APP_ENV: 'test', DATABASE_URL_APP: appUrl, LOG_LEVEL: 'warn' },
+    {
+      APP_ENV: 'test',
+      DATABASE_URL_APP: appUrl,
+      LOG_LEVEL: 'warn',
+      ...createEphemeralAuthEnvironment('kd-test-'),
+    },
     'server',
   );
 
