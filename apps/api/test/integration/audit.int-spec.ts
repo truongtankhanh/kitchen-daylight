@@ -83,6 +83,33 @@ describe('audit_logs (0003_audit_logs)', () => {
     expect(rows[0]).toEqual({ count: 1, label: 'Ordering settings' });
   });
 
+  it('stores created_at to the millisecond, the precision of the cursor sort key (0006)', async () => {
+    await dataSource.transaction(async (manager) => {
+      await service.write(ENTRY, manager);
+      await service.write({ ...ENTRY, entityId: 'ordering-2' }, manager);
+    });
+
+    const columns = await app.query<{ type: string }>(
+      `SELECT format_type(atttypid, atttypmod) AS type
+         FROM pg_attribute
+        WHERE attrelid = 'public.audit_logs'::regclass AND attname = 'created_at'`,
+    );
+    expect(columns).toEqual([{ type: 'timestamp(3) with time zone' }]);
+
+    // Both rows of one transaction share now(); a Date read back equals the stored value exactly.
+    const rows = await app.query<{ exact: boolean; created_at: Date }>(
+      `SELECT created_at = date_trunc('milliseconds', created_at) AS exact, created_at
+         FROM public.audit_logs ORDER BY created_at DESC, id DESC`,
+    );
+    expect(rows.map((row) => row.exact)).toEqual([true, true]);
+    const [first] = rows;
+    const matched = await app.query<{ count: number }>(
+      'SELECT count(*)::int AS count FROM public.audit_logs WHERE created_at = $1',
+      [first?.created_at],
+    );
+    expect(matched).toEqual([{ count: 2 }]);
+  });
+
   it('has the four indexes of the data model', async () => {
     const migrator = await openRoleClient('kd_migrator');
     try {

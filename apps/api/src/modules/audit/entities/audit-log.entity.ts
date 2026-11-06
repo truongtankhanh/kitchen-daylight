@@ -39,6 +39,7 @@ export class AuditLog {
   @Column({ type: 'jsonb', name: 'diff', default: () => "'{}'::jsonb" })
   diff!: object;
 
-  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'now()' })
+  /** `timestamptz(3)` (migration 0006): the cursor sort key holds what a `Date` holds. */
+  @Column({ type: 'timestamptz', precision: 3, name: 'created_at', default: () => 'now()' })
   createdAt!: Date;
 }

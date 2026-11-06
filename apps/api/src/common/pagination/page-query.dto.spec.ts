@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '../errors/api-error.js';
 import { createValidationPipe } from '../errors/validation.pipe.js';
-import { PageQueryDto, toOffset } from './page-query.dto.js';
+import { MAX_PAGE, PageQueryDto, toOffset } from './page-query.dto.js';
 
 const QUERY: ArgumentMetadata = { type: 'query', metatype: PageQueryDto };
 
@@ -31,11 +31,14 @@ describe('PageQueryDto', () => {
   it('converts the query strings to integers', async () => {
     expect(await parse({ page: '3', pageSize: '50' })).toEqual({ page: 3, pageSize: 50 });
     expect(await parse({ pageSize: '1' })).toEqual({ page: 1, pageSize: 1 });
+    expect(await parse({ page: String(MAX_PAGE) })).toEqual({ page: MAX_PAGE, pageSize: 20 });
   });
 
   it.each([
     [{ page: '0' }, 'page'],
     [{ page: '-1' }, 'page'],
+    [{ page: String(MAX_PAGE + 1) }, 'page'],
+    [{ page: '1e300' }, 'page'],
     [{ pageSize: '0' }, 'pageSize'],
     [{ pageSize: '51' }, 'pageSize'],
   ])('rejects %j with OUT_OF_RANGE', async (query, field) => {

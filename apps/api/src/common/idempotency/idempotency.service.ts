@@ -19,6 +19,27 @@ export const IDEMPOTENCY_KEY_FORMAT = /^[A-Za-z0-9_-]{8,128}$/;
 const SCOPE_FORMAT = /^[a-z][a-z_]*(\.[a-z][a-z_]*)+$/;
 const SCOPE_MAX_LENGTH = 64;
 
+/** The isolation level of the caller's transaction, checked first by `begin`. */
+export const TRANSACTION_ISOLATION_SQL = `SELECT current_setting('transaction_isolation') AS isolation`;
+
+/**
+ * `begin` is correct only under Read Committed [PG-ISO]: in Repeatable Read or Serializable a
+ * concurrent duplicate fails with SQLSTATE 40001 instead of replaying, and the follow-up read cannot
+ * see the row that skipped the insert. A stricter level is a programming error, refused before any
+ * write.
+ */
+async function assertReadCommitted(manager: EntityManager): Promise<void> {
+  const rows: unknown = await manager.query(TRANSACTION_ISOLATION_SQL);
+  const isolation = Array.isArray(rows)
+    ? (rows[0] as { isolation?: unknown } | undefined)?.isolation
+    : undefined;
+  if (isolation !== 'read committed') {
+    throw new Error(
+      `IdempotencyService.begin needs a Read Committed transaction, not ${String(isolation)}.`,
+    );
+  }
+}
+
 /**
  * Inserts the key unless one exists for the same (scope, actor, key). With a concurrent
  * uncommitted insert of the same values, PostgreSQL makes this statement wait until that
@@ -116,10 +137,12 @@ export class IdempotencyService {
    * expired and was replaced), `replay` with the stored result when the same request already
    * succeeded, and throws `ApiError` `IDEMPOTENCY_CONFLICT` (409) when the key was used with a
    * different request. A concurrent duplicate waits for the first transaction, then replays; if the
-   * first rolled back, it proceeds.
+   * first rolled back, it proceeds. Refuses (programmer error) a transaction that is not Read
+   * Committed.
    */
   async begin(manager: EntityManager, input: IdempotencyBeginInput): Promise<IdempotencyOutcome> {
     assertKeyRef(input);
+    await assertReadCommitted(manager);
     const where = { scope: input.scope, actorId: input.actorId, key: input.key };
     const requestHash = hashRequest(
       input.method,

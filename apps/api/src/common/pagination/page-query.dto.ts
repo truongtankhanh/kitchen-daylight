@@ -10,6 +10,12 @@ export const DEFAULT_PAGE_SIZE = 20;
  * (reviews 100, selects 20) extends this class and redeclares `pageSize` with its own `@Max`.
  */
 export const MAX_PAGE_SIZE = 50;
+/**
+ * Highest `page` of an offset list (decision 0007 section 6). Keeps `OFFSET` a small safe integer:
+ * without it `?page=1e300` passes `@IsInt` and fails in PostgreSQL as a 500. A list deeper than
+ * this is a cursor list.
+ */
+export const MAX_PAGE = 10_000;
 
 /**
  * Query of every offset list (decision 0007 section 6). A list's query DTO extends it, so the
@@ -23,6 +29,7 @@ export class PageQueryDto implements PageQuery {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(MAX_PAGE)
   page: number = DEFAULT_PAGE;
 
   /** Rows per page. */

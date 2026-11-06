@@ -196,6 +196,14 @@ describe('idempotency_keys (0004_idempotency_keys) and IdempotencyService', () =
     expect((await rows()).map((row) => row.actor_id)).toEqual([ACTOR_A, ACTOR_B]);
   });
 
+  it('refuses a REPEATABLE READ transaction and writes nothing', async () => {
+    await expect(
+      dataSource.transaction('REPEATABLE READ', (manager) => attempt(manager)),
+    ).rejects.toThrow(/Read Committed/);
+
+    expect(await rows()).toEqual([]);
+  });
+
   it('replaces an expired row instead of replaying or rejecting it', async () => {
     await dataSource.transaction((manager) => attempt(manager));
     const [before] = await rows();
