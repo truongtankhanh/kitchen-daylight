@@ -5,9 +5,10 @@ import {
   CliEnvironment,
   DEFAULT_LOG_LEVEL,
   DEFAULT_PORT,
+  DEFAULT_TRUST_PROXY_HOPS,
   ServerEnvironment,
 } from './config.schema.js';
-import type { AppEnv, LogLevel } from './config.schema.js';
+import type { AppEnv, LogLevel, TrustProxyHops } from './config.schema.js';
 
 export type ConfigKind = 'server' | 'cli';
 
@@ -45,6 +46,8 @@ export interface AuthConfig {
 export interface ServerConfig extends CliConfig {
   readonly port: number;
   readonly logLevel: LogLevel;
+  /** Express `trust proxy`, applied in `main.ts` (decision 0007 section 5). */
+  readonly trustProxyHops: TrustProxyHops;
   readonly auth: AuthConfig;
 }
 
@@ -116,6 +119,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
   if (kind === 'server') {
     raw['PORT'] = read(env, 'PORT');
     raw['LOG_LEVEL'] = read(env, 'LOG_LEVEL');
+    raw['TRUST_PROXY_HOPS'] = read(env, 'TRUST_PROXY_HOPS');
     for (const name of AUTH_VARIABLES) {
       raw[name] = read(env, name);
     }
@@ -156,6 +160,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
       database,
       port: instance.PORT ?? DEFAULT_PORT,
       logLevel: instance.LOG_LEVEL ?? DEFAULT_LOG_LEVEL,
+      trustProxyHops: instance.TRUST_PROXY_HOPS ?? DEFAULT_TRUST_PROXY_HOPS,
       auth: toAuthConfig(instance),
     });
   }

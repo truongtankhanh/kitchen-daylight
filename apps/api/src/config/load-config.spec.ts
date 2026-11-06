@@ -79,6 +79,7 @@ describe('loadConfig (server)', () => {
       appEnv: 'dev',
       port: 3001,
       logLevel: 'debug',
+      trustProxyHops: 0,
       database: { url: APP_URL },
       auth: {
         jwt: {
@@ -172,6 +173,44 @@ describe('loadConfig (server)', () => {
     expect(names.sort()).toEqual(
       ['APP_ENV', 'DATABASE_URL_APP', 'LOG_LEVEL', 'PORT', ...REQUIRED_AUTH_VARIABLES].sort(),
     );
+  });
+});
+
+describe('loadConfig (TRUST_PROXY_HOPS)', () => {
+  it.each(['dev', 'test'])('defaults to 0 when missing in %s', (appEnv) => {
+    expect(loadConfig({ ...VALID_SERVER, APP_ENV: appEnv }, 'server').trustProxyHops).toBe(0);
+  });
+
+  it.each(['demo', 'prod'])('is required in %s', (appEnv) => {
+    expect(issues({ ...VALID_SERVER, APP_ENV: appEnv })).toContainEqual({
+      name: 'TRUST_PROXY_HOPS',
+      rule: 'required',
+    });
+  });
+
+  it.each([
+    ['0', 0],
+    ['1', 1],
+  ])('accepts %s', (value, expected) => {
+    expect(loadConfig({ ...VALID_SERVER, TRUST_PROXY_HOPS: value }, 'server').trustProxyHops).toBe(
+      expected,
+    );
+  });
+
+  it.each(['2', '-1', '0.5', 'true', 'leak-check-hops'])(
+    'rejects %s without echoing it',
+    (value) => {
+      const error = failure({ ...VALID_SERVER, TRUST_PROXY_HOPS: value });
+
+      expect(error.issues).toEqual([{ name: 'TRUST_PROXY_HOPS', rule: 'must be 0 or 1' }]);
+      expect(error.message).not.toContain(value);
+    },
+  );
+
+  it('is not read by the CLI', () => {
+    expect(() =>
+      loadConfig({ ...VALID_CLI, TRUST_PROXY_HOPS: 'not-a-number' }, 'cli'),
+    ).not.toThrow();
   });
 });
 

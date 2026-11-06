@@ -1,6 +1,6 @@
 import type { Server } from 'node:http';
 
-import type { INestApplication } from '@nestjs/common';
+import type { INestApplication, ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { Logger } from 'nestjs-pino';
@@ -17,6 +17,8 @@ import { configureApp } from '../../src/configure-app.js';
 export interface TestAppOptions {
   /** Replaces every `Clock` provider of the app (`overrideProvider`). */
   readonly clock?: FixedClock;
+  /** Extra modules, for example the test-only controllers of `test-routes.ts`. */
+  readonly imports?: NonNullable<ModuleMetadata['imports']>;
 }
 
 export interface TestApp {
@@ -47,7 +49,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     'server',
   );
 
-  const builder = Test.createTestingModule({ imports: [AppModule.forRoot(config)] });
+  const builder = Test.createTestingModule({
+    imports: [AppModule.forRoot(config), ...(options.imports ?? [])],
+  });
   if (options.clock !== undefined) {
     builder.overrideProvider(Clock).useValue(options.clock);
   }

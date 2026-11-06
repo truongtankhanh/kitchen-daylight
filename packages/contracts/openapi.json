@@ -141,6 +141,13 @@
         ],
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -177,12 +184,18 @@
             "description": ""
           }
         },
+        "security": [],
         "tags": [
           "Health"
         ]
       }
     }
   },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
   "servers": [],
   "tags": []
 }

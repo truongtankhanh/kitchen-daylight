@@ -14,7 +14,7 @@ import { RefreshTokenService } from './refresh-token.service.js';
  * (A2-T1, A3-T1, A1-T7). Global, because `UsersModule` resolves `UserSessionRevoker` from it: the
  * real revocation replaces the fail-closed binding of A1-T5, and an application that imports
  * `UsersModule` without this module does not boot. Imported once, by `AppModule`, with the
- * validated `config.auth` (A2-T1).
+ * validated `config.auth` (A1-T7: the global `AuthGuard` verifies access tokens with it).
  */
 @Module({})
 export class AuthModule {

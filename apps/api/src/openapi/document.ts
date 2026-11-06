@@ -3,6 +3,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
 
 import { AppModule } from '../app.module.js';
+import { PUBLIC_OPERATION_EXTENSION } from '../common/auth/public.decorator.js';
 import { createEphemeralAuthEnvironment } from '../config/ephemeral-auth-environment.js';
 import { loadConfig } from '../config/load-config.js';
 import { configureApp } from '../configure-app.js';
@@ -10,6 +11,11 @@ import { FieldErrorDto, ProblemDetailsDto } from './problem-details.dto.js';
 
 /** `info.version` of the contract. Set by the release step that writes `openapi.released.json`. */
 export const API_DOCUMENT_VERSION = '0.0.0';
+
+/** Name of the access-token security scheme: `Authorization: Bearer <JWT>` (ADR-0003). */
+export const BEARER_SECURITY_SCHEME = 'bearer';
+
+const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
 
 // Decision 0004 section 1: placeholders only, no secret and no real host. Port 1 on loopback makes
 // any connection attempt fail at once instead of hanging. `AppModule` receives the config as an
@@ -37,15 +43,43 @@ export async function buildOpenApiDocument(): Promise<OpenAPIObject> {
   });
   try {
     configureApp(app);
-    const base = new DocumentBuilder().setTitle('KD API').setVersion(API_DOCUMENT_VERSION).build();
+    // Deny by default in the contract too: every operation needs the bearer token unless
+    // `@Public()` marked it (A1-T7), so the typed client knows which calls send one.
+    const base = new DocumentBuilder()
+      .setTitle('KD API')
+      .setVersion(API_DOCUMENT_VERSION)
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        BEARER_SECURITY_SCHEME,
+      )
+      .addSecurityRequirements(BEARER_SECURITY_SCHEME)
+      .build();
     // The shared error schemas are listed even before a route declares them (decision 0004 section 7).
-    return SwaggerModule.createDocument(app, base, {
+    const document = SwaggerModule.createDocument(app, base, {
       excludeDynamicDefaults: true,
       extraModels: [ProblemDetailsDto, FieldErrorDto],
     });
+    return clearSecurityOfPublicOperations(document);
   } finally {
     await app.close();
   }
+}
+
+/**
+ * An operation marked by `@Public()` declares `security: []`, which overrides the document-wide
+ * bearer requirement (OpenAPI 3, Operation Object); the marker itself is removed.
+ */
+export function clearSecurityOfPublicOperations(document: OpenAPIObject): OpenAPIObject {
+  for (const pathItem of Object.values(document.paths)) {
+    for (const method of HTTP_METHODS) {
+      const operation = pathItem[method] as (Record<string, unknown> & object) | undefined;
+      if (operation?.[PUBLIC_OPERATION_EXTENSION] === true) {
+        delete operation[PUBLIC_OPERATION_EXTENSION];
+        operation['security'] = [];
+      }
+    }
+  }
+  return document;
 }
 
 /** Recursively sorts object keys in code-point order; array order is kept (decision 0004 section 2). */

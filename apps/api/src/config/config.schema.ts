@@ -6,7 +6,16 @@ import { createPrivateKey, createPublicKey } from 'node:crypto';
 import type { KeyObject } from 'node:crypto';
 
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsUrl, Max, Min, registerDecorator } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsUrl,
+  Max,
+  Min,
+  registerDecorator,
+  ValidateIf,
+} from 'class-validator';
 import type { ValidationArguments } from 'class-validator';
 
 // Decision 0005, sections 2, 4 and 5, and decision 0008, section 12 (auth). The auth variables are
@@ -26,6 +35,18 @@ export const PLACEHOLDER_PASSWORD_PREFIX = 'CHANGE_ME_LOCAL';
 const PLACEHOLDER_ALLOWED_IN: readonly AppEnv[] = ['dev', 'test'];
 
 const PORT_RULE = 'must be an integer from 1 to 65535';
+
+/**
+ * Express `trust proxy` hop count (decision 0007 section 5): 0 (no proxy, the Express default) or
+ * 1 (Caddy, the only hop of the Docker `apps` profile, `demo` and `prod`). A higher value would let
+ * a client choose its own address with a forged `X-Forwarded-For`, so it is refused.
+ */
+export const TRUST_PROXY_HOPS_VALUES = [0, 1] as const;
+export type TrustProxyHops = (typeof TRUST_PROXY_HOPS_VALUES)[number];
+export const DEFAULT_TRUST_PROXY_HOPS: TrustProxyHops = 0;
+/** Required where a tier must never start with a silent default, like the `*_ADAPTER` variables. */
+const TRUST_PROXY_HOPS_REQUIRED_IN: readonly AppEnv[] = ['demo', 'prod'];
+const TRUST_PROXY_HOPS_RULE = 'must be 0 or 1';
 
 function hasPlaceholderPassword(value: unknown): boolean {
   if (typeof value !== 'string' || !URL.canParse(value)) {
@@ -246,6 +267,16 @@ export class ServerEnvironment extends CliEnvironment {
   @IsOptional()
   @IsIn(LOG_LEVELS, { message: `must be one of ${LOG_LEVELS.join('|')}` })
   LOG_LEVEL?: LogLevel;
+
+  // Optional in `dev` and `test` (default 0), required in `demo` and `prod`.
+  @ValidateIf(
+    (env: ServerEnvironment) =>
+      env.TRUST_PROXY_HOPS !== undefined || TRUST_PROXY_HOPS_REQUIRED_IN.includes(env.APP_ENV),
+  )
+  @Type(() => Number)
+  @IsInt({ message: TRUST_PROXY_HOPS_RULE })
+  @IsIn(TRUST_PROXY_HOPS_VALUES, { message: TRUST_PROXY_HOPS_RULE })
+  TRUST_PROXY_HOPS?: TrustProxyHops;
 
   @AuthValue(checkPrivateKey)
   JWT_PRIVATE_KEY!: string;

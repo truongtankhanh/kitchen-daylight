@@ -7,16 +7,21 @@ import {
   VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiServiceUnavailableResponse } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
+import { Public } from '../common/auth/public.decorator.js';
 import { HealthReportDto } from './health-report.dto.js';
 import { HealthService } from './health.service.js';
 import type { HealthReport } from './health.service.js';
 
 /**
- * `GET /api/health`, outside `/api/v1` (decision 0005, section 1). The only route of the
- * foundation; no authentication (the first `@Public()` route once the auth guard arrives).
- * 200 when the database answers, 503 with the failing entry otherwise.
+ * `GET /api/health`, outside `/api/v1` (decision 0005, section 1). `@Public()`: no token, and no
+ * security requirement in the OpenAPI document. Never throttled, because the Docker health check
+ * calls it every 5 s from one address. 200 when the database answers, 503 with the failing entry
+ * otherwise.
  */
+@Public()
+@SkipThrottle({ default: true, auth: true })
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(@Inject(HealthService) private readonly health: HealthService) {}

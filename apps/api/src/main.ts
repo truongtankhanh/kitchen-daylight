@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module.js';
@@ -26,8 +27,14 @@ function loadServerConfigOrExit(): ServerConfig {
 async function bootstrap(): Promise<void> {
   const config = loadServerConfigOrExit();
   // Logs written while Nest boots are buffered, then flushed through pino (decision 0005, section 11).
-  const app = await NestFactory.create(AppModule.forRoot(config), { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config), {
+    bufferLogs: true,
+  });
   app.useLogger(app.get(Logger));
+
+  // Client address for throttling (decision 0007 section 5): 0 hops without a proxy, 1 behind
+  // Caddy. Here and not in `configureApp`, because the OpenAPI generator needs no network setting.
+  app.set('trust proxy', config.trustProxyHops);
 
   configureApp(app);
 
