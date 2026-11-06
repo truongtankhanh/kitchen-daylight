@@ -63,6 +63,16 @@ describe('encodeCursor and decodeCursor', () => {
     });
   });
 
+  it('keeps every millisecond of a Date key, the precision of a timestamptz(3) sort key', () => {
+    const boundary = new Date('2026-10-27T03:15:00.123Z');
+
+    const cursor = encodeCursor('next', [boundary, ID], FINGERPRINT);
+    const [decoded] = decodeCursor(cursor, SPEC).key;
+
+    expect(decoded).toBe('2026-10-27T03:15:00.123Z');
+    expect(new Date(String(decoded)).getTime()).toBe(boundary.getTime());
+  });
+
   it('writes the format of decision 0007', () => {
     const cursor = encodeCursor('next', [PLACED_AT, ID], FINGERPRINT);
     expect(JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))).toEqual({

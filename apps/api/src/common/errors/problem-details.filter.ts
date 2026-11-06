@@ -7,6 +7,7 @@ import type { ErrorCode, ErrorStatus, ProblemDetails } from '@kd/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 import { isHealthCheck } from '../logging/logging.module.js';
+import { REQUEST_ID_HEADER, resolveRequestId } from '../logging/request-id.js';
 import { ApiError } from './api-error.js';
 
 export const PROBLEM_CONTENT_TYPE = 'application/problem+json; charset=utf-8';
@@ -40,7 +41,7 @@ const CODE_BY_HTTP_STATUS: Readonly<Partial<Record<number, ErrorCode>>> = {
 
 const INTERNAL_DETAIL = 'An unexpected error occurred.';
 
-type FilterRequest = IncomingMessage & { readonly originalUrl?: string; readonly id?: unknown };
+type FilterRequest = IncomingMessage & { readonly originalUrl?: string; id?: unknown };
 type FilterResponse = ServerResponse & {
   status(code: number): unknown;
   json(body: unknown): unknown;
@@ -119,6 +120,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const http = host.switchToHttp();
     const request = http.getRequest<FilterRequest>();
     const response = http.getResponse<FilterResponse>();
+    ensureRequestId(request, response);
 
     if (exception instanceof HttpException && isHealthCheck(request)) {
       this.reply(response, exception.getStatus(), exception.getResponse());
@@ -144,6 +146,24 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     response.status(status);
     response.json(body);
   }
+}
+
+/**
+ * Every response carries `X-Request-Id` (decision 0007 section 4). pino-http's `genReqId` sets it,
+ * but Nest registers the body parsers before module middleware, so a malformed or oversized body
+ * (and a path outside the `api` prefix) reaches this filter without passing pino-http: the filter
+ * then picks the id with the same rule and records it on the request for the error log.
+ */
+function ensureRequestId(request: FilterRequest, response: FilterResponse): void {
+  if (response.headersSent || response.getHeader(REQUEST_ID_HEADER) !== undefined) {
+    return;
+  }
+  const id =
+    typeof request.id === 'string'
+      ? request.id
+      : resolveRequestId(request.headers?.['x-request-id']);
+  request.id = id;
+  response.setHeader(REQUEST_ID_HEADER, id);
 }
 
 /**

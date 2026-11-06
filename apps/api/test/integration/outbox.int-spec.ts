@@ -117,6 +117,25 @@ describe('outbox_events (0002_outbox_events)', () => {
     expect(await count()).toBe(0);
   });
 
+  it.each([
+    ['type', `type = 'menu.item_deleted'`],
+    ['audience', `audience = 'PUBLIC', branch_id = NULL`],
+    ['branch_id', `branch_id = '01900000-0000-7000-8000-00000000b002'`],
+    ['payload', `payload = '{"itemId":"item-2"}'::jsonb`],
+    ['created_at', 'created_at = now()'],
+  ])('denies kd_app an UPDATE of %s (42501, migration 0005)', async (_column, assignment) => {
+    await app.query(INSERT_SQL, ['BRANCH_STAFF', BRANCH_ID, null]);
+
+    await app.expectPermissionDenied(`UPDATE public.outbox_events SET ${assignment}`);
+
+    const rows = await app.query<{ type: string; audience: string; branch_id: string }>(
+      'SELECT type, audience::text AS audience, branch_id FROM public.outbox_events',
+    );
+    expect(rows).toEqual([
+      { type: 'menu.item_updated', audience: 'BRANCH_STAFF', branch_id: BRANCH_ID },
+    ]);
+  });
+
   it('writes the event with the business transaction when it commits', async () => {
     await dataSource.transaction(async (manager) => {
       await service.add(manager, EVENT);

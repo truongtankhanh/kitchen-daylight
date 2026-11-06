@@ -100,8 +100,7 @@ Read on 2026-11-05. Registry data from read-only `npm view <pkg> version peerDep
 
 | Piece | Location | Notes |
 |---|---|---|
-| Validation pipe | `apps/api/src/common/pipes/` | registered in `configure-app.ts` |
-| problem+json filter, `ErrorCode` mapping | `apps/api/src/common/filters/` | registered in `configure-app.ts`; typed with `ProblemDetails` from `@kd/contracts` |
+| Validation pipe, problem+json filter, `ApiError` | `apps/api/src/common/errors/` | registered as the global providers `APP_PIPE` and `APP_FILTER` of `AppModule`, so the filter injects the logger (amended by A0-T13); typed with `ProblemDetails` and `ErrorCode` from `@kd/contracts` |
 | Logging (request serializer, redaction, request id) | `apps/api/src/common/logging/` | `LoggerModule` wired in `app.module.ts`; `bufferLogs` in `main.ts` (0005 section 11) |
 | Pagination (offset and cursor helpers, `estimatedTotal`) | `apps/api/src/common/pagination/` | section 6 |
 | Time (`BUSINESS_TIME_ZONE`, Vietnam-date helpers) | `apps/api/src/common/time/` | section 8 |
@@ -145,7 +144,7 @@ Answered 2026-11-05, from [S7], [S15] and [S16]:
 - **Why 1 is safe behind Caddy:** Caddy ignores the `X-Forwarded-For` a client sends and writes the address it saw [S15]. With one trusted hop, Express takes the right-most entry of that header [S7], which is the client address Caddy wrote. A value higher than the real hop count would let a client pick its own IP with a forged header and defeat the limiter, so 2 or more is refused.
 - **Why the variable must stay 0 without Caddy:** with 1 and no proxy, a client's forged `X-Forwarded-For` would become `req.ip`. The `apps` profile also publishes the API directly on `127.0.0.1:${API_PORT}` [S16]; that path is loopback-only, so a forged header there can only come from the developer's own machine. In `demo` and `prod` the API port is never published: only Caddy listens (security group 80/443, ADR-0004).
 - **Without the setting**, every request in the `apps` profile would carry Caddy's address, so one client hitting the auth limit would block everyone. The Docker change therefore ships together with the throttling task.
-- The variable is validated by `loadConfig` and added to decision 0005's table, `.env.example` and the schema by the task whose code reads it (0005 section 4 scope rule). It is applied in `main.ts`, not in `configureApp`, because the OpenAPI generator needs no network setting. `X-Powered-By` is disabled at the same place (row 5).
+- The variable is validated by `loadConfig` and added to decision 0005's table, `.env.example` and the schema by the task whose code reads it (0005 section 4 scope rule). It is applied in `main.ts`, not in `configureApp`, because the OpenAPI generator needs no network setting. `X-Powered-By` is disabled in `configureApp` instead (row 5; amended by A0-T13): the integration test app is built with `configureApp` and not with `main.ts`, so it checks the real header.
 - **Text for the owner to apply in the Docker repository** (not edited here; row 20):
   - `compose.apps.yaml`, `api` service, `environment`: `TRUST_PROXY_HOPS: "1"`, with the comment "One proxy hop (Caddy) in front of the API; the API reads the client IP from X-Forwarded-For (kitchen-daylight decision 0007, section 5)."
   - `docs/api-contract.md`, container environment table: "`TRUST_PROXY_HOPS`: `1` behind Caddy, `0` (default) with no proxy; required in `demo` and `prod`."
@@ -156,7 +155,7 @@ Answered 2026-11-05, from [S7], [S15] and [S16]:
 
 **Offset lists:**
 
-- Query `page` (integer ≥ 1, default 1) and `pageSize` (integer 1 to the list's maximum, default 20). Out of range → `400 VALIDATION_FAILED`, `errors[].code = OUT_OF_RANGE`.
+- Query `page` (integer 1 to 10,000, default 1) and `pageSize` (integer 1 to the list's maximum, default 20). Out of range → `400 VALIDATION_FAILED`, `errors[].code = OUT_OF_RANGE`. The page cap keeps `OFFSET` a safe integer (`?page=1e300` is an integer to the validator); a list read deeper than that is a cursor list (amended by A0-T13).
 
 **Maximum page size per list** (row 6). The helper takes the maximum as a constant per list; a list not named here uses 50.
 
@@ -172,6 +171,7 @@ Answered 2026-11-05, from [S7], [S15] and [S16]:
 - Query `cursor` (optional) and `limit` (integer 1 to the list's maximum, default 20; the table above). The mandatory date range of api-outline stays.
 - Response `{ items, nextCursor, prevCursor, estimatedTotal: { value, capped } }`. `nextCursor`/`prevCursor` are `null` at the ends.
 - **Order:** every cursor list sorts by its key columns and ends with `id` (UUIDv7) as the tie-breaker, so the order is total. The page is read with a keyset condition (`(sort, id) < ($1, $2)`), never `OFFSET`.
+- **Timestamp sort keys are `timestamptz(3)`** (section 8): the `pg` driver reads a `timestamptz` as a JavaScript `Date`, which holds milliseconds, and the cursor encodes that `Date`. With microseconds in the column, the keyset condition would skip the rest of the boundary millisecond (descending) or repeat the boundary row (ascending). Amended by A0-T13 after the Phase A0 review.
 - **`estimatedTotal`:** `SELECT count(*) FROM (SELECT 1 FROM … WHERE <same filters> LIMIT 1001) s`; `value = min(count, 1000)`, `capped = count > 1000`.
 
 **Cursor format:** `base64url(JSON)` of `{ "v": 1, "d": "n" | "p", "k": [<sort values>, <id>], "f": "<fingerprint>" }`.
@@ -189,7 +189,7 @@ Answered 2026-11-05, from [S7], [S15] and [S16]:
 ## 8. Ids, time, money and entities
 
 - **Ids:** `id uuid PRIMARY KEY DEFAULT uuidv7()` in every migration; no application generator (0005 contradiction 7). Entity: `@PrimaryColumn({ type: 'uuid', name: 'id', default: () => 'uuidv7()' })`, so inserts omit the id and read it back. That TypeORM 1.1.2 returns the database default on insert is **to confirm** in the integration spec of the first entity.
-- **Time:** every timestamp is `timestamptz`; every database session runs with `TimeZone = 'UTC'`. How the session setting is applied (connection options or a preflight check) is decided and tested by the task that writes it; the mechanism is **not verified** here. Dates with no time of day are `date`.
+- **Time:** every timestamp is `timestamptz`; a timestamp that is a cursor sort key is `timestamptz(3)` (section 6; amended by A0-T13, migration `0006` for `audit_logs.created_at`; api-divergences D-024), and its entity column declares `precision: 3`. Every database session runs with `TimeZone = 'UTC'`. How the session setting is applied (connection options or a preflight check) is decided and tested by the task that writes it; the mechanism is **not verified** here. Dates with no time of day are `date`.
 - **Business time zone: one exported constant**, `BUSINESS_TIME_ZONE = 'Asia/Ho_Chi_Minh'` in `common/time/`. Reason: the zone defines stored values (`business_date`, the date in `order_number`, report days). A per-tier variable could make `test` and `prod` disagree on those values, and a change would need a data migration anyway, never a redeploy with a new value. No environment variable is added. SQL that needs a Vietnam date receives the constant as a parameter (`AT TIME ZONE $n`).
 - **`row_version`:** `integer NOT NULL DEFAULT 1`, incremented by one trigger function written in A0-T5 and attached per table by the migration that creates the table: `BEFORE UPDATE OF <editable columns> … FOR EACH ROW`. The column list leaves out counters changed in the background (for example the branch rating counters), so a recalculation never makes a staff edit stale. Entities map it as a plain `integer` column, never `@VersionColumn`.
 - **Money:** PostgreSQL `integer` (up to 2,147,483,647 VND per stored amount) with `CHECK (… >= 0)`. TypeORM maps `integer` to `number`. `bigint` is not used for stored amounts, because the `pg` driver returns it as a string. Aggregates (`SUM` returns `bigint`) are read through one helper that converts the string and throws unless `Number.isSafeInteger`.
@@ -198,7 +198,7 @@ Answered 2026-11-05, from [S7], [S15] and [S16]:
 
 ## 9. Errors
 
-- **Catalogue:** `@kd/contracts` exports the string-literal unions `ErrorCode` (the `code` member) and `FieldErrorCode` (`errors[].code`) from `src/problem.ts`, and `ProblemDetails<ErrorCode>` uses them (0004 section 7). Each slice adds its codes there in the same pull request as the code that returns them. A name never changes inside `v1`.
+- **Catalogue:** `@kd/contracts` exports the string-literal unions `ErrorCode` (the `code` member) and `FieldErrorCode` (`errors[].code`) from `src/errors.ts`, with `ERROR_STATUS`; `ProblemDetails<ErrorCode>` (`src/problem.ts`) uses them (0004 section 7; file name amended by A0-T13). Each slice adds its codes there in the same pull request as the code that returns them. A name never changes inside `v1`.
 - **Body:** `Content-Type: application/problem+json`; `type: "about:blank"`; `title` = the HTTP reason phrase of `status` [S9]; `status`; `detail` a short English sentence with no personal data, no secret and no value from the request; `code`; `errors[]` only for `VALIDATION_FAILED`; code-specific members as api-outline lists them. Clients branch on `code`, never on `title` or `detail`.
 - **Unknown errors:** `500 INTERNAL_ERROR`, `detail` generic; the stack goes to the log only.
 
@@ -301,3 +301,13 @@ Every later API prompt cites these by section number.
 - **A1-T1 (decision 0008):** token lifetimes, lockout, throttle figures; the email-token `created_at` (row 15).
 - **A12-T1:** `kd_purge_audit_logs()` and its integration spec (section 11, answer 5).
 - **Revisit triggers:** a second API instance (shared rate-limit store first, section 5); a second proxy hop in any tier, for example a CDN or load balancer in front of Caddy (`TRUST_PROXY_HOPS` and its 0-or-1 rule, section 5); a test that needs something Node's `fetch` cannot do (section 2); a stored amount near 2^31 VND (section 8); Vite or Vitest documenting decorator metadata (section 2).
+
+## Amendments before acceptance (A0-T13, 2026-11-06)
+
+The Phase A0 review compared this record with the code built on it. While the record is still proposed, the text above was aligned with the code, and two rules were tightened:
+
+- **Section 3:** the validation pipe and the problem+json filter live in `common/errors/` and are the global providers `APP_PIPE` and `APP_FILTER` of `AppModule`, not `configure-app.ts` registrations: as a provider the filter injects the logger.
+- **Section 5 and row 5:** `X-Powered-By` is disabled in `configureApp` (A0-T3), not in `main.ts`, so the integration app checks the real header. The throttling task no longer owns it; `TRUST_PROXY_HOPS` stays in `main.ts`.
+- **Section 9:** `ErrorCode` and `FieldErrorCode` live in `packages/contracts/src/errors.ts`.
+- **Section 6 (tightened):** `page` is capped at 10,000.
+- **Sections 6 and 8 (tightened):** a timestamp cursor sort key is `timestamptz(3)`; migration `0006_audit_logs_created_at_milliseconds.sql` applies it to `audit_logs.created_at` (api-divergences D-024).

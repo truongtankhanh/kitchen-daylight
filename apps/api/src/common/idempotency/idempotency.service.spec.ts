@@ -10,6 +10,7 @@ import {
   IDEMPOTENCY_RETENTION_HOURS,
   IdempotencyService,
   INSERT_KEY_SQL,
+  TRANSACTION_ISOLATION_SQL,
 } from './idempotency.service.js';
 import type { IdempotencyBeginInput } from './idempotency.service.js';
 import { hashRequest } from './request-hash.js';
@@ -43,6 +44,8 @@ function fakeManager() {
   const rows: Row[] = [];
   let ids = 0;
   let hideNextRead = false;
+  let isolation = 'read committed';
+  let insertError: Error | undefined;
 
   const matches = (row: Row, where: Partial<Row>): boolean =>
     Object.entries(where).every(([field, value]) => row[field as keyof Row] === value);
@@ -56,8 +59,14 @@ function fakeManager() {
     return Promise.resolve(rows.find((row) => matches(row, where)) ?? null);
   });
 
-  const query = vi.fn((sql: string, params: unknown[]) => {
+  const query = vi.fn((sql: string, params: unknown[] = []) => {
+    if (sql === TRANSACTION_ISOLATION_SQL) {
+      return Promise.resolve([{ isolation }]);
+    }
     expect(sql).toBe(INSERT_KEY_SQL);
+    if (insertError !== undefined) {
+      return Promise.reject(insertError);
+    }
     const [scope, actorId, key, requestHash, createdAt, expiresAt] = params as [
       string,
       string,
@@ -118,6 +127,12 @@ function fakeManager() {
     calls: () => findOneBy.mock.calls.length + query.mock.calls.length + update.mock.calls.length,
     hideNextRead: () => {
       hideNextRead = true;
+    },
+    setIsolation: (level: string) => {
+      isolation = level;
+    },
+    failInsert: (error: Error) => {
+      insertError = error;
     },
   };
 }
@@ -304,11 +319,24 @@ describe('IdempotencyService.begin', () => {
   });
 
   it('lets a failed insert reach the caller', async () => {
-    const { service, manager, query } = setup();
-    query.mockRejectedValueOnce(new Error('insert failed'));
+    const { service, manager, failInsert } = setup();
+    failInsert(new Error('insert failed'));
 
     await expect(service.begin(manager, begin())).rejects.toThrow('insert failed');
   });
+
+  it.each(['repeatable read', 'serializable'])(
+    'refuses a %s transaction before reading or writing a key',
+    async (level) => {
+      const { service, manager, rows, query, setIsolation } = setup();
+      setIsolation(level);
+
+      await expect(service.begin(manager, begin())).rejects.toThrow(/Read Committed/);
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query).toHaveBeenCalledWith(TRANSACTION_ISOLATION_SQL);
+      expect(rows).toHaveLength(0);
+    },
+  );
 });
 
 describe('IdempotencyService.complete', () => {

@@ -22,7 +22,11 @@ const FIELDS = ['d', 'f', 'k', 'v'];
 export type CursorKeyType = 'string' | 'number' | 'timestamp' | 'uuid';
 /** A decoded key value: `timestamp` stays the ISO string it was encoded as. */
 export type CursorKeyValue = string | number;
-/** A value read from a row; a `Date` is encoded as its ISO string. */
+/**
+ * A value read from a row; a `Date` is encoded as its ISO string, to the millisecond. A timestamp
+ * sort key therefore lives in a `timestamptz(3)` column (decision 0007 section 8): with
+ * microseconds, `(col, id) < ($1, $2)` would skip the rest of the boundary millisecond.
+ */
 export type CursorKeyInput = string | number | Date;
 export type CursorDirection = 'next' | 'prev';
 

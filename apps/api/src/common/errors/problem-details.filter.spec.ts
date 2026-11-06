@@ -62,16 +62,27 @@ function fakeResponse(initial: Record<string, unknown> = {}): FakeResponse {
   return response;
 }
 
+interface RunOptions {
+  method?: string;
+  url?: string;
+  /** Response headers already set before the filter runs. */
+  headers?: Record<string, unknown>;
+  /** `req.id`; `null` for a request that never passed pino-http. Default `req-1`. */
+  requestId?: string | null;
+  requestHeaders?: Record<string, string>;
+}
+
 function run(
   exception: unknown,
-  options: { method?: string; url?: string; headers?: Record<string, unknown> } = {},
-): { response: FakeResponse; error: ReturnType<typeof vi.fn> } {
+  options: RunOptions = {},
+): { response: FakeResponse; error: ReturnType<typeof vi.fn>; request: { id?: unknown } } {
   const error = vi.fn();
   const logger = { setContext: vi.fn(), error } as unknown as PinoLogger;
-  const request = {
+  const request: { method: string; url: string; headers: Record<string, string>; id?: unknown } = {
     method: options.method ?? 'GET',
     url: options.url ?? '/api/v1/branches',
-    id: 'req-1',
+    headers: options.requestHeaders ?? {},
+    ...(options.requestId === null ? {} : { id: options.requestId ?? 'req-1' }),
   };
   const response = fakeResponse(options.headers);
   const host = {
@@ -79,7 +90,7 @@ function run(
   } as unknown as ArgumentsHost;
 
   new ProblemDetailsFilter(logger).catch(exception, host);
-  return { response, error };
+  return { response, error, request };
 }
 
 /** Shaped like TypeORM's `QueryFailedError` (fictional values). */
@@ -239,6 +250,54 @@ describe('ProblemDetailsFilter', () => {
     expect(error).toHaveBeenCalledOnce();
   });
 
+  describe('X-Request-Id (decision 0007 section 4)', () => {
+    const INCOMING = '0B1B6D0E-5C1D-4A7A-9B43-3F1A2C6D9E11';
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+    it('keeps the header that pino-http already set', () => {
+      const { response } = run(new NotFoundException(), {
+        headers: { 'X-Request-Id': 'from-pino' },
+      });
+
+      expect(response.getHeader('X-Request-Id')).toBe('from-pino');
+    });
+
+    it('echoes the request id when the header is missing', () => {
+      expect(run(new NotFoundException()).response.getHeader('X-Request-Id')).toBe('req-1');
+    });
+
+    it('picks the id itself when the request never passed pino-http (body-parser error)', () => {
+      const syntaxError = Object.assign(new SyntaxError('Unexpected token'), {
+        type: 'entity.parse.failed',
+        status: 400,
+      });
+
+      const { response, request } = run(syntaxError, {
+        method: 'POST',
+        requestId: null,
+        requestHeaders: { 'x-request-id': INCOMING },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.getHeader('X-Request-Id')).toBe(INCOMING.toLowerCase());
+      expect(request.id).toBe(INCOMING.toLowerCase());
+    });
+
+    it('replaces an incoming id that is not a UUID, and logs with the chosen id', () => {
+      const { response, error } = run(databaseError(), {
+        requestId: null,
+        requestHeaders: { 'x-request-id': 'not-a-uuid token=abc' },
+      });
+
+      const id = response.getHeader('X-Request-Id');
+      expect(id).toMatch(UUID);
+      expect(error).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: id }),
+        'unexpected error',
+      );
+    });
+  });
+
   it('writes nothing once the headers are sent', () => {
     const response = fakeResponse();
     response.headersSent = true;
@@ -254,6 +313,7 @@ describe('ProblemDetailsFilter', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toBeUndefined();
+    expect(response.getHeader('X-Request-Id')).toBeUndefined();
   });
 
   describe('GET /api/health exemption', () => {
