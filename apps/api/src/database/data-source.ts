@@ -5,9 +5,15 @@ import type { PostgresDataSourceOptions } from 'typeorm/driver/postgres/Postgres
 import { IdempotencyKeyRecord } from '../common/idempotency/entities/idempotency-key.entity.js';
 import type { CliConfig } from '../config/load-config.js';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity.js';
+import { AuthIdentity } from '../modules/auth/entities/auth-identity.entity.js';
+import { EmailToken } from '../modules/auth/entities/email-token.entity.js';
+import { MfaCredential } from '../modules/auth/entities/mfa-credential.entity.js';
+import { RefreshToken } from '../modules/auth/entities/refresh-token.entity.js';
 import { Branch } from '../modules/branches/entities/branch.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
+import { ConsentDocument } from '../modules/users/entities/consent-document.entity.js';
 import { StaffBranch } from '../modules/users/entities/staff-branch.entity.js';
+import { UserConsent } from '../modules/users/entities/user-consent.entity.js';
 import { User } from '../modules/users/entities/user.entity.js';
 
 /** `apps/api/migrations/` from `src/database/` and `dist/database/` alike; `/app/migrations/` in the image. */
@@ -26,7 +32,20 @@ export function createDataSourceOptions(config: CliConfig): PostgresDataSourceOp
     migrationsRun: false,
     migrations: [],
     // Listed explicitly, never globbed.
-    entities: [OutboxEvent, AuditLog, IdempotencyKeyRecord, Branch, User, StaffBranch],
+    entities: [
+      OutboxEvent,
+      AuditLog,
+      IdempotencyKeyRecord,
+      Branch,
+      User,
+      StaffBranch,
+      AuthIdentity,
+      RefreshToken,
+      EmailToken,
+      MfaCredential,
+      ConsentDocument,
+      UserConsent,
+    ],
     logging: false,
   };
 }
