@@ -1,6 +1,247 @@
 {
   "components": {
     "schemas": {
+      "Address": {
+        "properties": {
+          "addressLine": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deliveryNote": {
+            "description": "At most 200 characters; `null` when none.",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The path parameter of `/me/addresses/{id}`.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "isDefault": {
+            "description": "At most one address of the customer is the default.",
+            "type": "boolean"
+          },
+          "label": {
+            "description": "The customer's name for the address (for example `Nhà`).",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "phone": {
+            "description": "E.164 (for example `+84901234567`).",
+            "type": "string"
+          },
+          "provinceCode": {
+            "description": "Official province code from `GET /api/v1/provinces`.",
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "wardCode": {
+            "description": "Official ward code from `GET /api/v1/wards`, inside `provinceCode`; `null` when not chosen.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "wardCode",
+          "location",
+          "deliveryNote",
+          "createdAt",
+          "updatedAt",
+          "label",
+          "recipientName",
+          "phone",
+          "addressLine",
+          "provinceCode",
+          "isDefault"
+        ],
+        "type": "object"
+      },
+      "AddressCreateDto": {
+        "properties": {
+          "addressLine": {
+            "description": "Street, number and building, 1 to 200 characters.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "deliveryNote": {
+            "description": "At most 200 characters (`TOO_LONG`; mobile G46). Missing, `null` or blank: no note.",
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "isDefault": {
+            "description": "`true` makes this the default and clears the previous one. Default `false`.",
+            "type": "boolean"
+          },
+          "label": {
+            "description": "The customer's name for the address (for example `Nhà`), 1 to 40 characters.",
+            "maxLength": 40,
+            "type": "string"
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AddressLocationInputDto"
+              }
+            ],
+            "description": "The pin the customer dropped; required (no geocoding for customers, mobile G48)."
+          },
+          "phone": {
+            "description": "A Vietnamese mobile number in national (`0…`) or international (`+84…`, `84…`) form, stored in\nE.164; anything else is `INVALID_PHONE`.",
+            "example": "0901234567",
+            "type": "string"
+          },
+          "provinceCode": {
+            "description": "Official code from `GET /api/v1/provinces`; an unknown one is `NOT_FOUND` on this field.",
+            "example": "79",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "recipientName": {
+            "description": "1 to 60 characters.",
+            "maxLength": 60,
+            "type": "string"
+          },
+          "wardCode": {
+            "description": "Official code from `GET /api/v1/wards?provinceCode=`; unknown or outside `provinceCode` is\n`NOT_FOUND` on this field. Missing or `null`: no ward.",
+            "example": "26743",
+            "maxLength": 16,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "provinceCode",
+          "location",
+          "label",
+          "recipientName",
+          "addressLine"
+        ],
+        "type": "object"
+      },
+      "AddressLocationInputDto": {
+        "properties": {
+          "lat": {
+            "description": "Latitude, -90 to 90.",
+            "example": 10.7769,
+            "format": "double",
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "lng": {
+            "description": "Longitude, -180 to 180.",
+            "example": 106.7009,
+            "format": "double",
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "type": "object"
+      },
+      "AddressPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            },
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageSize": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object"
+      },
+      "AddressUpdateDto": {
+        "properties": {
+          "addressLine": {
+            "description": "1 to 200 characters.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "deliveryNote": {
+            "description": "At most 200 characters; `null` or blank clears it.",
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "isDefault": {
+            "description": "`true` makes this the default and clears the previous one; `false` unsets it.",
+            "type": "boolean"
+          },
+          "label": {
+            "description": "1 to 40 characters.",
+            "maxLength": 40,
+            "type": "string"
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AddressLocationInputDto"
+              }
+            ],
+            "description": "A new pin; `null` is refused (the pin is required)."
+          },
+          "phone": {
+            "description": "National or international form, stored in E.164; anything else is `INVALID_PHONE`.",
+            "example": "0901234567",
+            "type": "string"
+          },
+          "provinceCode": {
+            "description": "Official province code. The ward kept or sent must belong to it (`NOT_FOUND` on `wardCode`\notherwise).",
+            "example": "79",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "recipientName": {
+            "description": "1 to 60 characters.",
+            "maxLength": 60,
+            "type": "string"
+          },
+          "wardCode": {
+            "description": "Official ward code inside the province, or `null` to clear.",
+            "example": "26743",
+            "maxLength": 16,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AuthSession": {
         "properties": {
           "accessToken": {
@@ -150,6 +391,29 @@
         },
         "required": [
           "email"
+        ],
+        "type": "object"
+      },
+      "GeoPoint": {
+        "properties": {
+          "lat": {
+            "example": 10.7769,
+            "format": "double",
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "lng": {
+            "example": 106.7009,
+            "format": "double",
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
         ],
         "type": "object"
       },
@@ -1283,6 +1547,353 @@
         },
         "tags": [
           "Me"
+        ]
+      }
+    },
+    "/api/v1/me/addresses": {
+      "get": {
+        "operationId": "AddressesController_list_v1",
+        "parameters": [
+          {
+            "description": "Page number, from 1.",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Rows per page.",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressPage"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "The default address first, then the newest (mobile G99).",
+        "tags": [
+          "Addresses"
+        ]
+      },
+      "post": {
+        "operationId": "AddressesController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Address"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "More than the saved-address cap is `VALIDATION_FAILED` with `LIMIT_REACHED` on the field\n`address`; an unknown province or ward is `NOT_FOUND` on `provinceCode` or `wardCode`.",
+        "tags": [
+          "Addresses"
+        ]
+      }
+    },
+    "/api/v1/me/addresses/{id}": {
+      "delete": {
+        "operationId": "AddressesController_remove_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Soft delete. Deleting the default chooses no other one (mobile G101); there is no restore, the\napp holds the call for \"Hoàn tác\" (mobile G100).",
+        "tags": [
+          "Addresses"
+        ]
+      },
+      "get": {
+        "operationId": "AddressesController_get_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Address"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "tags": [
+          "Addresses"
+        ]
+      },
+      "patch": {
+        "operationId": "AddressesController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Address"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "tags": [
+          "Addresses"
         ]
       }
     },

@@ -182,6 +182,47 @@ export interface paths {
         patch: operations["MeController_updateProfile_v1"];
         trace?: never;
     };
+    "/api/v1/me/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The default address first, then the newest (mobile G99). */
+        get: operations["AddressesController_list_v1"];
+        put?: never;
+        /**
+         * More than the saved-address cap is `VALIDATION_FAILED` with `LIMIT_REACHED` on the field
+         *     `address`; an unknown province or ward is `NOT_FOUND` on `provinceCode` or `wardCode`.
+         */
+        post: operations["AddressesController_create_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/addresses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AddressesController_get_v1"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft delete. Deleting the default chooses no other one (mobile G101); there is no restore, the
+         *     app holds the call for "Hoàn tác" (mobile G100).
+         */
+        delete: operations["AddressesController_remove_v1"];
+        options?: never;
+        head?: never;
+        patch: operations["AddressesController_update_v1"];
+        trace?: never;
+    };
     "/api/v1/me/consents": {
         parameters: {
             query?: never;
@@ -284,6 +325,113 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Address: {
+            addressLine: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description At most 200 characters; `null` when none. */
+            deliveryNote: string | null;
+            /**
+             * Format: uuid
+             * @description The path parameter of `/me/addresses/{id}`.
+             */
+            id: string;
+            /** @description At most one address of the customer is the default. */
+            isDefault: boolean;
+            /** @description The customer's name for the address (for example `Nhà`). */
+            label: string;
+            location: components["schemas"]["GeoPoint"];
+            /** @description E.164 (for example `+84901234567`). */
+            phone: string;
+            /** @description Official province code from `GET /api/v1/provinces`. */
+            provinceCode: string;
+            recipientName: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Official ward code from `GET /api/v1/wards`, inside `provinceCode`; `null` when not chosen. */
+            wardCode: string | null;
+        };
+        AddressCreateDto: {
+            /** @description Street, number and building, 1 to 200 characters. */
+            addressLine: string;
+            /** @description At most 200 characters (`TOO_LONG`; mobile G46). Missing, `null` or blank: no note. */
+            deliveryNote?: string | null;
+            /** @description `true` makes this the default and clears the previous one. Default `false`. */
+            isDefault?: boolean;
+            /** @description The customer's name for the address (for example `Nhà`), 1 to 40 characters. */
+            label: string;
+            /** @description The pin the customer dropped; required (no geocoding for customers, mobile G48). */
+            location: components["schemas"]["AddressLocationInputDto"];
+            /**
+             * @description A Vietnamese mobile number in national (`0…`) or international (`+84…`, `84…`) form, stored in
+             *     E.164; anything else is `INVALID_PHONE`.
+             * @example 0901234567
+             */
+            phone: string;
+            /**
+             * @description Official code from `GET /api/v1/provinces`; an unknown one is `NOT_FOUND` on this field.
+             * @example 79
+             */
+            provinceCode: string;
+            /** @description 1 to 60 characters. */
+            recipientName: string;
+            /**
+             * @description Official code from `GET /api/v1/wards?provinceCode=`; unknown or outside `provinceCode` is
+             *     `NOT_FOUND` on this field. Missing or `null`: no ward.
+             * @example 26743
+             */
+            wardCode?: string | null;
+        };
+        AddressLocationInputDto: {
+            /**
+             * Format: double
+             * @description Latitude, -90 to 90.
+             * @example 10.7769
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @description Longitude, -180 to 180.
+             * @example 106.7009
+             */
+            lng: number;
+        };
+        AddressPage: {
+            items: components["schemas"]["Address"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        AddressUpdateDto: {
+            /** @description 1 to 200 characters. */
+            addressLine?: string;
+            /** @description At most 200 characters; `null` or blank clears it. */
+            deliveryNote?: string | null;
+            /** @description `true` makes this the default and clears the previous one; `false` unsets it. */
+            isDefault?: boolean;
+            /** @description 1 to 40 characters. */
+            label?: string;
+            /** @description A new pin; `null` is refused (the pin is required). */
+            location?: components["schemas"]["AddressLocationInputDto"];
+            /**
+             * @description National or international form, stored in E.164; anything else is `INVALID_PHONE`.
+             * @example 0901234567
+             */
+            phone?: string;
+            /**
+             * @description Official province code. The ward kept or sent must belong to it (`NOT_FOUND` on `wardCode`
+             *     otherwise).
+             * @example 79
+             */
+            provinceCode?: string;
+            /** @description 1 to 60 characters. */
+            recipientName?: string;
+            /**
+             * @description Official ward code inside the province, or `null` to clear.
+             * @example 26743
+             */
+            wardCode?: string | null;
+        };
         AuthSession: {
             /** @description ES256 JWT for `Authorization: Bearer`. */
             accessToken: string;
@@ -325,6 +473,18 @@ export interface components {
              * @description Trimmed before validation, as at registration.
              */
             email: string;
+        };
+        GeoPoint: {
+            /**
+             * Format: double
+             * @example 10.7769
+             */
+            lat: number;
+            /**
+             * Format: double
+             * @example 106.7009
+             */
+            lng: number;
         };
         HealthChecks: {
             /** @enum {string} */
@@ -1054,6 +1214,280 @@ export interface operations {
             };
             /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddressesController_list_v1: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressPage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddressesController_create_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressCreateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Address"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddressesController_get_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Address"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddressesController_remove_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddressesController_update_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Address"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
