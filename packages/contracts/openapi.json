@@ -234,6 +234,44 @@
         ],
         "type": "object"
       },
+      "Province": {
+        "properties": {
+          "code": {
+            "description": "Official code, 2 digits, as text (for example `79`).",
+            "example": "79",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "`names.vi_full`: the official full name (for example `Thành phố Hồ Chí Minh`).",
+            "type": "string"
+          },
+          "name": {
+            "description": "`names.vi`: the short name without the type prefix (for example `Hồ Chí Minh`).",
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProvinceType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "type",
+          "name",
+          "fullName"
+        ],
+        "type": "object"
+      },
+      "ProvinceType": {
+        "enum": [
+          "CITY",
+          "PROVINCE"
+        ],
+        "type": "string"
+      },
       "RefreshTokenDto": {
         "properties": {
           "refreshToken": {
@@ -344,6 +382,45 @@
           "code"
         ],
         "type": "object"
+      },
+      "Ward": {
+        "properties": {
+          "code": {
+            "description": "Official code, 5 digits, as text, unique across the country (for example `26743`).",
+            "example": "26743",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "`names.vi_full`: the official full name (for example `Phường Bến Thành`).",
+            "type": "string"
+          },
+          "name": {
+            "description": "`names.vi`: the short name without the type prefix (for example `Bến Thành`).",
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WardType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "type",
+          "name",
+          "fullName"
+        ],
+        "type": "object"
+      },
+      "WardType": {
+        "enum": [
+          "WARD",
+          "COMMUNE",
+          "SPECIAL_ZONE"
+        ],
+        "type": "string"
       }
     },
     "securitySchemes": {
@@ -896,6 +973,141 @@
         "security": [],
         "tags": [
           "Auth"
+        ]
+      }
+    },
+    "/api/v1/provinces": {
+      "get": {
+        "operationId": "GeoController_listProvinces_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Province"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=86400",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Strong tag of the body; send it back as `If-None-Match`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (`If-None-Match` matched)."
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "Geo"
+        ]
+      }
+    },
+    "/api/v1/wards": {
+      "get": {
+        "operationId": "GeoController_listWards_v1",
+        "parameters": [
+          {
+            "description": "Official province code from `GET /api/v1/provinces` (for example `79`).",
+            "in": "query",
+            "name": "provinceCode",
+            "required": true,
+            "schema": {
+              "maxLength": 16,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Ward"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=86400",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Strong tag of the body; send it back as `If-None-Match`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (`If-None-Match` matched)."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "Geo"
         ]
       }
     }

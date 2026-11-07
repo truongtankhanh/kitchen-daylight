@@ -14,6 +14,7 @@ import type { ServerConfig } from './config/load-config.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { GeoModule } from './modules/geo/geo.module.js';
 
 @Module({})
 export class AppModule {
@@ -28,6 +29,7 @@ export class AppModule {
         AuthModule.forRoot(config.auth),
         ThrottlingModule,
         HealthModule,
+        GeoModule,
       ],
       // Global pipe and filter as providers, so the filter can inject the logger (decision 0007 section 3).
       // The global guards run in the order listed here: throttler, authentication, roles (A1-T7).

@@ -166,6 +166,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provinces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GeoController_listProvinces_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GeoController_listWards_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -233,6 +265,20 @@ export interface components {
             title: string;
             type: string;
         };
+        Province: {
+            /**
+             * @description Official code, 2 digits, as text (for example `79`).
+             * @example 79
+             */
+            code: string;
+            /** @description `names.vi_full`: the official full name (for example `Thành phố Hồ Chí Minh`). */
+            fullName: string;
+            /** @description `names.vi`: the short name without the type prefix (for example `Hồ Chí Minh`). */
+            name: string;
+            type: components["schemas"]["ProvinceType"];
+        };
+        /** @enum {string} */
+        ProvinceType: "CITY" | "PROVINCE";
         RefreshTokenDto: {
             /** @description The opaque refresh token from the last sign-in or refresh. */
             refreshToken: string;
@@ -283,6 +329,20 @@ export interface components {
             /** @description The 6-digit code from the mail; spaces are ignored. */
             code: string;
         };
+        Ward: {
+            /**
+             * @description Official code, 5 digits, as text, unique across the country (for example `26743`).
+             * @example 26743
+             */
+            code: string;
+            /** @description `names.vi_full`: the official full name (for example `Phường Bến Thành`). */
+            fullName: string;
+            /** @description `names.vi`: the short name without the type prefix (for example `Bến Thành`). */
+            name: string;
+            type: components["schemas"]["WardType"];
+        };
+        /** @enum {string} */
+        WardType: "WARD" | "COMMUNE" | "SPECIAL_ZONE";
     };
     responses: never;
     parameters: never;
@@ -737,6 +797,105 @@ export interface operations {
             };
             /** @description ALREADY_EXISTS */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GeoController_listProvinces_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description public, max-age=86400 */
+                    "Cache-Control"?: string;
+                    /** @description Strong tag of the body; send it back as `If-None-Match`. */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Province"][];
+                };
+            };
+            /** @description Not modified (`If-None-Match` matched). */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GeoController_listWards_v1: {
+        parameters: {
+            query: {
+                /** @description Official province code from `GET /api/v1/provinces` (for example `79`). */
+                provinceCode: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description public, max-age=86400 */
+                    "Cache-Control"?: string;
+                    /** @description Strong tag of the body; send it back as `If-None-Match`. */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ward"][];
+                };
+            };
+            /** @description Not modified (`If-None-Match` matched). */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

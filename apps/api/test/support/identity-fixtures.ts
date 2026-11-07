@@ -13,6 +13,15 @@ const INSERT_USERS_SQL = `INSERT INTO public.users (id, email, display_name, loc
 SELECT id, 'fixture-user-' || n || '@kd.example', 'Người dùng mẫu', 'vi', 'CUSTOMER', 'ACTIVE'
   FROM unnest($1::uuid[]) WITH ORDINALITY AS t(id, n)`;
 
+/**
+ * The province the placeholder branches sit in: `branches.province_code` references `provinces`
+ * since migration 0009 (A2-T3). Fictional names; written as `kd_migrator`, because `kd_app` only
+ * reads `provinces`. A no-op when the row is there.
+ */
+export const INSERT_FIXTURE_PROVINCE_SQL = `INSERT INTO public.provinces (code, names, type)
+VALUES ('79', '{"vi": "Mẫu", "vi_full": "Thành phố Mẫu"}', 'CITY')
+ON CONFLICT (code) DO NOTHING`;
+
 const INSERT_BRANCHES_SQL = `INSERT INTO public.branches
   (id, code, slug, name, address_line, province_code, location, phone, status, accepts_pickup,
    accepts_delivery, accepts_reservations, default_prep_minutes, order_cutoff_minutes,
@@ -40,6 +49,7 @@ export async function insertIdentityFixtures(ids: IdentityFixtureIds): Promise<v
       await dataSource.query(INSERT_USERS_SQL, [userIds]);
     }
     if (branchIds.length > 0) {
+      await dataSource.query(INSERT_FIXTURE_PROVINCE_SQL);
       await dataSource.query(INSERT_BRANCHES_SQL, [branchIds]);
     }
   });

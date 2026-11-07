@@ -7,6 +7,8 @@ import { EmailToken } from '../modules/auth/entities/email-token.entity.js';
 import { MfaCredential } from '../modules/auth/entities/mfa-credential.entity.js';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity.js';
 import { Branch } from '../modules/branches/entities/branch.entity.js';
+import { Province } from '../modules/geo/entities/province.entity.js';
+import { Ward } from '../modules/geo/entities/ward.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
 import { ConsentDocument } from '../modules/users/entities/consent-document.entity.js';
 import { StaffBranch } from '../modules/users/entities/staff-branch.entity.js';
@@ -40,6 +42,8 @@ describe('createDataSourceOptions', () => {
         MfaCredential,
         ConsentDocument,
         UserConsent,
+        Province,
+        Ward,
       ],
     });
   });

@@ -12,6 +12,7 @@ import {
   openRoleClient,
 } from '../support/app-role.js';
 import type { RoleClient } from '../support/app-role.js';
+import { INSERT_FIXTURE_PROVINCE_SQL } from '../support/identity-fixtures.js';
 import { truncateAll } from '../support/truncate.js';
 
 // Migration 0007_users_branches_staff.sql (A1-T3). Fictional data only.
@@ -110,6 +111,8 @@ describe('users, branches and staff_branches (migration 0007)', () => {
 
   beforeEach(async () => {
     await truncateAll();
+    // `branches.province_code` references `provinces` since migration 0009 (A2-T3).
+    await migrator.query(INSERT_FIXTURE_PROVINCE_SQL);
   });
 
   describe('branches CHECKs', () => {
