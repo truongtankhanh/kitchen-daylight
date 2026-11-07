@@ -4,8 +4,11 @@ import { DataSource } from 'typeorm';
 import { describe, expect, it } from 'vitest';
 
 import { Clock, SystemClock } from '../../common/time/clock.js';
+import { RefreshTokenService } from '../auth/refresh-token.service.js';
+import { MeService } from './me.service.js';
 import { PasswordHasher } from './password-hasher.js';
 import { UserSessionRevoker, UsersService } from './users.service.js';
+import { SessionsService } from './sessions.service.js';
 import { UsersModule } from './users.module.js';
 
 /** Stands in for the global `DataSource` that TypeORM registers in the application. */
@@ -22,11 +25,17 @@ class StubRevoker extends UserSessionRevoker {
   }
 }
 
-/** Stands in for the global `AuthModule`, which exports the real `UserSessionRevoker`. */
+/**
+ * Stands in for the global `AuthModule`, which exports the real `UserSessionRevoker` and
+ * `RefreshTokenService` (used by `SessionsService`, A2-T4).
+ */
 @Global()
 @Module({
-  providers: [{ provide: UserSessionRevoker, useClass: StubRevoker }],
-  exports: [UserSessionRevoker],
+  providers: [
+    { provide: UserSessionRevoker, useClass: StubRevoker },
+    { provide: RefreshTokenService, useValue: {} },
+  ],
+  exports: [UserSessionRevoker, RefreshTokenService],
 })
 class StubAuthModule {}
 
@@ -38,6 +47,8 @@ describe('UsersModule', () => {
 
     expect(moduleRef.get(UsersService)).toBeInstanceOf(UsersService);
     expect(moduleRef.get(PasswordHasher)).toBeInstanceOf(PasswordHasher);
+    expect(moduleRef.get(MeService)).toBeInstanceOf(MeService);
+    expect(moduleRef.get(SessionsService)).toBeInstanceOf(SessionsService);
     expect(moduleRef.get(UserSessionRevoker, { strict: false })).toBeInstanceOf(StubRevoker);
     expect(moduleRef.get(Clock, { strict: false })).toBeInstanceOf(SystemClock);
 

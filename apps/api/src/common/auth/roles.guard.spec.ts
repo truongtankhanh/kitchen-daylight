@@ -13,6 +13,7 @@ import { httpContext, requestOn } from './testing.js';
 import type { FakeRoute } from './testing.js';
 
 const USER_ID = '01930000-0000-7000-8000-00000000a2a1';
+const SESSION_ID = '01930000-0000-7000-8000-00000000a2b1';
 
 @Controller('routes')
 class RoutesController {
@@ -63,7 +64,7 @@ const guard = new RolesGuard(new Reflector());
 
 function signedIn(role: UserRole, routePath = '/api/v1/routes', rawPath?: string): GuardedRequest {
   return requestOn(routePath, {
-    user: { id: USER_ID, role },
+    user: { id: USER_ID, role, sessionId: SESSION_ID },
     ...(rawPath === undefined ? {} : { path: rawPath }),
   });
 }
@@ -137,7 +138,7 @@ describe('RolesGuard decision table', () => {
     const request: GuardedRequest = {
       headers: {},
       path: '/api/v1/admin/orders',
-      user: { id: USER_ID, role: 'ADMIN' },
+      user: { id: USER_ID, role: 'ADMIN', sessionId: SESSION_ID },
     };
 
     expect(decide(CUSTOMER_ROUTE, request)).toBe('FORBIDDEN');

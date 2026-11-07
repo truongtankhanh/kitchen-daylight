@@ -30,9 +30,9 @@ export type ErrorCatalogueLength = Assert<Equal<(typeof ERROR_CODES)['length'], 
 
 /**
  * The 29 field-level codes of the outline plus `INVALID` (api-divergences D-001),
- * `INVALID_FORMAT` (decision 0007 row 14, D-022) and `TOO_SHORT` (D-037).
+ * `INVALID_FORMAT` (decision 0007 row 14, D-022), `TOO_SHORT` (D-037) and `NOT_FOUND` (D-061).
  */
-export type FieldCatalogueLength = Assert<Equal<(typeof FIELD_ERROR_CODES)['length'], 32>>;
+export type FieldCatalogueLength = Assert<Equal<(typeof FIELD_ERROR_CODES)['length'], 33>>;
 
 /** The unions are exactly the arrays. */
 export type ErrorCodeIsTheArray = Assert<Equal<ErrorCode, (typeof ERROR_CODES)[number]>>;

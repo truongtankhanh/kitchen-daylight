@@ -15,6 +15,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { GeoModule } from './modules/geo/geo.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 
 @Module({})
 export class AppModule {
@@ -30,6 +31,8 @@ export class AppModule {
         ThrottlingModule,
         HealthModule,
         GeoModule,
+        // `/me` (A2-T4). Also imported by `AuthModule`; Nest keeps one instance.
+        UsersModule,
       ],
       // Global pipe and filter as providers, so the filter can inject the logger (decision 0007 section 3).
       // The global guards run in the order listed here: throttler, authentication, roles (A1-T7).

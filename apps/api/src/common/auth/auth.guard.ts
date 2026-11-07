@@ -45,7 +45,8 @@ export function bearerTokenOf(header: string | undefined): string | undefined {
  * - No header, or not `Bearer <token>`: `401 UNAUTHENTICATED`.
  * - Expired but authentic token: `401 TOKEN_EXPIRED` (the admin web refreshes once on it).
  * - Any other bad token: `401 UNAUTHENTICATED`, with no hint of the cause.
- * - Valid: the request user `{ id, role }` is set from the token's `sub` and `role`.
+ * - Valid: the request user `{ id, role, sessionId }` is set from the token's `sub`, `role` and
+ *   `sid`.
  *
  * Every `401` from this guard on HTTP carries `WWW-Authenticate` (`BEARER_CHALLENGE`).
  *
@@ -88,7 +89,11 @@ export class AuthGuard implements CanActivate {
       response.setHeader('WWW-Authenticate', BEARER_CHALLENGE.refused);
       throw error;
     }
-    request.user = Object.freeze({ id: verified.userId, role: verified.role });
+    request.user = Object.freeze({
+      id: verified.userId,
+      role: verified.role,
+      sessionId: verified.sessionId,
+    });
     return true;
   }
 }

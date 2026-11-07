@@ -186,12 +186,12 @@ describe('AuthGuard decision table', () => {
     }
   });
 
-  it('valid token: allowed, request user { id, role } from the token only', async () => {
+  it('valid token: allowed, request user { id, role, sessionId } from the token only', async () => {
     const request = on(`Bearer ${await signed('STAFF')}`);
     const res = recorder();
 
     await expect(guard.canActivate(httpContext(PROTECTED, request, res))).resolves.toBe(true);
-    expect(request.user).toEqual({ id: USER_ID, role: 'STAFF' });
+    expect(request.user).toEqual({ id: USER_ID, role: 'STAFF', sessionId: SESSION_ID });
     expect(Object.isFrozen(request.user)).toBe(true);
     expect(res.headers).toEqual({});
   });

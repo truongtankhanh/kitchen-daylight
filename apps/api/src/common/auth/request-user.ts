@@ -10,6 +10,11 @@ import type { UserRole } from '../../modules/users/entities/user.entity.js';
 export interface RequestUser {
   readonly id: string;
   readonly role: UserRole;
+  /**
+   * The refresh-token family the access token was issued for (claim `sid`, decision 0008): the
+   * current session, kept by `POST /me/password` and marked in `GET /me/sessions` (A2-T4).
+   */
+  readonly sessionId: string;
 }
 
 /** The parts of an Express request that the guards read (and, for `user`, write). */

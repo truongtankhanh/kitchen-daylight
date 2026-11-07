@@ -113,7 +113,8 @@ export type ErrorStatus = (typeof ERROR_STATUS)[ErrorCode];
  * Every `errors[].code` inside `VALIDATION_FAILED`: the 29 field-level codes of the outline, in its
  * order, then `INVALID` for a rule the catalogue has no code for (api-divergences D-001), then
  * `INVALID_FORMAT` for a malformed header value (decision 0007 row 14; api-divergences D-022), then
- * `TOO_SHORT` for a password under its minimum length (api-divergences D-037).
+ * `TOO_SHORT` for a password under its minimum length (api-divergences D-037), then `NOT_FOUND` for
+ * a field naming a missing record (api-divergences D-061).
  */
 export const FIELD_ERROR_CODES = [
   'REQUIRED',
@@ -151,6 +152,9 @@ export const FIELD_ERROR_CODES = [
   'INVALID_FORMAT',
   // Not in the outline: a value under its minimum length, first a password (api-divergences D-037).
   'TOO_SHORT',
+  // Not in the outline: a field naming a record that does not exist, first the preferred branch of
+  // `PATCH /me` (api-divergences D-061).
+  'NOT_FOUND',
 ] as const;
 
 export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[number];

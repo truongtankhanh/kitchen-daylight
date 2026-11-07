@@ -68,7 +68,11 @@ describe('@CurrentUser()', () => {
   const route = { controller: MixedController, handler: MixedController.prototype.list };
 
   it('returns the request user set by AuthGuard', () => {
-    const user = { id: '01930000-0000-7000-8000-00000000a3a1', role: 'CUSTOMER' } as const;
+    const user = {
+      id: '01930000-0000-7000-8000-00000000a3a1',
+      role: 'CUSTOMER',
+      sessionId: '01930000-0000-7000-8000-00000000a3b1',
+    } as const;
 
     expect(currentUserOf(httpContext(route, requestOn('/api/v1/orders', { user })))).toBe(user);
   });

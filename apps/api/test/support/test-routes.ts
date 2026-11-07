@@ -41,7 +41,7 @@ class RequireNamePipe implements PipeTransform {
 @Controller('test-guards')
 export class TestCustomerRoutesController {
   @Get('me')
-  me(@CurrentUser() user: RequestUser): RequestUser {
+  me(@CurrentUser() user: RequestUser): Pick<RequestUser, 'id' | 'role'> {
     return { id: user.id, role: user.role };
   }
 

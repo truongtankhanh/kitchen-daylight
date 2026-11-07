@@ -166,6 +166,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeController_getProfile_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["MeController_updateProfile_v1"];
+        trace?: never;
+    };
+    "/api/v1/me/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeController_listConsents_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keeps the current session; every other session of the user is signed out. */
+        post: operations["MeController_changePassword_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeController_listSessions_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Signs one device out. Revoking the current session ends it at the next refresh. */
+        delete: operations["MeController_revokeSession_v1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provinces": {
         parameters: {
             query?: never;
@@ -223,6 +305,10 @@ export interface components {
             /** Format: uuid */
             id: string;
         };
+        /** @enum {string} */
+        ConsentAction: "GRANTED" | "WITHDRAWN";
+        /** @enum {string} */
+        ConsentDocumentType: "TERMS_OF_SERVICE" | "PRIVACY_POLICY";
         /**
          * @description Stable code of the catalogue (decision 0007 section 9).
          * @enum {string}
@@ -255,6 +341,90 @@ export interface components {
             email: string;
             /** Format: password */
             password: string;
+        };
+        Me: {
+            /** @description Read only: there is no avatar upload. */
+            avatarUrl: string | null;
+            /** @description 1 to 60 characters. */
+            displayName: string;
+            /**
+             * Format: email
+             * @description Changed only through the email-code flow (A2-T2), never by `PATCH /me`.
+             */
+            email: string;
+            /**
+             * Format: date-time
+             * @description `null` until the email is verified.
+             */
+            emailVerifiedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description E.164 (`+84…`); `null` when unset, and the next order then answers `PHONE_REQUIRED`.
+             * @example +84901234567
+             */
+            phone: string | null;
+            /** Format: uuid */
+            preferredBranchId: string | null;
+        };
+        MePasswordDto: {
+            /** Format: password */
+            currentPassword: string;
+            /**
+             * Format: password
+             * @description The password policy of the account's role (customers 10 to 128 code points after NFC).
+             */
+            newPassword: string;
+        };
+        MeUpdateDto: {
+            /** @description 1 to 60 characters after trimming (`TOO_LONG`; mobile G95). */
+            displayName?: string;
+            /**
+             * @description A Vietnamese mobile number in national (`0…`) or international (`+84…`, `84…`) form, stored in
+             *     E.164; anything else is `INVALID_PHONE` (mobile G97). `null` clears it (mobile G96).
+             * @example 0901234567
+             */
+            phone?: string | null;
+            /**
+             * Format: uuid
+             * @description An existing, not deleted branch (`NOT_FOUND` otherwise), or `null` to clear.
+             */
+            preferredBranchId?: string | null;
+        };
+        MyConsent: {
+            action: components["schemas"]["ConsentAction"];
+            /** Format: uuid */
+            documentId: string;
+            locale: string;
+            /** Format: date-time */
+            occurredAt: string;
+            type: components["schemas"]["ConsentDocumentType"];
+            /** @description The document version the event refers to. */
+            version: string;
+        };
+        MySession: {
+            /**
+             * Format: date-time
+             * @description When the device signed in.
+             */
+            createdAt: string;
+            /** @description The label the device sent at sign-in, or `unknown`; display only. */
+            deviceLabel: string;
+            /**
+             * Format: uuid
+             * @description The family id: the path parameter of `DELETE /me/sessions/{id}`.
+             */
+            id: string;
+            /** @description The session of the access token that made this request. */
+            isCurrent: boolean;
+            /** Format: date-time */
+            lastUsedAt: string;
+        };
+        MySessionPage: {
+            items: components["schemas"]["MySession"][];
+            page: number;
+            pageSize: number;
+            total: number;
         };
         ProblemDetails: {
             /** @description Stable code of the catalogue (decision 0007 section 9). */
@@ -797,6 +967,293 @@ export interface operations {
             };
             /** @description ALREADY_EXISTS */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MeController_getProfile_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MeController_updateProfile_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MeController_listConsents_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyConsent"][];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MeController_changePassword_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MePasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description INVALID_CREDENTIALS, UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description INVALID_STATE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MeController_listSessions_v1: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionPage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MeController_revokeSession_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
