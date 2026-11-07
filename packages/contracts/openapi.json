@@ -242,6 +242,52 @@
         },
         "type": "object"
       },
+      "AdminSession": {
+        "properties": {
+          "accessToken": {
+            "description": "ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web.",
+            "type": "string"
+          },
+          "expiresIn": {
+            "description": "Seconds until the access token expires.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AdminSessionUser"
+          }
+        },
+        "required": [
+          "expiresIn",
+          "accessToken",
+          "user"
+        ],
+        "type": "object"
+      },
+      "AdminSessionUser": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffRole"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "displayName"
+        ],
+        "type": "object"
+      },
       "AuthSession": {
         "properties": {
           "accessToken": {
@@ -921,6 +967,14 @@
         ],
         "type": "object"
       },
+      "StaffRole": {
+        "enum": [
+          "STAFF",
+          "MANAGER",
+          "ADMIN"
+        ],
+        "type": "string"
+      },
       "VerifyEmailDto": {
         "properties": {
           "code": {
@@ -1019,6 +1073,204 @@
         "security": [],
         "tags": [
           "Health"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/login": {
+      "post": {
+        "operationId": "AdminAuthController_login_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSession"
+                }
+              }
+            },
+            "description": "Sets the kd_refresh cookie."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "INVALID_CREDENTIALS"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ACCOUNT_SUSPENDED, MFA_REQUIRED, FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "`STAFF`: `200 AdminSession` and the cookie. `MANAGER` and `ADMIN`: `403 MFA_REQUIRED` with\n`mfaToken`, `mfaEnrolled` and `expiresIn` (api-divergences D-076), no cookie. Unknown email,\nwrong password, locked, `INVITED`, `DELETED`, no password and a customer account: the same\n`401 INVALID_CREDENTIALS`; `ACCOUNT_SUSPENDED` only after the right password.",
+        "tags": [
+          "AdminAuth"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/logout": {
+      "post": {
+        "operationId": "AdminAuthController_logout_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Clears the kd_refresh cookie."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "Revokes the cookie's family and clears the cookie; `204` whether or not a session existed.",
+        "tags": [
+          "AdminAuth"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/refresh": {
+      "post": {
+        "operationId": "AdminAuthController_refresh_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSession"
+                }
+              }
+            },
+            "description": "Replaces the kd_refresh cookie."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "Rotates the cookie (reuse detection, 10-second grace window). Any failure answers\n`401 UNAUTHENTICATED` and clears the cookie.",
+        "tags": [
+          "AdminAuth"
         ]
       }
     },

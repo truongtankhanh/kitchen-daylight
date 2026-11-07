@@ -3,7 +3,13 @@ import type { KeyObject } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_RULES, DEFAULT_MAIL_FROM, PLACEHOLDER_PASSWORD_PREFIX } from './config.schema.js';
+import {
+  ADMIN_ORIGINS_RULE,
+  AUTH_RULES,
+  DEFAULT_ADMIN_ORIGINS,
+  DEFAULT_MAIL_FROM,
+  PLACEHOLDER_PASSWORD_PREFIX,
+} from './config.schema.js';
 import {
   REQUIRED_AUTH_VARIABLES,
   createEphemeralAuthEnvironment,
@@ -38,6 +44,9 @@ const P384 = encodedPair(generateKeyPairSync('ec', { namedCurve: 'secp384r1' }))
 
 const SMTP_HOST = '127.0.0.1';
 const SMTP_PORT = 1045;
+
+/** A fictional deployed admin origin (decision 0008 section 10). */
+const DEPLOYED_ADMIN_ORIGIN = 'https://admin.kitchendaylight.example';
 
 const VALID_SERVER: Environment = {
   APP_ENV: 'dev',
@@ -102,8 +111,10 @@ describe('loadConfig (server)', () => {
         from: DEFAULT_MAIL_FROM,
         smtp: { host: SMTP_HOST, port: SMTP_PORT },
       },
+      adminOrigins: ['http://localhost:4200'],
     });
     expect(Object.isFrozen(config)).toBe(true);
+    expect(Object.isFrozen(config.adminOrigins)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
     expect(Object.isFrozen(config.auth)).toBe(true);
     expect(Object.isFrozen(config.auth.jwt)).toBe(true);
@@ -362,6 +373,7 @@ describe('loadConfig (server auth variables)', () => {
         MAIL_ADAPTER: 'smtp',
         MAIL_FROM: DEFAULT_MAIL_FROM,
         TRUST_PROXY_HOPS: '1',
+        ADMIN_ORIGINS: DEPLOYED_ADMIN_ORIGIN,
       };
 
       expect(loadConfig(env, 'server').auth.social).toEqual({
@@ -404,9 +416,90 @@ describe('loadConfig (server auth variables)', () => {
   });
 });
 
+describe('loadConfig (ADMIN_ORIGINS)', () => {
+  /** What `demo` and `prod` require besides `ADMIN_ORIGINS`. */
+  const DEPLOYED: Environment = {
+    ...VALID_SERVER,
+    TRUST_PROXY_HOPS: '1',
+    MAIL_ADAPTER: 'ses',
+    MAIL_FROM: DEFAULT_MAIL_FROM,
+  };
+
+  it.each(['dev', 'test'])('defaults to the ng serve origin in %s', (appEnv) => {
+    expect(loadConfig({ ...VALID_SERVER, APP_ENV: appEnv }, 'server').adminOrigins).toEqual(
+      DEFAULT_ADMIN_ORIGINS,
+    );
+  });
+
+  it.each(['demo', 'prod'])('is required in %s', (appEnv) => {
+    expect(issues({ ...DEPLOYED, APP_ENV: appEnv })).toEqual([
+      { name: 'ADMIN_ORIGINS', rule: 'required' },
+    ]);
+  });
+
+  it('splits the list in order; the first entry is the staff link base', () => {
+    const env = {
+      ...VALID_SERVER,
+      ADMIN_ORIGINS:
+        'http://localhost:4200,http://127.0.0.1:8080,https://admin.kitchendaylight.example',
+    };
+
+    expect(loadConfig(env, 'server').adminOrigins).toEqual([
+      'http://localhost:4200',
+      'http://127.0.0.1:8080',
+      'https://admin.kitchendaylight.example',
+    ]);
+  });
+
+  it.each(['demo', 'prod'])('accepts https origins in %s', (appEnv) => {
+    const env = { ...DEPLOYED, APP_ENV: appEnv, ADMIN_ORIGINS: DEPLOYED_ADMIN_ORIGIN };
+
+    expect(loadConfig(env, 'server').adminOrigins).toEqual([DEPLOYED_ADMIN_ORIGIN]);
+  });
+
+  it.each(['demo', 'prod'])('refuses an http origin in %s', (appEnv) => {
+    const env = {
+      ...DEPLOYED,
+      APP_ENV: appEnv,
+      ADMIN_ORIGINS: 'http://admin.kitchendaylight.example',
+    };
+
+    expect(issues(env)).toEqual([{ name: 'ADMIN_ORIGINS', rule: ADMIN_ORIGINS_RULE }]);
+  });
+
+  it.each([
+    ['a wildcard', '*'],
+    ['a wildcard host', 'https://*.kitchendaylight.example'],
+    ['a path', 'https://admin.kitchendaylight.example/login'],
+    ['a trailing slash', 'https://admin.kitchendaylight.example/'],
+    ['a default port', 'https://admin.kitchendaylight.example:443'],
+    ['an upper-case host', 'https://Admin.kitchendaylight.example'],
+    ['another scheme', 'ftp://admin.kitchendaylight.example'],
+    ['no scheme', 'admin.kitchendaylight.example'],
+    ['an empty entry', 'http://localhost:4200,'],
+    ['a space', 'http://localhost:4200, http://127.0.0.1:8080'],
+    ['a duplicate', 'http://localhost:4200,http://localhost:4200'],
+    ['a credential', 'https://leak-check@admin.kitchendaylight.example'],
+  ])('refuses %s without echoing it', (_case, value) => {
+    const error = failure({ ...VALID_SERVER, ADMIN_ORIGINS: value });
+
+    expect(error.issues).toEqual([{ name: 'ADMIN_ORIGINS', rule: ADMIN_ORIGINS_RULE }]);
+    expect(error.message).not.toContain(value);
+  });
+
+  it('is not read by the CLI', () => {
+    expect(() => loadConfig({ ...VALID_CLI, ADMIN_ORIGINS: '*' }, 'cli')).not.toThrow();
+    expect(loadConfig(VALID_CLI, 'cli')).not.toHaveProperty('adminOrigins');
+  });
+});
+
 describe('loadConfig (mail variables)', () => {
   /** What `demo` and `prod` require besides the mail variables (decision 0007 section 5). */
-  const DEPLOYED: Environment = { ...without(VALID_SERVER, 'APP_ENV'), TRUST_PROXY_HOPS: '1' };
+  const DEPLOYED: Environment = {
+    ...without(VALID_SERVER, 'APP_ENV'),
+    TRUST_PROXY_HOPS: '1',
+    ADMIN_ORIGINS: DEPLOYED_ADMIN_ORIGIN,
+  };
   const SES_FROM = 'no-reply@kitchendaylight.example';
 
   it.each(['dev', 'test'])('defaults to smtp and the fictional sender in %s', (appEnv) => {
@@ -562,6 +655,7 @@ describe('placeholder password', () => {
     TRUST_PROXY_HOPS: '1',
     MAIL_ADAPTER: 'ses',
     MAIL_FROM: 'no-reply@kitchendaylight.example',
+    ADMIN_ORIGINS: DEPLOYED_ADMIN_ORIGIN,
   };
 
   it.each(['dev', 'test'])('is accepted when APP_ENV=%s', (appEnv) => {
@@ -630,13 +724,14 @@ describe('error text', () => {
       OTP_HMAC_SECRET: 'leak-check-otp',
       MFA_ENCRYPTION_KEY: 'leak-check-mfa',
       MFA_ENCRYPTION_PREVIOUS_KEYS: 'leak-check-mfa-previous',
+      ADMIN_ORIGINS: 'leak-check-origin',
     };
     const error = failure(values);
     const text = [error.message, ...error.issues.map(({ name, rule }) => `${name} ${rule}`)].join(
       '\n',
     );
 
-    expect(error.issues).toHaveLength(11);
+    expect(error.issues).toHaveLength(12);
     expect(text).not.toMatch(/leak.check/);
   });
 

@@ -20,6 +20,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `STAFF`: `200 AdminSession` and the cookie. `MANAGER` and `ADMIN`: `403 MFA_REQUIRED` with
+         *     `mfaToken`, `mfaEnrolled` and `expiresIn` (api-divergences D-076), no cookie. Unknown email,
+         *     wrong password, locked, `INVITED`, `DELETED`, no password and a customer account: the same
+         *     `401 INVALID_CREDENTIALS`; `ACCOUNT_SUSPENDED` only after the right password.
+         */
+        post: operations["AdminAuthController_login_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revokes the cookie's family and clears the cookie; `204` whether or not a session existed. */
+        post: operations["AdminAuthController_logout_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotates the cookie (reuse detection, 10-second grace window). Any failure answers
+         *     `401 UNAUTHENTICATED` and clears the cookie.
+         */
+        post: operations["AdminAuthController_refresh_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/email/send-code": {
         parameters: {
             query?: never;
@@ -501,6 +560,19 @@ export interface components {
              */
             wardCode?: string | null;
         };
+        AdminSession: {
+            /** @description ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web. */
+            accessToken: string;
+            /** @description Seconds until the access token expires. */
+            expiresIn: number;
+            user: components["schemas"]["AdminSessionUser"];
+        };
+        AdminSessionUser: {
+            displayName: string;
+            /** Format: uuid */
+            id: string;
+            role: components["schemas"]["StaffRole"];
+        };
         AuthSession: {
             /** @description ES256 JWT for `Authorization: Bearer`. */
             accessToken: string;
@@ -757,6 +829,8 @@ export interface components {
             /** @description The nonce from `POST /auth/social/nonce` that the token was requested with. */
             nonce: string;
         };
+        /** @enum {string} */
+        StaffRole: "STAFF" | "MANAGER" | "ADMIN";
         VerifyEmailDto: {
             /** @description The 6-digit code from the mail; spaces are ignored. */
             code: string;
@@ -807,6 +881,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+        };
+    };
+    AdminAuthController_login_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            /** @description Sets the kd_refresh cookie. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSession"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description INVALID_CREDENTIALS */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ACCOUNT_SUSPENDED, MFA_REQUIRED, FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminAuthController_logout_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Clears the kd_refresh cookie. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminAuthController_refresh_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Replaces the kd_refresh cookie. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSession"];
+                };
+            };
+            /** @description UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

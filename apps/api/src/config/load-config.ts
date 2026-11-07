@@ -3,6 +3,7 @@ import { validateSync } from 'class-validator';
 
 import {
   CliEnvironment,
+  DEFAULT_ADMIN_ORIGINS,
   DEFAULT_LOG_LEVEL,
   DEFAULT_MAIL_FROM,
   DEFAULT_PORT,
@@ -72,6 +73,12 @@ export interface ServerConfig extends CliConfig {
   readonly trustProxyHops: TrustProxyHops;
   readonly auth: AuthConfig;
   readonly mail: MailConfig;
+  /**
+   * The exact `Origin` values allowed on `POST /admin/auth/*` (decision 0008 section 10; A3-T1):
+   * `ADMIN_ORIGINS`, else `DEFAULT_ADMIN_ORIGINS` in `dev` and `test`. The first entry is the base of
+   * staff links (A3-T3).
+   */
+  readonly adminOrigins: readonly string[];
 }
 
 export interface ConfigIssue {
@@ -148,6 +155,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
     raw['PORT'] = read(env, 'PORT');
     raw['LOG_LEVEL'] = read(env, 'LOG_LEVEL');
     raw['TRUST_PROXY_HOPS'] = read(env, 'TRUST_PROXY_HOPS');
+    raw['ADMIN_ORIGINS'] = read(env, 'ADMIN_ORIGINS');
     for (const name of [...AUTH_VARIABLES, ...MAIL_VARIABLES]) {
       raw[name] = read(env, name);
     }
@@ -191,6 +199,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
       trustProxyHops: instance.TRUST_PROXY_HOPS ?? DEFAULT_TRUST_PROXY_HOPS,
       auth: toAuthConfig(instance),
       mail: toMailConfig(instance),
+      adminOrigins: Object.freeze(instance.ADMIN_ORIGINS?.split(',') ?? [...DEFAULT_ADMIN_ORIGINS]),
     });
   }
   return Object.freeze({ appEnv: instance.APP_ENV, database });

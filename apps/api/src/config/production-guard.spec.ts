@@ -80,6 +80,8 @@ describe('the server bindings', () => {
     MAIL_SMTP_HOST: SMTP_HOST,
     MAIL_SMTP_PORT: SMTP_PORT,
     MAIL_FROM: FROM,
+    // Required in `demo` and `prod` (decision 0008 section 10); a fictional origin.
+    ADMIN_ORIGINS: 'https://admin.kitchendaylight.example',
     ...AUTH,
   });
 

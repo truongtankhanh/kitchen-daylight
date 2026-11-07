@@ -76,6 +76,14 @@ export const AUDIT_ACTIONS = [
   // diff { failedLoginCount, lockedUntil }; never the password or the email typed. Name is a
   // proposal (brief E17; api-divergences D-050).
   'auth.account_locked',
+  // Staff sign-in on the cookie transport (A3-T1): entity USER (the staff account), never the
+  // password, the email typed or a token. `login_succeeded`: actor the user, a completed sign-in of
+  // a `STAFF` account (`MANAGER` and `ADMIN` complete theirs in A3-T2). `login_failed`: no actor,
+  // diff { reason, failedLoginCount }, only for an email that belongs to a staff account. `logout`:
+  // actor the token owner. Names are proposals (brief E17).
+  'auth.login_succeeded',
+  'auth.login_failed',
+  'auth.logout',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

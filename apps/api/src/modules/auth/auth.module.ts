@@ -10,9 +10,12 @@ import { MailModule } from '../mail/mail.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { UserSessionRevoker } from '../users/users.service.js';
 import { AccessTokenService } from './access-token.service.js';
+import { AdminAuthController } from './admin-auth.controller.js';
+import { AdminAuthService } from './admin-auth.service.js';
 import { AuthCodesController } from './auth-codes.controller.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { CsrfGuard } from './csrf.guard.js';
 import { EMAIL_CODE_HMAC_KEY, EmailCodeService } from './email-code.service.js';
 import { JWT_KEY_CONFIG, KeySet } from './key-set.js';
 import { RefreshTokenService } from './refresh-token.service.js';
@@ -24,8 +27,9 @@ import { SocialService } from './social/social.service.js';
 
 /**
  * Tokens (A1-T6): the key set, access tokens and refresh tokens; the customer auth endpoints
- * (A2-T1: `AuthController`, `AuthService`, with `UsersModule` and `LegalModule`). No cookie
- * transport yet (A3-T1). Global, because `UsersModule` resolves `UserSessionRevoker` from it: the
+ * (A2-T1: `AuthController`, `AuthService`, with `UsersModule` and `LegalModule`); the staff
+ * cookie transport (A3-T1: `AdminAuthController`, `AdminAuthService`, `CsrfGuard`, which reads
+ * `ADMIN_ORIGINS` from the global `APP_CONFIG`). Global, because `UsersModule` resolves `UserSessionRevoker` from it: the
  * real revocation replaces the fail-closed binding of A1-T5, and an application that imports
  * `UsersModule` without this module does not boot. Imported once, by `AppModule`, with the
  * validated `config.auth` (A1-T7: the global `AuthGuard` verifies access tokens with it).
@@ -44,9 +48,11 @@ export class AuthModule {
       module: AuthModule,
       global: true,
       imports: [AuditModule, UsersModule, LegalModule, MailModule, ThrottlingModule],
-      controllers: [AuthController, AuthCodesController, SocialController],
+      controllers: [AuthController, AuthCodesController, SocialController, AdminAuthController],
       providers: [
         AuthService,
+        AdminAuthService,
+        CsrfGuard,
         EmailCodeService,
         // The bytes of `OTP_HMAC_SECRET` (base64, at least 32, validated by `loadConfig`).
         { provide: EMAIL_CODE_HMAC_KEY, useValue: Buffer.from(auth.otpHmacSecret, 'base64') },

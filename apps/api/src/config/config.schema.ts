@@ -66,6 +66,61 @@ const MAIL_DEFAULTS_IN: readonly AppEnv[] = ['dev', 'test'];
 const MAIL_SMTP_HOST_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/;
 const MAIL_SMTP_HOST_RULE = 'must be a host name or an IPv4 address';
 
+// --- Admin web origins (decision 0008 section 10; A3-T1) ---------------------------------------
+
+/**
+ * The `ng serve` origin, used in `dev` and `test` when `ADMIN_ORIGINS` is unset (api-divergences
+ * D-077). The Caddy origin of the Docker `apps` profile is added through the variable.
+ */
+export const DEFAULT_ADMIN_ORIGINS: readonly string[] = Object.freeze(['http://localhost:4200']);
+/** `demo` and `prod` name their origins explicitly, and only `https` ones. */
+const ADMIN_ORIGINS_REQUIRED_IN: readonly AppEnv[] = ['demo', 'prod'];
+export const ADMIN_ORIGINS_RULE =
+  'must be a comma-separated list of unique origins (scheme://host[:port], no path), https only when APP_ENV is demo or prod';
+
+/**
+ * True when every entry is an exact, canonical `http(s)` origin as a browser sends it in `Origin`:
+ * no path, no trailing slash, no default port, lower-case scheme and host, no wildcard.
+ */
+export function isAdminOriginList(value: unknown, appEnv: unknown): boolean {
+  if (typeof value !== 'string' || value === '') {
+    return false;
+  }
+  const httpsOnly = ADMIN_ORIGINS_REQUIRED_IN.some((tier) => tier === appEnv);
+  const entries = value.split(',');
+  if (new Set(entries).size !== entries.length) {
+    return false;
+  }
+  return entries.every((entry) => {
+    if (!URL.canParse(entry)) {
+      return false;
+    }
+    const url = new URL(entry);
+    const scheme = url.protocol;
+    if (scheme !== 'https:' && (httpsOnly || scheme !== 'http:')) {
+      return false;
+    }
+    // WHATWG URL accepts `*` in a host, so `https://*.example` is its own origin: check the host.
+    return url.origin === entry && MAIL_SMTP_HOST_PATTERN.test(url.hostname);
+  });
+}
+
+function AdminOriginList(): PropertyDecorator {
+  return (target, propertyName) => {
+    registerDecorator({
+      name: 'adminOriginList',
+      target: target.constructor,
+      propertyName: String(propertyName),
+      options: { message: ADMIN_ORIGINS_RULE },
+      validator: {
+        validate(value: unknown, args: ValidationArguments): boolean {
+          return isAdminOriginList(value, (args.object as Partial<ServerEnvironment>).APP_ENV);
+        },
+      },
+    });
+  };
+}
+
 /** The adapter the mail slice will use: the explicit one, else the `dev`/`test` default. */
 export function effectiveMailAdapter(
   env: Pick<ServerEnvironment, 'APP_ENV' | 'MAIL_ADAPTER'>,
@@ -386,4 +441,13 @@ export class ServerEnvironment extends CliEnvironment {
   @IsOptional()
   @AuthValue(checkSocialClientIds)
   APPLE_CLIENT_IDS?: string;
+
+  // The allowed `Origin` values of `POST /admin/auth/*` (A3-T1; decision 0008 section 10). `dev` and
+  // `test`: default `DEFAULT_ADMIN_ORIGINS`; `demo` and `prod`: required, `https` only.
+  @ValidateIf(
+    (env: ServerEnvironment) =>
+      env.ADMIN_ORIGINS !== undefined || ADMIN_ORIGINS_REQUIRED_IN.includes(env.APP_ENV),
+  )
+  @AdminOriginList()
+  ADMIN_ORIGINS?: string;
 }

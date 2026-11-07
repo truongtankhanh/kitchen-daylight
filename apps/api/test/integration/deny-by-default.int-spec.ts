@@ -11,7 +11,11 @@ import { createTestApp } from '../support/create-test-app.js';
 import type { TestApp } from '../support/create-test-app.js';
 import { http } from '../support/http.js';
 import type { TestHttpClient } from '../support/http.js';
-import { EXPECTED_PUBLIC_ROUTES, TestRoutesModule } from '../support/test-routes.js';
+import {
+  CSRF_GUARDED_PUBLIC_ROUTES,
+  EXPECTED_PUBLIC_ROUTES,
+  TestRoutesModule,
+} from '../support/test-routes.js';
 
 const NOW = '2026-11-06T03:00:00.000Z';
 // Fictional ids; the guard never reads the database, so no row is needed.
@@ -166,6 +170,17 @@ describe('deny by default (every route of the real app)', () => {
     for (const key of EXPECTED_PUBLIC_ROUTES) {
       const [method = 'GET', path = ''] = key.split(' ');
       const response = await client.request(concretePath(path), { method });
+      if (CSRF_GUARDED_PUBLIC_ROUTES.includes(key)) {
+        // Past the auth guard (no 401, no Bearer challenge); refused by the CSRF check instead.
+        if (
+          response.status !== 403 ||
+          response.problem?.code !== 'FORBIDDEN' ||
+          response.headers.get('www-authenticate') !== null
+        ) {
+          failures.push(`${key} -> ${response.status} ${response.problem?.code ?? ''}`);
+        }
+        continue;
+      }
       if (response.status === 401 || response.status === 403) {
         failures.push(`${key} -> ${response.status}`);
       }

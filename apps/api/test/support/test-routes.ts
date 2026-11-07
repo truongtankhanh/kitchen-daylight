@@ -149,7 +149,22 @@ export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   // Administrative units (A2-T3).
   'GET /api/v1/provinces',
   'GET /api/v1/wards',
+  // Staff cookie transport (A3-T1), behind the CSRF check: see `CSRF_GUARDED_PUBLIC_ROUTES`.
+  'POST /api/v1/admin/auth/login',
+  'POST /api/v1/admin/auth/refresh',
+  'POST /api/v1/admin/auth/logout',
   'GET /api/v1/test-guards/public',
   'POST /api/v1/auth/test-throttle',
   'POST /api/v1/admin/auth/test-throttle',
+];
+
+/**
+ * The `@Public()` routes that also require `X-Client: admin-web` and an allowed `Origin`
+ * (`CsrfGuard`, decision 0008 section 10): without them they answer `403 FORBIDDEN`, after the
+ * auth guard has let them through.
+ */
+export const CSRF_GUARDED_PUBLIC_ROUTES: readonly string[] = [
+  'POST /api/v1/admin/auth/login',
+  'POST /api/v1/admin/auth/refresh',
+  'POST /api/v1/admin/auth/logout',
 ];
