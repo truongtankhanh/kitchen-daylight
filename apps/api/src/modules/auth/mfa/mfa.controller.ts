@@ -19,6 +19,7 @@ import { CurrentUser } from '../../../common/auth/current-user.decorator.js';
 import { IS_PUBLIC_KEY } from '../../../common/auth/public.decorator.js';
 import type { RequestUser } from '../../../common/auth/request-user.js';
 import { MANAGER_ROLES, Roles } from '../../../common/auth/roles.decorator.js';
+import { NotBranchScoped } from '../../../common/branch-scope/branch-scope.decorator.js';
 import { ApiProblemResponses } from '../../../common/errors/api-problem-responses.decorator.js';
 import { createValidationPipe } from '../../../common/errors/validation.pipe.js';
 import { Clock } from '../../../common/time/clock.js';
@@ -167,6 +168,7 @@ export class MfaController {
    */
   @Post('recovery-codes')
   @Roles(...MANAGER_ROLES)
+  @NotBranchScoped("The caller's own second factor; reads no branch data.")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: MfaRecoveryCodesDto })
   @ApiProblemResponses(

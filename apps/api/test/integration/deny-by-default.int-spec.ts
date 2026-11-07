@@ -1,4 +1,3 @@
-import type { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { FixedClock } from '../../src/common/time/testing.js';
@@ -11,6 +10,8 @@ import { createTestApp } from '../support/create-test-app.js';
 import type { TestApp } from '../support/create-test-app.js';
 import { http } from '../support/http.js';
 import type { TestHttpClient } from '../support/http.js';
+import { enumerateRouter, keyOf } from '../support/route-table.js';
+import type { RouteEntry } from '../support/route-table.js';
 import {
   CSRF_GUARDED_PUBLIC_ROUTES,
   EXPECTED_PUBLIC_ROUTES,
@@ -24,58 +25,6 @@ const USER_ID = '01930000-0000-7000-8000-00000000a7b1';
 const SESSION_ID = '01930000-0000-7000-8000-00000000a7c1';
 const METHODS_WITH_BODY: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-interface RouteEntry {
-  readonly method: string;
-  /** The registered Express pattern, for example `/api/v1/test-guards/items/:id`. */
-  readonly path: string;
-}
-
-interface ExpressLayer {
-  readonly route?: { readonly path?: unknown; readonly methods?: Record<string, boolean> };
-}
-
-interface RouterEnumeration {
-  /** Controller endpoints, one entry per method. */
-  readonly routes: RouteEntry[];
-  /** Patterns registered with `app.all` (every method, `CONNECT` included). */
-  readonly allMethodPaths: string[];
-}
-
-/**
- * Every route of the running app, read from the Express router stack through the HTTP adapter
- * (Express 5: `app.router.stack`; a layer with a `route` is a registered route).
- *
- * Nest mounts a middleware bound to `RequestMethod.ALL` (the `nestjs-pino` logger, on
- * `/api{/*splat}` and `/api/v1{/*splat}`) with Express `app.all`, which registers the pattern for
- * every method Express knows, `CONNECT` included. A controller decorator never registers
- * `CONNECT`, so a route that accepts it is an `app.all` registration, not an endpoint: it is kept
- * apart and checked to be a wildcard mount below.
- */
-function enumerateRouter(app: INestApplication): RouterEnumeration {
-  const instance = app.getHttpAdapter().getInstance() as {
-    readonly router?: { readonly stack?: readonly ExpressLayer[] };
-  };
-  const routes: RouteEntry[] = [];
-  const allMethodPaths: string[] = [];
-  for (const layer of instance.router?.stack ?? []) {
-    const path = layer.route?.path;
-    const methods = layer.route?.methods ?? {};
-    if (typeof path !== 'string') {
-      continue;
-    }
-    if (methods['connect'] === true || methods['_all'] === true) {
-      allMethodPaths.push(path);
-      continue;
-    }
-    for (const [method, enabled] of Object.entries(methods)) {
-      if (enabled) {
-        routes.push({ method: method.toUpperCase(), path });
-      }
-    }
-  }
-  return { routes, allMethodPaths };
-}
-
 /** A requestable path: each parameter becomes a UUID, optional groups are kept. */
 function concretePath(pattern: string): string {
   return pattern
@@ -83,8 +32,6 @@ function concretePath(pattern: string): string {
     .replace(/\*[A-Za-z0-9_]+/g, 'x')
     .replace(/[{}]/g, '');
 }
-
-const keyOf = ({ method, path }: RouteEntry): string => `${method} ${path}`;
 
 describe('deny by default (every route of the real app)', () => {
   let testApp: TestApp | undefined;
