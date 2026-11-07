@@ -14,6 +14,8 @@ import { truncateAll } from '../support/truncate.js';
 
 /** SQLSTATE `foreign_key_violation`. */
 const FOREIGN_KEY_VIOLATION = '23503';
+/** SQLSTATE `restrict_violation`: a delete refused by ON DELETE RESTRICT. */
+const RESTRICT_VIOLATION = '23001';
 /** SQLSTATE `check_violation`. */
 const CHECK_VIOLATION = '23514';
 /** SQLSTATE `unique_violation`. */
@@ -125,6 +127,7 @@ describe('geography (migration 0009, GET /provinces and /wards)', () => {
           code: 'VALIDATION_FAILED',
           errors: [{ field: 'provinceCode', code: 'REQUIRED' }],
         });
+        expect(response.headers.get('cache-control')).not.toBe(CACHE_CONTROL);
       }
     });
 
@@ -149,7 +152,12 @@ describe('geography (migration 0009, GET /provinces and /wards)', () => {
         const first = await client.get(path);
         const etag = first.headers.get('etag') ?? '';
 
-        const second = await client.get(path, { headers: { 'if-none-match': etag } });
+        // Node's fetch adds `Cache-Control: no-cache` to a request with `If-None-Match` unless one
+        // is set (Fetch standard, cache mode `no-store`), and Express answers such an end-to-end
+        // reload with 200. `max-age=0` is what a revalidating cache sends.
+        const second = await client.get(path, {
+          headers: { 'if-none-match': etag, 'cache-control': 'max-age=0' },
+        });
 
         expect(second.status).toBe(304);
         expect(second.body).toBeNull();
@@ -166,7 +174,7 @@ describe('geography (migration 0009, GET /provinces and /wards)', () => {
           WHERE code = '90001'`,
       );
       const after = await client.get('/api/v1/wards?provinceCode=90', {
-        headers: { 'if-none-match': oldEtag },
+        headers: { 'if-none-match': oldEtag, 'cache-control': 'max-age=0' },
       });
 
       expect(after.status).toBe(200);
@@ -238,11 +246,11 @@ describe('geography (migration 0009, GET /provinces and /wards)', () => {
 
       await expectSqlState(
         migrator.query(`DELETE FROM public.wards WHERE code = '90001'`),
-        FOREIGN_KEY_VIOLATION,
+        RESTRICT_VIOLATION,
       );
       await expectSqlState(
         migrator.query(`DELETE FROM public.provinces WHERE code = '90'`),
-        FOREIGN_KEY_VIOLATION,
+        RESTRICT_VIOLATION,
       );
     });
   });
