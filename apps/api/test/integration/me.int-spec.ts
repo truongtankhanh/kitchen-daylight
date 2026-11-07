@@ -347,15 +347,8 @@ describe('current user (kd_app, real PostgreSQL)', () => {
       const response = await client.get('/api/v1/me/consents', { headers: bearer(session) });
 
       expect(response.status).toBe(200);
+      // In the order of the `consent_document_type` enum: Terms of Service, then Privacy Policy.
       expect(response.body).toEqual([
-        {
-          documentId: privacy,
-          type: 'PRIVACY_POLICY',
-          version: '1.0',
-          locale: 'vi',
-          action: 'GRANTED',
-          occurredAt: '2026-10-02T00:00:00.000Z',
-        },
         {
           documentId: termsV2,
           type: 'TERMS_OF_SERVICE',
@@ -363,6 +356,14 @@ describe('current user (kd_app, real PostgreSQL)', () => {
           locale: 'vi',
           action: 'GRANTED',
           occurredAt: '2026-11-02T00:00:00.000Z',
+        },
+        {
+          documentId: privacy,
+          type: 'PRIVACY_POLICY',
+          version: '1.0',
+          locale: 'vi',
+          action: 'GRANTED',
+          occurredAt: '2026-10-02T00:00:00.000Z',
         },
       ]);
     });

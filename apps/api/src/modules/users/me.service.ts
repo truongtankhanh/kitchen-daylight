@@ -218,7 +218,8 @@ export class MeService {
 
   /**
    * The latest consent event per document type (`user_consents` is an append-only log, the
-   * current state is the latest row), ordered by type. Nothing is written here: withdrawal is
+   * current state is the latest row), in the order of the `consent_document_type` enum (Terms of
+   * Service, then Privacy Policy). Nothing is written here: withdrawal is
    * account deletion in the first release (ADR-0008 #5).
    */
   async listConsents(userId: string): Promise<MyConsent[]> {
