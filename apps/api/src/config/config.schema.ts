@@ -153,7 +153,15 @@ export const AUTH_RULES = {
   previousPublicKeys:
     'must be a comma-separated list of <kid>:<base64 of an SPKI PEM P-256 public key>, each kid unique and different from JWT_KEY_ID',
   previousEncryptionKeys: `must be a comma-separated list of base64 keys of exactly ${ENCRYPTION_KEY_BYTES} bytes, each different from MFA_ENCRYPTION_KEY`,
+  socialClientIds:
+    'must be a comma-separated list of client ids (letters, digits, ".", "_", "-"; at most 255 characters each), each unique',
 } as const;
+
+/**
+ * One Google or Apple client id: a Google OAuth client id (`<number>-<id>.apps.googleusercontent.com`)
+ * or an Apple bundle id or Services ID (`com.example.kitchendaylight`). Not a secret (A2-T6).
+ */
+export const SOCIAL_CLIENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
 
 type EnvironmentObject = Readonly<Record<string, unknown>>;
 type AuthCheck = (value: string, env: EnvironmentObject) => string | undefined;
@@ -256,6 +264,13 @@ const checkPreviousEncryptionKeys: AuthCheck = (value, env) => {
     keys.add(entry);
   }
   return undefined;
+};
+
+const checkSocialClientIds: AuthCheck = (value) => {
+  const ids = value.split(',');
+  return ids.every((id) => SOCIAL_CLIENT_ID_PATTERN.test(id)) && new Set(ids).size === ids.length
+    ? undefined
+    : AUTH_RULES.socialClientIds;
 };
 
 /** The rule an auth value breaks, the placeholder rule first; `required` when absent. */
@@ -361,4 +376,14 @@ export class ServerEnvironment extends CliEnvironment {
   @IsOptional()
   @AuthValue(checkPreviousEncryptionKeys)
   MFA_ENCRYPTION_PREVIOUS_KEYS?: string;
+
+  // Social sign-in `aud` allow-lists (A2-T6; names from decision 0008 section 11). Optional in every
+  // tier (api-divergences D-068): a provider without a client id answers `NOT_FOUND`.
+  @IsOptional()
+  @AuthValue(checkSocialClientIds)
+  GOOGLE_CLIENT_IDS?: string;
+
+  @IsOptional()
+  @AuthValue(checkSocialClientIds)
+  APPLE_CLIENT_IDS?: string;
 }

@@ -95,6 +95,7 @@ describe('loadConfig (server)', () => {
         },
         otpHmacSecret: AUTH.OTP_HMAC_SECRET,
         mfaEncryption: { key: AUTH.MFA_ENCRYPTION_KEY, previousKeys: [] },
+        social: { googleClientIds: [], appleClientIds: [] },
       },
       mail: {
         adapter: 'smtp',
@@ -107,6 +108,7 @@ describe('loadConfig (server)', () => {
     expect(Object.isFrozen(config.auth)).toBe(true);
     expect(Object.isFrozen(config.auth.jwt)).toBe(true);
     expect(Object.isFrozen(config.auth.mfaEncryption)).toBe(true);
+    expect(Object.isFrozen(config.auth.social)).toBe(true);
     expect(Object.isFrozen(config.mail)).toBe(true);
   });
 
@@ -347,6 +349,52 @@ describe('loadConfig (server auth variables)', () => {
   ])('rejects MFA_ENCRYPTION_PREVIOUS_KEYS %s', (_case, value) => {
     expect(issues({ ...VALID_SERVER, MFA_ENCRYPTION_PREVIOUS_KEYS: value })).toEqual([
       { name: 'MFA_ENCRYPTION_PREVIOUS_KEYS', rule: AUTH_RULES.previousEncryptionKeys },
+    ]);
+  });
+
+  it.each(['dev', 'test', 'demo', 'prod'])(
+    'leaves the social client ids optional in %s (A2-T6)',
+    (appEnv) => {
+      const env = {
+        ...VALID_SERVER,
+        APP_ENV: appEnv,
+        // `demo` and `prod` require the mail variables; they are not under test here.
+        MAIL_ADAPTER: 'smtp',
+        MAIL_FROM: DEFAULT_MAIL_FROM,
+        TRUST_PROXY_HOPS: '1',
+      };
+
+      expect(loadConfig(env, 'server').auth.social).toEqual({
+        googleClientIds: [],
+        appleClientIds: [],
+      });
+    },
+  );
+
+  it('splits the social client id lists', () => {
+    const env = {
+      ...VALID_SERVER,
+      GOOGLE_CLIENT_IDS: '1234-ios.apps.googleusercontent.com,1234-web.apps.googleusercontent.com',
+      APPLE_CLIENT_IDS: 'com.example.kitchendaylight',
+    };
+
+    expect(loadConfig(env, 'server').auth.social).toEqual({
+      googleClientIds: [
+        '1234-ios.apps.googleusercontent.com',
+        '1234-web.apps.googleusercontent.com',
+      ],
+      appleClientIds: ['com.example.kitchendaylight'],
+    });
+  });
+
+  it.each([
+    ['GOOGLE_CLIENT_IDS', 'with an empty entry', 'a.example,'],
+    ['GOOGLE_CLIENT_IDS', 'with a space', 'a.example, b.example'],
+    ['APPLE_CLIENT_IDS', 'with a repeated id', 'com.example.app,com.example.app'],
+    ['APPLE_CLIENT_IDS', 'with a slash', 'com.example/app'],
+  ])('rejects %s %s', (name, _case, value) => {
+    expect(issues({ ...VALID_SERVER, [name]: value })).toEqual([
+      { name, rule: AUTH_RULES.socialClientIds },
     ]);
   });
 

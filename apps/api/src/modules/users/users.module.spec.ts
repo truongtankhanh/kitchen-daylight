@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Clock, SystemClock } from '../../common/time/clock.js';
 import { RefreshTokenService } from '../auth/refresh-token.service.js';
+import { SocialService } from '../auth/social/social.service.js';
 import { MeService } from './me.service.js';
 import { PasswordHasher } from './password-hasher.js';
 import { UserSessionRevoker, UsersService } from './users.service.js';
@@ -27,15 +28,17 @@ class StubRevoker extends UserSessionRevoker {
 
 /**
  * Stands in for the global `AuthModule`, which exports the real `UserSessionRevoker` and
- * `RefreshTokenService` (used by `SessionsService`, A2-T4).
+ * `RefreshTokenService` (used by `SessionsService`, A2-T4) and `SocialService` (used by
+ * `MeController`, A2-T6).
  */
 @Global()
 @Module({
   providers: [
     { provide: UserSessionRevoker, useClass: StubRevoker },
     { provide: RefreshTokenService, useValue: {} },
+    { provide: SocialService, useValue: {} },
   ],
-  exports: [UserSessionRevoker, RefreshTokenService],
+  exports: [UserSessionRevoker, RefreshTokenService, SocialService],
 })
 class StubAuthModule {}
 

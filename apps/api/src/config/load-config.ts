@@ -43,6 +43,14 @@ export interface AuthConfig {
     /** Decrypt only. */
     readonly previousKeys: readonly string[];
   };
+  /**
+   * Social sign-in `aud` allow-lists (A2-T6; decision 0008 section 11). An empty list disables the
+   * provider: its routes answer `NOT_FOUND` and verify nothing.
+   */
+  readonly social: {
+    readonly googleClientIds: readonly string[];
+    readonly appleClientIds: readonly string[];
+  };
 }
 
 /**
@@ -99,6 +107,8 @@ const AUTH_VARIABLES = [
   'OTP_HMAC_SECRET',
   'MFA_ENCRYPTION_KEY',
   'MFA_ENCRYPTION_PREVIOUS_KEYS',
+  'GOOGLE_CLIENT_IDS',
+  'APPLE_CLIENT_IDS',
 ] as const;
 
 // Decision 0005, section 2 (A1-T8). `MAIL_UI_URL` is for people and e2e tests, never read here.
@@ -206,6 +216,10 @@ function toAuthConfig(env: ServerEnvironment): AuthConfig {
     mfaEncryption: Object.freeze({
       key: env.MFA_ENCRYPTION_KEY,
       previousKeys: Object.freeze(env.MFA_ENCRYPTION_PREVIOUS_KEYS?.split(',') ?? []),
+    }),
+    social: Object.freeze({
+      googleClientIds: Object.freeze(env.GOOGLE_CLIENT_IDS?.split(',') ?? []),
+      appleClientIds: Object.freeze(env.APPLE_CLIENT_IDS?.split(',') ?? []),
     }),
   });
 }

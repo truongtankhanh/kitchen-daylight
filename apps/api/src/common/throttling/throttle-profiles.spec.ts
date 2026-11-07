@@ -46,6 +46,7 @@ describe('selectThrottleProfile (by URL prefix)', () => {
     ['/api/v1/auth/login', CUSTOMER_SIGN_IN_PROFILE],
     ['/api/v1/auth/social/google', CUSTOMER_SIGN_IN_PROFILE],
     ['/api/v1/auth/social/apple', CUSTOMER_SIGN_IN_PROFILE],
+    ['/api/v1/me/identities/:provider', CUSTOMER_SIGN_IN_PROFILE],
     ['/api/v1/admin/auth/login', STAFF_SIGN_IN_PROFILE],
     ['/api/v1/admin/auth/mfa/verify', STAFF_SIGN_IN_PROFILE],
     ['/api/v1/admin/auth/step-up', STAFF_SIGN_IN_PROFILE],

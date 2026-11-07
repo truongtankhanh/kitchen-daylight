@@ -20,6 +20,11 @@ export interface TestAppOptions {
   readonly clock?: FixedClock;
   /** Extra modules, for example the test-only controllers of `test-routes.ts`. */
   readonly imports?: NonNullable<ModuleMetadata['imports']>;
+  /**
+   * Providers replaced by value (`overrideProvider`), for example the social verifier test double
+   * of `fake-social-identity-verifier.ts` (A2-T6). The only way a test double reaches the app.
+   */
+  readonly providers?: readonly { readonly provide: unknown; readonly useValue: unknown }[];
 }
 
 export interface TestApp {
@@ -64,6 +69,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
   });
   if (options.clock !== undefined) {
     builder.overrideProvider(Clock).useValue(options.clock);
+  }
+  for (const { provide, useValue } of options.providers ?? []) {
+    builder.overrideProvider(provide).useValue(useValue);
   }
   const moduleRef = await builder.compile();
 

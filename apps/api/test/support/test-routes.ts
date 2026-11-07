@@ -142,6 +142,10 @@ export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   // Email codes (A2-T2); `email/send-code` and `email/verify` need a token and are not listed.
   'POST /api/v1/auth/password/forgot',
   'POST /api/v1/auth/password/reset',
+  // Social sign-in (A2-T6); `/me/identities/{provider}` needs a token and is not listed.
+  'POST /api/v1/auth/social/nonce',
+  'POST /api/v1/auth/social/google',
+  'POST /api/v1/auth/social/apple',
   // Administrative units (A2-T3).
   'GET /api/v1/provinces',
   'GET /api/v1/wards',

@@ -451,6 +451,25 @@
         ],
         "type": "object"
       },
+      "LinkSocialIdentity": {
+        "properties": {
+          "idToken": {
+            "description": "The ID token from the native Google or Apple flow. Never logged.",
+            "maxLength": 8192,
+            "type": "string"
+          },
+          "nonce": {
+            "description": "The nonce from `POST /auth/social/nonce` that the token was requested with.",
+            "maxLength": 256,
+            "type": "string"
+          }
+        },
+        "required": [
+          "idToken",
+          "nonce"
+        ],
+        "type": "object"
+      },
       "LoginDto": {
         "properties": {
           "deviceLabel": {
@@ -842,6 +861,64 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "SocialNonce": {
+        "properties": {
+          "expiresAt": {
+            "description": "Five minutes after issue; a later sign-in with it is `UNAUTHENTICATED`.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "nonce": {
+            "description": "Passed unchanged to the native SDK, then sent back with the ID token. Single use.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "nonce"
+        ],
+        "type": "object"
+      },
+      "SocialSignIn": {
+        "properties": {
+          "acceptedDocumentIds": {
+            "description": "Required only when the sign-in creates an account: exactly the ids of the current Terms of\nService and Privacy Policy (locale `vi`), as for register.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "type": "array"
+          },
+          "deviceLabel": {
+            "description": "Shown in the session list; display only. Defaults to `X-Client`.",
+            "maxLength": 80,
+            "nullable": true,
+            "type": "string"
+          },
+          "displayName": {
+            "description": "Used only when the sign-in creates an account. Apple gives the name to the app on the first\nauthorization only, never in the token, so the app sends it here. At most 60 characters.",
+            "maxLength": 60,
+            "nullable": true,
+            "type": "string"
+          },
+          "idToken": {
+            "description": "The ID token from the native Google or Apple flow. Never logged.",
+            "maxLength": 8192,
+            "type": "string"
+          },
+          "nonce": {
+            "description": "The nonce from `POST /auth/social/nonce` that the token was requested with.",
+            "maxLength": 256,
+            "type": "string"
+          }
+        },
+        "required": [
+          "idToken",
+          "nonce"
+        ],
         "type": "object"
       },
       "VerifyEmailDto": {
@@ -1450,6 +1527,222 @@
         ]
       }
     },
+    "/api/v1/auth/social/apple": {
+      "post": {
+        "operationId": "SocialController_apple_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SocialSignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, INVALID_CREDENTIALS"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ACCOUNT_SUSPENDED, EMAIL_NOT_VERIFIED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "Social"
+        ]
+      }
+    },
+    "/api/v1/auth/social/google": {
+      "post": {
+        "operationId": "SocialController_google_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SocialSignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, INVALID_CREDENTIALS"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ACCOUNT_SUSPENDED, EMAIL_NOT_VERIFIED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "Social"
+        ]
+      }
+    },
+    "/api/v1/auth/social/nonce": {
+      "post": {
+        "operationId": "SocialController_issueNonce_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialNonce"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "tags": [
+          "Social"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "MeController_getProfile_v1",
@@ -1936,6 +2229,180 @@
             "description": "RATE_LIMITED"
           }
         },
+        "tags": [
+          "Me"
+        ]
+      }
+    },
+    "/api/v1/me/identities/{provider}": {
+      "delete": {
+        "operationId": "MeController_unlinkIdentity_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "enum": [
+                "GOOGLE",
+                "APPLE"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "INVALID_STATE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Unlinks; refused with `INVALID_STATE` when no password and no other identity would be left.",
+        "tags": [
+          "Me"
+        ]
+      },
+      "post": {
+        "operationId": "MeController_linkIdentity_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "enum": [
+                "GOOGLE",
+                "APPLE"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkSocialIdentity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Links a Google or Apple account (`{ idToken, nonce }` from the native flow and\n`POST /auth/social/nonce`). Customers only; linking the same account again is a no-op.",
         "tags": [
           "Me"
         ]

@@ -55,6 +55,8 @@ const STRICT_ROUTES: ReadonlyMap<string, ThrottleProfile> = new Map([
   ['/api/v1/auth/login', CUSTOMER_SIGN_IN_PROFILE],
   ['/api/v1/auth/social/google', CUSTOMER_SIGN_IN_PROFILE],
   ['/api/v1/auth/social/apple', CUSTOMER_SIGN_IN_PROFILE],
+  // A2-T6: linking and unlinking verify a provider token like a sign-in (api-divergences D-070).
+  ['/api/v1/me/identities/:provider', CUSTOMER_SIGN_IN_PROFILE],
   ['/api/v1/admin/auth/login', STAFF_SIGN_IN_PROFILE],
   ['/api/v1/admin/auth/mfa/verify', STAFF_SIGN_IN_PROFILE],
   ['/api/v1/admin/auth/step-up', STAFF_SIGN_IN_PROFILE],

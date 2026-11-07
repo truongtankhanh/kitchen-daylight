@@ -16,7 +16,8 @@ import { UsersService } from './users.service.js';
  * `AddressesService`). Uses the application's global TypeORM `DataSource`. Imported by the global
  * `AuthModule` and by `AppModule`. `UserSessionRevoker` and `RefreshTokenService` come
  * from the global `AuthModule` (A1-T6); without it the module does not resolve, so a suspension can
- * never run without revoking sessions.
+ * never run without revoking sessions. `SocialService` (the `/me/identities` routes of
+ * `MeController`, A2-T6) comes from the global `AuthModule` too.
  */
 @Module({
   imports: [AuditModule],

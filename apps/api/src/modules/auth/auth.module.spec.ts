@@ -51,6 +51,7 @@ function authConfig(): AuthConfig {
     },
     otpHmacSecret: 'unused-in-this-spec',
     mfaEncryption: { key: 'unused-in-this-spec', previousKeys: [] },
+    social: { googleClientIds: [], appleClientIds: [] },
   };
 }
 
