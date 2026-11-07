@@ -18,7 +18,7 @@ function capture(): { logger: pino.Logger; lines: string[] } {
 }
 
 describe('REDACT_PATHS', () => {
-  it('is the list of decision 0005 section 11, then the names appended by A2-T2 and A2-T6', () => {
+  it('is the list of decision 0005 section 11, then the names appended by A2-T2, A2-T6 and A3-T2', () => {
     expect(REDACT_PATHS).toEqual([
       'req.headers.authorization',
       'req.headers.cookie',
@@ -38,6 +38,11 @@ describe('REDACT_PATHS', () => {
       '*.databaseUrl',
       '*.emailCode',
       '*.nonce',
+      '*.recoveryCode',
+      '*.recoveryCodes',
+      '*.mfaToken',
+      '*.challenge',
+      '*.otpauthUri',
     ]);
   });
 
@@ -88,6 +93,42 @@ describe('redaction of the social nonce (A2-T6)', () => {
     const line = JSON.parse(lines.at(-1) ?? '{}') as Record<string, unknown>;
     expect(line['payload']).toEqual({ provider: 'GOOGLE', nonce: REDACT_CENSOR });
     expect(lines.join('')).not.toContain(nonce);
+  });
+});
+
+describe('redaction of the second-factor fields (A3-T2)', () => {
+  it('censors recovery codes, MFA tokens and the otpauth URI, and keeps the other fields', () => {
+    const { logger, lines } = capture();
+    // Fictional values.
+    const payload = {
+      userId: '01930000-0000-7000-8000-000000000f41',
+      recoveryCode: 'ABCDE-12345',
+      recoveryCodes: ['FGHJK-67890'],
+      mfaToken: 'kd-fixture-mfa-token',
+      challenge: 'kd-fixture-challenge',
+      otpauthUri: 'otpauth://totp/kd-fixture?secret=KDFIXTURE',
+    };
+
+    logger.warn({ payload, event: 'auth.mfa_failed' }, 'second factor');
+
+    const line = JSON.parse(lines.at(-1) ?? '{}') as Record<string, unknown>;
+    expect(line['payload']).toEqual({
+      userId: payload.userId,
+      recoveryCode: REDACT_CENSOR,
+      recoveryCodes: REDACT_CENSOR,
+      mfaToken: REDACT_CENSOR,
+      challenge: REDACT_CENSOR,
+      otpauthUri: REDACT_CENSOR,
+    });
+    for (const secret of [
+      'ABCDE',
+      'FGHJK',
+      'kd-fixture-mfa-token',
+      'kd-fixture-challenge',
+      'KDFIXTURE',
+    ]) {
+      expect(lines.join('')).not.toContain(secret);
+    }
   });
 });
 

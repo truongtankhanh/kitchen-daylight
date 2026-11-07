@@ -242,6 +242,34 @@
         },
         "type": "object"
       },
+      "AdminMfaSession": {
+        "properties": {
+          "accessToken": {
+            "description": "ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web.",
+            "type": "string"
+          },
+          "expiresIn": {
+            "description": "Seconds until the access token expires.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recoveryCodesLeft": {
+            "maximum": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AdminSessionUser"
+          }
+        },
+        "required": [
+          "expiresIn",
+          "recoveryCodesLeft",
+          "accessToken",
+          "user"
+        ],
+        "type": "object"
+      },
       "AdminSession": {
         "properties": {
           "accessToken": {
@@ -629,6 +657,96 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "MfaCodeDto": {
+        "properties": {
+          "code": {
+            "description": "The current 6-digit code of the authenticator app; spaces are ignored.",
+            "maxLength": 16,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "MfaConfirmation": {
+        "properties": {
+          "recoveryCodes": {
+            "description": "Ten single-use codes, `XXXXX-XXXXX`; the previous set no longer works.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 10,
+            "type": "array"
+          },
+          "session": {
+            "$ref": "#/components/schemas/AdminSession"
+          }
+        },
+        "required": [
+          "recoveryCodes"
+        ],
+        "type": "object"
+      },
+      "MfaRecoveryCodes": {
+        "properties": {
+          "recoveryCodes": {
+            "description": "Ten single-use codes, `XXXXX-XXXXX`; the previous set no longer works.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "recoveryCodes"
+        ],
+        "type": "object"
+      },
+      "MfaSetup": {
+        "properties": {
+          "otpauthUri": {
+            "description": "`otpauth://totp/…` for the QR code (issuer `Kitchen Daylight`, label the email).",
+            "type": "string"
+          },
+          "secret": {
+            "description": "The same secret in Base32, for typing into an authenticator app by hand.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "otpauthUri",
+          "secret"
+        ],
+        "type": "object"
+      },
+      "MfaVerifyDto": {
+        "properties": {
+          "challenge": {
+            "description": "The `mfaToken` of the `MFA_REQUIRED` answer (challenge token, 5 minutes).",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "code": {
+            "description": "The current 6-digit TOTP code; spaces are ignored.",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "recoveryCode": {
+            "description": "One unused recovery code, `XXXXX-XXXXX`; case, spaces and hyphens are ignored.",
+            "maxLength": 32,
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge"
+        ],
         "type": "object"
       },
       "MyConsent": {
@@ -1204,6 +1322,91 @@
         },
         "security": [],
         "summary": "Revokes the cookie's family and clears the cookie; `204` whether or not a session existed.",
+        "tags": [
+          "AdminAuth"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/mfa/verify": {
+      "post": {
+        "operationId": "AdminAuthController_verifyMfa_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaVerifyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMfaSession"
+                }
+              }
+            },
+            "description": "Sets the kd_refresh cookie."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "The second step of a `MANAGER` or `ADMIN` (A3-T2): the challenge (`mfaToken` of\n`MFA_REQUIRED`) with a TOTP `code` or one `recoveryCode`. Success: `200` with the session and\n`recoveryCodesLeft`, and the cookie. Invalid or expired challenge, or an account that may no\nlonger sign in: `401 UNAUTHENTICATED`. Wrong, replayed or locked-out code: `400 CODE_INVALID`\n(counted toward the lockout; brief E15).",
         "tags": [
           "AdminAuth"
         ]
@@ -2657,6 +2860,232 @@
         "summary": "Links a Google or Apple account (`{ idToken, nonce }` from the native flow and\n`POST /auth/social/nonce`). Customers only; linking the same account again is a no-op.",
         "tags": [
           "Me"
+        ]
+      }
+    },
+    "/api/v1/me/mfa/confirm": {
+      "post": {
+        "operationId": "MfaController_confirm_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCodeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaConfirmation"
+                }
+              }
+            },
+            "description": "With the enrolment token, also sets the kd_refresh cookie."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Confirms the pending secret with a current code and returns ten recovery codes, shown once.\nWith the enrolment token the sign-in completes: `session` and the `kd_refresh` cookie (decision\n0008 section 8). A wrong, replayed or locked-out code is `400 CODE_INVALID`.",
+        "tags": [
+          "Mfa"
+        ]
+      }
+    },
+    "/api/v1/me/mfa/recovery-codes": {
+      "post": {
+        "operationId": "MfaController_regenerateRecoveryCodes_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCodeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaRecoveryCodes"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "MFA_NOT_ENABLED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Replaces the whole recovery set after a current TOTP code; the old codes stop working. No\nconfirmed second factor: `409 MFA_NOT_ENABLED`.",
+        "tags": [
+          "Mfa"
+        ]
+      }
+    },
+    "/api/v1/me/mfa/setup": {
+      "post": {
+        "operationId": "MfaController_setup_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaSetup"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A new secret, pending until `confirm`: `200 { otpauthUri, secret }`, shown once. An enabled\nsecond factor is never replaced here: `409 ALREADY_EXISTS`.",
+        "tags": [
+          "Mfa"
         ]
       }
     },

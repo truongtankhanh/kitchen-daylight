@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
 
 import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -38,7 +38,10 @@ import { RefreshTokenService } from './refresh-token.service.js';
 })
 class StubDataSourceModule {}
 
-/** Only `jwt` is read by this module; the other members are placeholders. */
+/**
+ * `jwt` and `mfaEncryption` are read at init (the latter since A3-T2: `SecretCipher` needs a 32-byte
+ * key); the other members are placeholders. The MFA key is a fixture made at run time.
+ */
 function authConfig(): AuthConfig {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const base64 = (pem: string | Buffer): string => Buffer.from(pem).toString('base64');
@@ -50,7 +53,7 @@ function authConfig(): AuthConfig {
       previousPublicKeys: [],
     },
     otpHmacSecret: 'unused-in-this-spec',
-    mfaEncryption: { key: 'unused-in-this-spec', previousKeys: [] },
+    mfaEncryption: { key: randomBytes(32).toString('base64'), previousKeys: [] },
     social: { googleClientIds: [], appleClientIds: [] },
   };
 }

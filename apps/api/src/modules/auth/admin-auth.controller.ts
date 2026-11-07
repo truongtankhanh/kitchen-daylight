@@ -25,6 +25,8 @@ import type { AdminSession, AdminSignIn } from './admin-auth.service.js';
 import { ADMIN_CLIENT_VALUE, CsrfGuard } from './csrf.guard.js';
 import { AdminSessionDto } from './dto/admin-session.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { AdminMfaSessionDto } from './mfa/dto/admin-mfa-session.dto.js';
+import { MfaVerifyDto } from './mfa/dto/mfa-verify.dto.js';
 import {
   clearRefreshCookie,
   readRefreshCookie,
@@ -99,6 +101,35 @@ export class AdminAuthController {
   ): Promise<AdminSession> {
     const signIn = await this.auth.login(body, { client });
     return this.withCookie(signIn, response);
+  }
+
+  /**
+   * The second step of a `MANAGER` or `ADMIN` (A3-T2): the challenge (`mfaToken` of
+   * `MFA_REQUIRED`) with a TOTP `code` or one `recoveryCode`. Success: `200` with the session and
+   * `recoveryCodesLeft`, and the cookie. Invalid or expired challenge, or an account that may no
+   * longer sign in: `401 UNAUTHENTICATED`. Wrong, replayed or locked-out code: `400 CODE_INVALID`
+   * (counted toward the lockout; brief E15).
+   */
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: AdminMfaSessionDto,
+    description: `Sets the ${REFRESH_COOKIE_NAME} cookie.`,
+  })
+  @ApiProblemResponses(
+    'VALIDATION_FAILED',
+    'CODE_INVALID',
+    'UNAUTHENTICATED',
+    'FORBIDDEN',
+    'RATE_LIMITED',
+  )
+  async verifyMfa(
+    @Body(new BodyOf(MfaVerifyDto)) body: MfaVerifyDto,
+    @Headers('x-client') client: string | undefined,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<AdminMfaSessionDto> {
+    const signIn = await this.auth.verifySecondStep(body, { client });
+    return { ...this.withCookie(signIn, response), recoveryCodesLeft: signIn.recoveryCodesLeft };
   }
 
   /**

@@ -84,6 +84,18 @@ export const AUDIT_ACTIONS = [
   'auth.login_succeeded',
   'auth.login_failed',
   'auth.logout',
+  // Staff second factor (A3-T2): entity USER, never the secret, a code or a hash. `mfa_requested`:
+  // no actor, a correct password of a MANAGER or ADMIN, diff { enrolled }. `mfa_succeeded`: actor
+  // the user, diff { method } (TOTP or RECOVERY_CODE). `mfa_failed`: no actor, diff { method,
+  // reason, failedLoginCount? } (WRONG_CODE or LOCKED). `mfa_enrolled`: actor the user, the first
+  // code confirmed. `mfa_recovery_code_used` and `mfa_recovery_codes_regenerated`: actor the user,
+  // diff { recoveryCodesLeft }. Names are proposals (brief E17; api-divergences D-081).
+  'auth.mfa_requested',
+  'auth.mfa_succeeded',
+  'auth.mfa_failed',
+  'auth.mfa_enrolled',
+  'auth.mfa_recovery_code_used',
+  'auth.mfa_recovery_codes_regenerated',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

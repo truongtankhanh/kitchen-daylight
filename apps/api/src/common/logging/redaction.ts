@@ -12,9 +12,10 @@ export const REDACT_CENSOR = '[redacted]';
  * `error-serializer.ts`). The request field `code` never reaches a log line, because no body is
  * logged (`request-serializer.ts`), and no log call passes an email code under `code`.
  *
- * A2-T6 (social sign-in) appends `*.nonce` (decision 0008, Consequences). `*.recoveryCode` arrives
- * with the MFA task of A3 that introduces the field. The differences from 0008 are api-divergences
- * D-074.
+ * A2-T6 (social sign-in) appends `*.nonce` (decision 0008, Consequences). A3-T2 (staff second
+ * factor) appends the MFA field names: `*.recoveryCode` (0008), `*.recoveryCodes`, `*.mfaToken`
+ * and `*.challenge` (the token of `MFA_REQUIRED` and its echo in `/admin/auth/mfa/verify`) and
+ * `*.otpauthUri` (it carries the secret). The differences from 0008 are api-divergences D-074.
  */
 export const REDACT_PATHS = [
   // Headers.
@@ -39,6 +40,12 @@ export const REDACT_PATHS = [
   '*.emailCode',
   // A2-T6: the social sign-in nonce.
   '*.nonce',
+  // A3-T2: the staff second factor (D-074, D-076).
+  '*.recoveryCode',
+  '*.recoveryCodes',
+  '*.mfaToken',
+  '*.challenge',
+  '*.otpauthUri',
 ] as const;
 
 /** The `redact` option of pino, built from the list above. */

@@ -18,6 +18,10 @@ import { AuthService } from './auth.service.js';
 import { CsrfGuard } from './csrf.guard.js';
 import { EMAIL_CODE_HMAC_KEY, EmailCodeService } from './email-code.service.js';
 import { JWT_KEY_CONFIG, KeySet } from './key-set.js';
+import { MfaAccessGuard } from './mfa/mfa-access.guard.js';
+import { MfaController } from './mfa/mfa.controller.js';
+import { MfaService } from './mfa/mfa.service.js';
+import { SecretCipher } from './mfa/secret-cipher.js';
 import { RefreshTokenService } from './refresh-token.service.js';
 import { JoseSocialIdentityVerifier } from './social/jose-social-identity-verifier.js';
 import { NonceService, SOCIAL_NONCE_SECRET } from './social/nonce.service.js';
@@ -40,6 +44,9 @@ import { SocialService } from './social/social.service.js';
  * verifier unconditionally: there is no adapter variable; the integration tests replace
  * `SOCIAL_IDENTITY_VERIFIER` through the test module's provider override only. `SocialService` is
  * exported for the `/me/identities` routes of `MeController`.
+ * Staff second factor (A3-T2: `MfaController` under `/me/mfa`, `MfaService`, `MfaAccessGuard`):
+ * `SecretCipher` is built from the validated `MFA_ENCRYPTION_KEY` and previous keys (base64
+ * decoding only, no I/O); `/admin/auth/mfa/verify` is on `AdminAuthController`.
  */
 @Module({})
 export class AuthModule {
@@ -48,11 +55,20 @@ export class AuthModule {
       module: AuthModule,
       global: true,
       imports: [AuditModule, UsersModule, LegalModule, MailModule, ThrottlingModule],
-      controllers: [AuthController, AuthCodesController, SocialController, AdminAuthController],
+      controllers: [
+        AuthController,
+        AuthCodesController,
+        SocialController,
+        AdminAuthController,
+        MfaController,
+      ],
       providers: [
         AuthService,
         AdminAuthService,
         CsrfGuard,
+        MfaService,
+        MfaAccessGuard,
+        { provide: SecretCipher, useFactory: () => SecretCipher.fromConfig(auth.mfaEncryption) },
         EmailCodeService,
         // The bytes of `OTP_HMAC_SECRET` (base64, at least 32, validated by `loadConfig`).
         { provide: EMAIL_CODE_HMAC_KEY, useValue: Buffer.from(auth.otpHmacSecret, 'base64') },

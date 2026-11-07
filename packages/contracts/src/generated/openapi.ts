@@ -59,6 +59,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The second step of a `MANAGER` or `ADMIN` (A3-T2): the challenge (`mfaToken` of
+         *     `MFA_REQUIRED`) with a TOTP `code` or one `recoveryCode`. Success: `200` with the session and
+         *     `recoveryCodesLeft`, and the cookie. Invalid or expired challenge, or an account that may no
+         *     longer sign in: `401 UNAUTHENTICATED`. Wrong, replayed or locked-out code: `400 CODE_INVALID`
+         *     (counted toward the lockout; brief E15).
+         */
+        post: operations["AdminAuthController_verifyMfa_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/auth/refresh": {
         parameters: {
             query?: never;
@@ -367,6 +390,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/mfa/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirms the pending secret with a current code and returns ten recovery codes, shown once.
+         *     With the enrolment token the sign-in completes: `session` and the `kd_refresh` cookie (decision
+         *     0008 section 8). A wrong, replayed or locked-out code is `400 CODE_INVALID`.
+         */
+        post: operations["MfaController_confirm_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/mfa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replaces the whole recovery set after a current TOTP code; the old codes stop working. No
+         *     confirmed second factor: `409 MFA_NOT_ENABLED`.
+         */
+        post: operations["MfaController_regenerateRecoveryCodes_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/mfa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A new secret, pending until `confirm`: `200 { otpauthUri, secret }`, shown once. An enabled
+         *     second factor is never replaced here: `409 ALREADY_EXISTS`.
+         */
+        post: operations["MfaController_setup_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/password": {
         parameters: {
             query?: never;
@@ -560,6 +644,14 @@ export interface components {
              */
             wardCode?: string | null;
         };
+        AdminMfaSession: {
+            /** @description ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web. */
+            accessToken: string;
+            /** @description Seconds until the access token expires. */
+            expiresIn: number;
+            recoveryCodesLeft: number;
+            user: components["schemas"]["AdminSessionUser"];
+        };
         AdminSession: {
             /** @description ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web. */
             accessToken: string;
@@ -697,6 +789,33 @@ export interface components {
              * @description An existing, not deleted branch (`NOT_FOUND` otherwise), or `null` to clear.
              */
             preferredBranchId?: string | null;
+        };
+        MfaCodeDto: {
+            /** @description The current 6-digit code of the authenticator app; spaces are ignored. */
+            code: string;
+        };
+        MfaConfirmation: {
+            /** @description Ten single-use codes, `XXXXX-XXXXX`; the previous set no longer works. */
+            recoveryCodes: string[];
+            session?: components["schemas"]["AdminSession"];
+        };
+        MfaRecoveryCodes: {
+            /** @description Ten single-use codes, `XXXXX-XXXXX`; the previous set no longer works. */
+            recoveryCodes: string[];
+        };
+        MfaSetup: {
+            /** @description `otpauth://totp/…` for the QR code (issuer `Kitchen Daylight`, label the email). */
+            otpauthUri: string;
+            /** @description The same secret in Base32, for typing into an authenticator app by hand. */
+            secret: string;
+        };
+        MfaVerifyDto: {
+            /** @description The `mfaToken` of the `MFA_REQUIRED` answer (challenge token, 5 minutes). */
+            challenge: string;
+            /** @description The current 6-digit TOTP code; spaces are ignored. */
+            code?: string;
+            /** @description One unused recovery code, `XXXXX-XXXXX`; case, spaces and hyphens are ignored. */
+            recoveryCode?: string;
         };
         MyConsent: {
             action: components["schemas"]["ConsentAction"];
@@ -964,6 +1083,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminAuthController_verifyMfa_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaVerifyDto"];
+            };
+        };
+        responses: {
+            /** @description Sets the kd_refresh cookie. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMfaSession"];
+                };
+            };
+            /** @description VALIDATION_FAILED, CODE_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
             /** @description FORBIDDEN */
             403: {
@@ -2172,6 +2353,198 @@ export interface operations {
                 };
             };
             /** @description INVALID_STATE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MfaController_confirm_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaCodeDto"];
+            };
+        };
+        responses: {
+            /** @description With the enrolment token, also sets the kd_refresh cookie. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaConfirmation"];
+                };
+            };
+            /** @description VALIDATION_FAILED, CODE_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ALREADY_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MfaController_regenerateRecoveryCodes_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaCodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaRecoveryCodes"];
+                };
+            };
+            /** @description VALIDATION_FAILED, CODE_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description MFA_NOT_ENABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MfaController_setup_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaSetup"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ALREADY_EXISTS */
             409: {
                 headers: {
                     [name: string]: unknown;

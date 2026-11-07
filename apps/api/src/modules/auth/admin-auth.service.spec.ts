@@ -23,11 +23,15 @@ import {
   MFA_CHALLENGE_TTL_SECONDS,
   MFA_ENROLMENT_TOKEN_TYPE,
   MFA_ENROLMENT_TTL_SECONDS,
+  secondFactorOf,
   staffSignInPath,
 } from './admin-auth.service.js';
-import { MfaCredential } from './entities/mfa-credential.entity.js';
+import type { MfaCredential } from './entities/mfa-credential.entity.js';
 import type { RefreshToken } from './entities/refresh-token.entity.js';
 import { KeySet } from './key-set.js';
+import { signMfaToken } from './mfa/mfa-tokens.js';
+import type { MfaTokenType } from './mfa/mfa-tokens.js';
+import type { InTransaction, MfaService, SecondFactor } from './mfa/mfa.service.js';
 import type { RefreshTokenService, SessionTokens } from './refresh-token.service.js';
 
 const NOW = '2026-11-07T03:00:00.000Z';
@@ -131,6 +135,11 @@ describe('AdminAuthService', () => {
     revokeFamily: ReturnType<typeof vi.fn>;
   };
   let audit: { write: ReturnType<typeof vi.fn> };
+  let mfa: {
+    isEnrolled: ReturnType<typeof vi.fn>;
+    recordRequested: ReturnType<typeof vi.fn>;
+    verifySecondFactor: ReturnType<typeof vi.fn>;
+  };
   let keys: KeySet;
   let publicPem: string;
   let service: AdminAuthService;
@@ -156,9 +165,7 @@ describe('AdminAuthService', () => {
     dataSource = {
       transaction: vi.fn((work: (manager: unknown) => Promise<unknown>) => work(em)),
       manager: {
-        findOne: vi.fn((entity: unknown) =>
-          Promise.resolve(entity === MfaCredential ? credential : tokenRow),
-        ),
+        findOne: vi.fn(() => Promise.resolve(tokenRow)),
         update: vi.fn(() => Promise.resolve({})),
       },
     };
@@ -184,6 +191,19 @@ describe('AdminAuthService', () => {
       revokeFamily: vi.fn(() => Promise.resolve()),
     };
     audit = { write: vi.fn(() => Promise.resolve()) };
+    mfa = {
+      isEnrolled: vi.fn(() =>
+        Promise.resolve(credential !== null && credential.enabledAt !== null),
+      ),
+      recordRequested: vi.fn(() => Promise.resolve()),
+      // Runs the session work as the real service does, inside its transaction.
+      verifySecondFactor: vi.fn(
+        async (_userId: string, _factor: SecondFactor, then: InTransaction<unknown>) => ({
+          value: await then(em as never, stored ?? account()),
+          recoveryCodesLeft: 7,
+        }),
+      ),
+    };
 
     const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
     publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -204,6 +224,7 @@ describe('AdminAuthService', () => {
       keys,
       audit as unknown as AuditService,
       clock,
+      mfa as unknown as MfaService,
     );
     vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
@@ -419,6 +440,8 @@ describe('AdminAuthService', () => {
         expect(tokens.issue).not.toHaveBeenCalled();
         expect(users.recordSuccessfulLogin).not.toHaveBeenCalled();
         expect(audit.write).not.toHaveBeenCalled();
+        // The second step is requested and audited (brief E17).
+        expect(mfa.recordRequested).toHaveBeenCalledWith(USER_ID, true);
       },
     );
 
@@ -437,6 +460,7 @@ describe('AdminAuthService', () => {
       expect(decodeProtectedHeader(error.extras['mfaToken'] as string).typ).toBe(
         MFA_ENROLMENT_TOKEN_TYPE,
       );
+      expect(mfa.recordRequested).toHaveBeenCalledWith(USER_ID, false);
     });
 
     it('issues MFA tokens that the access-token verifier refuses', async () => {
@@ -484,6 +508,27 @@ describe('AdminAuthService', () => {
       expect(tokens.rotate).not.toHaveBeenCalled();
     });
 
+    it.each(['MANAGER', 'ADMIN'] as const)(
+      'refuses a %s without a confirmed second factor, without consuming the token',
+      async (role) => {
+        stored = account({ role });
+        credential = { userId: USER_ID, enabledAt: null };
+
+        expect((await failureOf(service.refresh(COOKIE_TOKEN))).code).toBe('UNAUTHENTICATED');
+        expect(tokens.rotate).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rotates the token of an enrolled MANAGER', async () => {
+      stored = account({ role: 'MANAGER' });
+      credential = { userId: USER_ID, enabledAt: new Date('2026-10-01T00:00:00Z') };
+      tokens.rotate.mockResolvedValue(sessionTokens('MANAGER'));
+
+      const signIn = await service.refresh(COOKIE_TOKEN);
+
+      expect(signIn.session.user.role).toBe('MANAGER');
+    });
+
     it('rotates a staff token and returns the session for the new cookie', async () => {
       const signIn = await service.refresh(COOKIE_TOKEN);
 
@@ -494,6 +539,104 @@ describe('AdminAuthService', () => {
         role: 'STAFF',
       });
       expect(signIn.refreshToken).toBe(COOKIE_TOKEN);
+    });
+  });
+
+  describe('verifySecondStep', () => {
+    async function challengeFor(type: MfaTokenType = MFA_CHALLENGE_TOKEN_TYPE): Promise<string> {
+      return (await signMfaToken(keys, clock.now(), type, USER_ID)).token;
+    }
+
+    it('starts the session in the transaction that spends the code, with the codes left', async () => {
+      stored = account({ role: 'ADMIN', failedLoginCount: 3 });
+      tokens.issue.mockResolvedValue(sessionTokens('ADMIN'));
+
+      const signIn = await service.verifySecondStep(
+        { challenge: await challengeFor(), code: '123456' },
+        { client: 'admin-web' },
+      );
+
+      expect(mfa.verifySecondFactor).toHaveBeenCalledWith(
+        USER_ID,
+        { method: 'TOTP', code: '123456' },
+        expect.any(Function),
+      );
+      expect(users.recordSuccessfulLogin).toHaveBeenCalledWith(USER_ID, em);
+      expect(tokens.issue).toHaveBeenCalledWith(USER_ID, { deviceLabel: 'admin-web' }, em);
+      expect(audit.write).toHaveBeenCalledWith(
+        {
+          actorUserId: USER_ID,
+          action: ADMIN_AUTH_AUDIT.loginSucceeded,
+          entityType: 'USER',
+          entityId: USER_ID,
+        },
+        em,
+      );
+      expect(signIn.session.user).toEqual({
+        id: USER_ID,
+        displayName: 'Nhân viên mẫu',
+        role: 'ADMIN',
+      });
+      expect(signIn.recoveryCodesLeft).toBe(7);
+      expect(signIn.refreshToken).toBe(COOKIE_TOKEN);
+      expect(signIn.session).not.toHaveProperty('refreshToken');
+    });
+
+    it('passes a recovery code as such', async () => {
+      stored = account({ role: 'MANAGER' });
+
+      await service.verifySecondStep(
+        { challenge: await challengeFor(), recoveryCode: 'ABCDE-12345' },
+        {},
+      );
+
+      expect(mfa.verifySecondFactor).toHaveBeenCalledWith(
+        USER_ID,
+        { method: 'RECOVERY_CODE', code: 'ABCDE-12345' },
+        expect.any(Function),
+      );
+    });
+
+    it.each([
+      ['garbage', async () => 'not.a.jwt'],
+      ['the enrolment token', () => challengeFor(MFA_ENROLMENT_TOKEN_TYPE)],
+      [
+        'an access token',
+        async () =>
+          (
+            await new AccessTokenService(keys, clock).sign({
+              userId: USER_ID,
+              role: 'ADMIN',
+              sessionId: FAMILY_ID,
+            })
+          ).token,
+      ],
+    ])(
+      'refuses %s as the challenge with UNAUTHENTICATED, checking no code',
+      async (_case, make) => {
+        const error = await failureOf(
+          service.verifySecondStep({ challenge: await make(), code: '123456' }, {}),
+        );
+
+        expect(seen(error)).toEqual({
+          code: 'UNAUTHENTICATED',
+          status: 401,
+          detail: undefined,
+          errors: undefined,
+          extras: {},
+        });
+        expect(mfa.verifySecondFactor).not.toHaveBeenCalled();
+      },
+    );
+
+    it('refuses an expired challenge', async () => {
+      const challenge = await challengeFor();
+      clock.advance((MFA_CHALLENGE_TTL_SECONDS + 60) * 1000);
+
+      expect(
+        (await failureOf(service.verifySecondStep({ challenge, code: '123456' }, {}))).code,
+      ).toBe('UNAUTHENTICATED');
+      expect(mfa.verifySecondFactor).not.toHaveBeenCalled();
     });
   });
 
@@ -530,3 +673,25 @@ describe('AdminAuthService', () => {
 function tokenRowOf(): Pick<RefreshToken, 'userId' | 'familyId' | 'revokedAt'> {
   return { userId: USER_ID, familyId: FAMILY_ID, revokedAt: null };
 }
+
+describe('secondFactorOf', () => {
+  it.each([
+    ['neither code', {}],
+    ['both codes', { code: '123456', recoveryCode: 'ABCDE-12345' }],
+  ])('refuses %s with VALIDATION_FAILED on both fields', (_case, codes) => {
+    let thrown: unknown;
+    try {
+      secondFactorOf({ challenge: 'x', ...codes });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ApiError);
+    expect((thrown as ApiError).code).toBe('VALIDATION_FAILED');
+    expect((thrown as ApiError).errors?.map((error) => error.field)).toEqual([
+      'code',
+      'recoveryCode',
+    ]);
+    expect(JSON.stringify((thrown as ApiError).errors)).not.toContain('123456');
+  });
+});

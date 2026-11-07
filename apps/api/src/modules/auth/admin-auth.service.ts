@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { SignJWT } from 'jose';
 import { DataSource } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 
 import { STAFF_ROLES } from '../../common/auth/roles.decorator.js';
 import { ApiError } from '../../common/errors/api-error.js';
@@ -12,12 +12,18 @@ import type { UserRole } from '../users/entities/user.entity.js';
 import { isLocked } from '../users/lockout.js';
 import { PasswordHasher } from '../users/password-hasher.js';
 import { UsersService } from '../users/users.service.js';
-import { ACCESS_TOKEN_AUDIENCE, ACCESS_TOKEN_ISSUER } from './access-token.service.js';
 import { deviceLabelOf } from './auth.service.js';
 import type { ClientHeaders, LoginInput } from './auth.service.js';
-import { MfaCredential } from './entities/mfa-credential.entity.js';
 import { RefreshToken } from './entities/refresh-token.entity.js';
-import { ACCESS_TOKEN_ALGORITHM, KeySet } from './key-set.js';
+import { KeySet } from './key-set.js';
+import {
+  MFA_CHALLENGE_TOKEN_TYPE,
+  MFA_ENROLMENT_TOKEN_TYPE,
+  signMfaToken,
+  verifyMfaToken,
+} from './mfa/mfa-tokens.js';
+import { MfaService } from './mfa/mfa.service.js';
+import type { SecondFactor } from './mfa/mfa.service.js';
 import { hashRefreshToken, RefreshTokenService } from './refresh-token.service.js';
 import type { SessionTokens } from './refresh-token.service.js';
 
@@ -31,17 +37,13 @@ export function isStaffRole(role: UserRole): role is StaffRole {
   return STAFF_ROLES.some((staff) => staff === role);
 }
 
-/**
- * The two short-lived tokens a `MANAGER` or `ADMIN` receives with `MFA_REQUIRED` after a correct
- * password. Signed like the access token (ES256, `kid`, `iss`, `aud`) with claims `sub`, `iat`,
- * `exp` only: no `role`, no `sid`. The access-token verifier refuses both by their `typ`.
- * - challenge (api-divergences D-076): an enrolled user; `POST /admin/auth/mfa/verify` (A3-T2).
- * - enrolment (decision 0008 section 8): no `enabled_at` yet; `/me/mfa/setup` and `/confirm`.
- */
-export const MFA_CHALLENGE_TOKEN_TYPE = 'mfa-challenge+jwt';
-export const MFA_CHALLENGE_TTL_SECONDS = 5 * 60;
-export const MFA_ENROLMENT_TOKEN_TYPE = 'mfa-enrol+jwt';
-export const MFA_ENROLMENT_TTL_SECONDS = 10 * 60;
+// The MFA tokens moved to `mfa/mfa-tokens.ts` with their verifier (A3-T2); re-exported here.
+export {
+  MFA_CHALLENGE_TOKEN_TYPE,
+  MFA_CHALLENGE_TTL_SECONDS,
+  MFA_ENROLMENT_TOKEN_TYPE,
+  MFA_ENROLMENT_TTL_SECONDS,
+} from './mfa/mfa-tokens.js';
 
 /** Audit codes written by the staff transport (catalogue in `@kd/contracts`; brief E17). */
 export const ADMIN_AUTH_AUDIT = {
@@ -76,6 +78,18 @@ export interface AdminSignIn {
   readonly session: AdminSession;
   readonly refreshToken: string;
   readonly refreshTokenExpiresAt: Date;
+}
+
+/** A completed second step: the session and the recovery codes left (brief E20). */
+export interface AdminMfaSignIn extends AdminSignIn {
+  readonly recoveryCodesLeft: number;
+}
+
+/** `POST /admin/auth/mfa/verify`: the challenge with exactly one of the two codes. */
+export interface SecondStepInput {
+  readonly challenge: string;
+  readonly code?: string | undefined;
+  readonly recoveryCode?: string | undefined;
 }
 
 /** The members `MFA_REQUIRED` carries (api-divergences D-076). */
@@ -132,6 +146,24 @@ function unauthenticated(): ApiError {
   return new ApiError('UNAUTHENTICATED');
 }
 
+/** Exactly one of `code` and `recoveryCode` (D-080); the message never repeats a value. */
+export function secondFactorOf(input: SecondStepInput): SecondFactor {
+  const hasCode = typeof input.code === 'string';
+  const hasRecoveryCode = typeof input.recoveryCode === 'string';
+  if (hasCode === hasRecoveryCode) {
+    throw new ApiError('VALIDATION_FAILED', {
+      errors: ['code', 'recoveryCode'].map((field) => ({
+        field,
+        code: 'INVALID' as const,
+        message: 'send exactly one of code and recoveryCode',
+      })),
+    });
+  }
+  return hasCode
+    ? { method: 'TOTP', code: input.code ?? '' }
+    : { method: 'RECOVERY_CODE', code: input.recoveryCode ?? '' };
+}
+
 /**
  * Staff authentication on the cookie transport (A3-T1; ADR-0003 "Admin web"; decision 0008
  * sections 1, 4, 5, 8 and 10). Every method is public: the account is identified by its credentials
@@ -151,12 +183,14 @@ export class AdminAuthService {
     @Inject(KeySet) private readonly keys: KeySet,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(Clock) private readonly clock: Clock,
+    @Inject(MfaService) private readonly mfa: MfaService,
   ) {}
 
   /**
    * `STAFF`: a new family, `last_login_at`, the counters cleared, `auth.login_succeeded`. `MANAGER`
-   * and `ADMIN`: `403 MFA_REQUIRED` with the challenge or enrolment token and no session; the
-   * counters and `last_login_at` change only when A3-T2 completes the sign-in. A wrong password
+   * and `ADMIN`: `auth.mfa_requested`, then `403 MFA_REQUIRED` with the challenge or enrolment
+   * token and no session; the counters and `last_login_at` change only when the second step
+   * completes (`verifySecondStep`, or `/me/mfa/confirm` with the enrolment token). A wrong password
    * counts toward the staff lockout (threshold 5).
    */
   async login(input: LoginInput, headers: ClientHeaders): Promise<AdminSignIn> {
@@ -194,6 +228,7 @@ export class AdminAuthService {
         );
       }
       const challenge = await this.mfaChallengeFor(user.id);
+      await this.mfa.recordRequested(user.id, challenge.mfaEnrolled);
       throw new ApiError('MFA_REQUIRED', { extras: { ...challenge } });
     }
 
@@ -201,23 +236,69 @@ export class AdminAuthService {
       if (rehashed !== null) {
         await em.update(User, { id: user.id, passwordHash }, { passwordHash: rehashed });
       }
-      await this.users.recordSuccessfulLogin(user.id, em);
-      const issued = await this.tokens.issue(
-        user.id,
-        { deviceLabel: deviceLabelOf(input.deviceLabel, headers.client) },
-        em,
-      );
-      await this.audit.write(
-        {
-          actorUserId: user.id,
-          action: ADMIN_AUTH_AUDIT.loginSucceeded,
-          entityType: 'USER',
-          entityId: user.id,
-        },
-        em,
-      );
-      return issued;
+      return this.startSession(user, deviceLabelOf(input.deviceLabel, headers.client), em);
     });
+    this.logSignIn(user);
+    return this.signInOf(tokens, { ...user, role });
+  }
+
+  /**
+   * The second step of a `MANAGER` or `ADMIN` sign-in (api-outline staff transport; decision 0008
+   * section 8). An invalid or expired challenge is `UNAUTHENTICATED` (sign in again); a wrong,
+   * replayed or locked-out code is `CODE_INVALID` and counts toward the same lockout as a wrong
+   * password (`MfaService`). Success starts the session in the transaction that spends the code.
+   */
+  async verifySecondStep(input: SecondStepInput, headers: ClientHeaders): Promise<AdminMfaSignIn> {
+    const factor = secondFactorOf(input);
+    const userId = await verifyMfaToken(
+      this.keys,
+      this.clock.now(),
+      input.challenge,
+      MFA_CHALLENGE_TOKEN_TYPE,
+    );
+    if (userId === null) {
+      throw unauthenticated();
+    }
+    const { value, recoveryCodesLeft } = await this.mfa.verifySecondFactor(
+      userId,
+      factor,
+      async (em, user) => ({
+        user,
+        tokens: await this.startSession(user, deviceLabelOf(undefined, headers.client), em),
+      }),
+    );
+    this.logSignIn(value.user);
+    return {
+      ...this.signInOf(value.tokens, { ...value.user, role: value.user.role as StaffRole }),
+      recoveryCodesLeft,
+    };
+  }
+
+  /**
+   * A completed staff sign-in, in the caller's transaction: counters cleared and `last_login_at`
+   * set (brief E3), a new refresh-token family, `auth.login_succeeded` with the user as actor.
+   */
+  async startSession(
+    user: Pick<User, 'id'>,
+    deviceLabel: string | undefined,
+    em: EntityManager,
+  ): Promise<SessionTokens> {
+    await this.users.recordSuccessfulLogin(user.id, em);
+    const issued = await this.tokens.issue(user.id, { deviceLabel }, em);
+    await this.audit.write(
+      {
+        actorUserId: user.id,
+        action: ADMIN_AUTH_AUDIT.loginSucceeded,
+        entityType: 'USER',
+        entityId: user.id,
+      },
+      em,
+    );
+    return issued;
+  }
+
+  /** The log line of a completed sign-in, after the commit. */
+  logSignIn(user: Pick<User, 'id' | 'failedLoginCount'>): void {
     this.logger.log(
       {
         event: ADMIN_AUTH_AUDIT.loginSucceeded,
@@ -226,7 +307,6 @@ export class AdminAuthService {
       },
       'staff sign-in',
     );
-    return this.signInOf(tokens, { ...user, role });
   }
 
   /**
@@ -234,6 +314,8 @@ export class AdminAuthService {
    * there, and the 10-second grace window). The owner is checked first, so a refused token is
    * never consumed: no cookie, an unknown token, a `CUSTOMER` token and a non-`ACTIVE` account are
    * `UNAUTHENTICATED`, as is every rotation failure. The controller clears the cookie on failure.
+   * A `MANAGER` or `ADMIN` without a confirmed second factor (promoted from `STAFF`, or reset) is
+   * refused too: such a role never holds a session without the second step (A3-T2).
    */
   async refresh(refreshToken: string | undefined): Promise<AdminSignIn> {
     if (refreshToken === undefined) {
@@ -241,6 +323,9 @@ export class AdminAuthService {
     }
     const owner = await this.ownerOf(refreshToken);
     if (owner === null || !isStaffRole(owner.role) || owner.status !== 'ACTIVE') {
+      throw unauthenticated();
+    }
+    if (MFA_ROLES.includes(owner.role) && !(await this.mfa.isEnrolled(owner.id))) {
       throw unauthenticated();
     }
     const tokens = await this.tokens.rotate(refreshToken);
@@ -344,28 +429,20 @@ export class AdminAuthService {
 
   /** The challenge token for an enrolled `MANAGER` or `ADMIN`, else the enrolment token. */
   private async mfaChallengeFor(userId: string): Promise<MfaChallenge> {
-    const credential = await this.dataSource.manager.findOne(MfaCredential, {
-      where: { userId },
-    });
-    const enrolled = credential !== null && credential.enabledAt !== null;
-    const type = enrolled ? MFA_CHALLENGE_TOKEN_TYPE : MFA_ENROLMENT_TOKEN_TYPE;
-    const ttl = enrolled ? MFA_CHALLENGE_TTL_SECONDS : MFA_ENROLMENT_TTL_SECONDS;
-
-    const { keyId, key } = this.keys.signingKey();
-    const issuedAt = Math.floor(this.clock.now().getTime() / 1000);
-    const mfaToken = await new SignJWT({})
-      .setProtectedHeader({ alg: ACCESS_TOKEN_ALGORITHM, kid: keyId, typ: type })
-      .setIssuer(ACCESS_TOKEN_ISSUER)
-      .setAudience(ACCESS_TOKEN_AUDIENCE)
-      .setSubject(userId)
-      .setIssuedAt(issuedAt)
-      .setExpirationTime(issuedAt + ttl)
-      .sign(key);
-    return { mfaToken, mfaEnrolled: enrolled, expiresIn: ttl };
+    const enrolled = await this.mfa.isEnrolled(userId);
+    const { token, expiresIn } = await signMfaToken(
+      this.keys,
+      this.clock.now(),
+      enrolled ? MFA_CHALLENGE_TOKEN_TYPE : MFA_ENROLMENT_TOKEN_TYPE,
+      userId,
+    );
+    return { mfaToken: token, mfaEnrolled: enrolled, expiresIn };
   }
 
-  /** Role and status of the account that holds `refreshToken`, or `null` for an unknown token. */
-  private async ownerOf(refreshToken: string): Promise<Pick<User, 'role' | 'status'> | null> {
+  /** The account that holds `refreshToken`, or `null` for an unknown token. */
+  private async ownerOf(
+    refreshToken: string,
+  ): Promise<Pick<User, 'id' | 'role' | 'status'> | null> {
     const row = await this.dataSource.manager.findOne(RefreshToken, {
       where: { tokenHash: hashRefreshToken(refreshToken) },
     });
@@ -375,7 +452,8 @@ export class AdminAuthService {
     return this.users.findById(row.userId);
   }
 
-  private signInOf(
+  /** The body and cookie values of a started session. */
+  signInOf(
     tokens: SessionTokens,
     user: Pick<User, 'id' | 'displayName'> & { readonly role: StaffRole },
   ): AdminSignIn {
