@@ -139,6 +139,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Staff in full, customers with a masked contact (brief E2, E12, E14, M19). */
+        get: operations["AdminUsersController_list_v1"];
+        put?: never;
+        /** An `INVITED` staff account and its invitation link (brief E1). */
+        post: operations["AdminUsersController_create_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * `displayName`, `role`, `status`, `branchIds` (a customer: `status` only). `SELF_CHANGE`,
+         *     `LAST_ADMIN`; a role change or a suspension ends the person's sessions (brief E6).
+         */
+        patch: operations["AdminUsersController_update_v1"];
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/mfa-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deletes the second factor of another user and ends their sessions (E9; WA20). */
+        post: operations["AdminUsersController_resetMfa_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/resend-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A new 48-hour invitation link that expires the old one; once per 60 s (E10). */
+        post: operations["AdminUsersController_resendInvite_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A 30-minute reset link to an `ACTIVE` staff account; `INVALID_STATE` when invited (E7). */
+        post: operations["AdminUsersController_resetPassword_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/reveal-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The full email and phone; writes `order.contact_reveal` with entity `USER` (E13). */
+        post: operations["AdminUsersController_revealContact_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/email/send-code": {
         parameters: {
             query?: never;
@@ -681,6 +787,22 @@ export interface components {
              */
             wardCode?: string | null;
         };
+        AdminCustomerUser: {
+            completedOrders: number;
+            displayName: string;
+            emailMasked: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastOrderAt: string | null;
+            ordersCount: number;
+            phoneMasked: string | null;
+            pointsBalance: number;
+            /** @enum {string} */
+            role: "CUSTOMER";
+            /** @enum {string} */
+            status: "INVITED" | "ACTIVE" | "SUSPENDED" | "DELETED";
+        };
         AdminMfaSession: {
             /** @description ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web. */
             accessToken: string;
@@ -701,6 +823,71 @@ export interface components {
             /** Format: uuid */
             id: string;
             role: components["schemas"]["StaffRole"];
+        };
+        AdminStaffUser: {
+            /** @description Empty for `ADMIN`, who ignores branches. */
+            branches: components["schemas"]["AdminUserBranch"][];
+            displayName: string;
+            /** @description Staff emails are shown in full: they are work addresses (brief E14). */
+            email: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastLoginAt: string | null;
+            mfa: components["schemas"]["AdminUserMfa"];
+            /** @enum {string} */
+            role: "STAFF" | "MANAGER" | "ADMIN";
+            /** @enum {string} */
+            status: "INVITED" | "ACTIVE" | "SUSPENDED" | "DELETED";
+        };
+        AdminUserBranch: {
+            code: string;
+            /** Format: uuid */
+            id: string;
+        };
+        AdminUserContact: {
+            email: string;
+            /** @description E.164; `null` when the account has none. */
+            phone: string | null;
+        };
+        AdminUserCreateDto: {
+            /** @description At least one existing branch for `STAFF` and `MANAGER`; ignored for `ADMIN`. */
+            branchIds?: string[];
+            /** @description Trimmed; 1 to 60 characters. */
+            displayName: string;
+            /**
+             * Format: email
+             * @description Trimmed; the invitation goes there. An address already in use is `ALREADY_EXISTS`.
+             */
+            email: string;
+            /** @enum {string} */
+            role: "STAFF" | "MANAGER" | "ADMIN";
+        };
+        AdminUserMfa: {
+            /** @description A confirmed TOTP credential exists. */
+            enabled: boolean;
+            /** Format: date-time */
+            enabledAt: string | null;
+            /** @description True for `MANAGER` and `ADMIN`. */
+            required: boolean;
+        };
+        AdminUserPage: {
+            /** @description `ACTIVE` admins with a confirmed second factor, for the "two administrators" banner. */
+            activeAdminsWithMfa: number;
+            items: (components["schemas"]["AdminStaffUser"] | components["schemas"]["AdminCustomerUser"])[];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        AdminUserUpdateDto: {
+            /** @description Replaces the whole set; at least one existing branch for `STAFF` and `MANAGER`. */
+            branchIds?: string[];
+            /** @description Trimmed; 1 to 60 characters. */
+            displayName?: string;
+            /** @enum {string} */
+            role?: "STAFF" | "MANAGER" | "ADMIN";
+            /** @enum {string} */
+            status?: "ACTIVE" | "SUSPENDED";
         };
         AuthSession: {
             /** @description ES256 JWT for `Authorization: Bearer`. */
@@ -1347,6 +1534,512 @@ export interface operations {
             };
             /** @description FORBIDDEN */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_list_v1: {
+        parameters: {
+            query?: {
+                /** @description Staff who work at this branch (`staff_branches`); customers and admins never match. */
+                branchId?: string;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+                /**
+                 * @description Staff: a fragment of the display name (accent-insensitive) or of the email. Customers: the full
+                 *     email or the full phone only (brief E2).
+                 */
+                q?: string;
+                role?: "CUSTOMER" | "STAFF" | "MANAGER" | "ADMIN";
+                /** @description Several roles, as a repeated parameter (`roles=STAFF&roles=MANAGER`). */
+                roles?: ("CUSTOMER" | "STAFF" | "MANAGER" | "ADMIN")[];
+                /** @description `staff`: `STAFF`, `MANAGER` and `ADMIN` only. */
+                scope?: "staff";
+                /** @description Without it, `DELETED` accounts are left out. */
+                status?: "INVITED" | "ACTIVE" | "SUSPENDED" | "DELETED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserPage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_create_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserCreateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffUser"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ALREADY_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_update_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffUser"] | components["schemas"]["AdminCustomerUser"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN, SELF_CHANGE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description LAST_ADMIN, INVALID_STATE, INVALID_TRANSITION */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_resetMfa_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN, SELF_CHANGE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description MFA_NOT_ENABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_resendInvite_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description INVALID_STATE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_resetPassword_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description INVALID_STATE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUsersController_revealContact_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserContact"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

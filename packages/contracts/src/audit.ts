@@ -44,6 +44,13 @@ export const AUDIT_ACTIONS = [
   'user.disable',
   'user.enable',
   'user.password_reset_send',
+  // Added by A3-T4 for the admin user actions the codes above lack (proposals; brief E8, E9, G7;
+  // api-divergences D-093): a display name edit, diff { displayName { from, to } }; an invitation
+  // resent (G7 "resend invitation"); a second factor reset by an admin (WA20), diff
+  // { mfaEnabled { from, to } }. Entity USER, never the email, a token or a hash.
+  'user.display_name_change',
+  'user.invite_resend',
+  'user.mfa_reset',
   // Review report decision, diff { decision, note, reviewStatus { from, to }, appliedTo[] }.
   // Proposal (brief V18).
   'report.decision',

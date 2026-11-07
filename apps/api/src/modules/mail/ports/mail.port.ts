@@ -9,7 +9,11 @@ export const MAIL_PORT = Symbol('MAIL_PORT');
  * itself arrives in A12-T3.
  */
 export type MailTemplateKey =
-  'VERIFY_EMAIL_CODE' | 'PASSWORD_RESET_CODE' | 'STAFF_INVITE' | 'STAFF_PASSWORD_RESET';
+  | 'VERIFY_EMAIL_CODE'
+  | 'PASSWORD_RESET_CODE'
+  | 'STAFF_INVITE'
+  | 'STAFF_PASSWORD_RESET'
+  | 'MFA_RESET_NOTICE';
 
 export interface MailMessage {
   /** Logged by the adapter in place of any content. */

@@ -21,7 +21,11 @@ import { normalizeEmail } from '../users/email.js';
 import { checkPasswordPolicy } from '../users/password-policy.js';
 import { UsersService } from '../users/users.service.js';
 import { isStaffRole } from './admin-auth.service.js';
-import { dailyWindowStart, EMAIL_CODE_DAILY_CAP } from './email-code.service.js';
+import {
+  dailyWindowStart,
+  EMAIL_CODE_DAILY_CAP,
+  EMAIL_CODE_DAILY_WINDOW_MS,
+} from './email-code.service.js';
 import { EmailToken } from './entities/email-token.entity.js';
 import type { EmailTokenType } from './entities/email-token.entity.js';
 import { RefreshTokenService } from './refresh-token.service.js';
@@ -116,16 +120,27 @@ export function staffLinkTypeFor(user: Pick<User, 'role' | 'status'>): StaffLink
 /**
  * Result of `issueInvite` and `issueReset`, for the admin actions of A3-T4 to map: `NOT_ELIGIBLE`
  * (the account is not an `INVITED` or `ACTIVE` staff account for that link, `INVALID_STATE`),
- * `RESEND_TOO_SOON` (60 s rule, `RATE_LIMITED` with `Retry-After`), `DAILY_CAP` (5 per 24 h).
+ * `RESEND_TOO_SOON` (60 s rule) and `DAILY_CAP` (5 per 24 h), both `RATE_LIMITED` with
+ * `Retry-After` on the admin routes (api-divergences D-088). The public forgot route ignores the
+ * reason and answers the same `202`.
  */
 export type StaffLinkIssue =
   | { readonly issued: true }
-  | { readonly issued: false; readonly reason: 'NOT_ELIGIBLE' | 'DAILY_CAP' }
+  | { readonly issued: false; readonly reason: 'NOT_ELIGIBLE' }
   | {
       readonly issued: false;
-      readonly reason: 'RESEND_TOO_SOON';
+      readonly reason: 'RESEND_TOO_SOON' | 'DAILY_CAP';
       readonly retryAfterSeconds: number;
     };
+
+/**
+ * Whole seconds until the oldest message of the rolling 24-hour window leaves it, at least 1: when
+ * the daily cap frees one message again.
+ */
+export function dailyCapRetryAfterSeconds(oldestInWindow: Date, now: Date): number {
+  const waitMs = oldestInWindow.getTime() + EMAIL_CODE_DAILY_WINDOW_MS - now.getTime();
+  return Math.max(1, Math.ceil(waitMs / 1000));
+}
 
 /** Inside the issuing transaction only: the token leaves it to build the mail, nowhere else. */
 type IssueOutcome =
@@ -327,14 +342,23 @@ export class StaffLinkService {
       }
       const recent = await em
         .createQueryBuilder(EmailToken, 'token')
+        .select('count(*)::int', 'count')
+        .addSelect('min(token.createdAt)', 'oldest')
         .where('token.userId = :userId AND token.type = :type AND token.createdAt > :since', {
           userId,
           type,
           since: dailyWindowStart(now),
         })
-        .getCount();
-      if (recent >= EMAIL_CODE_DAILY_CAP) {
-        return { kind: 'refused', result: { issued: false, reason: 'DAILY_CAP' } };
+        .getRawOne<{ count: number; oldest: Date | null }>();
+      if ((recent?.count ?? 0) >= EMAIL_CODE_DAILY_CAP && recent?.oldest) {
+        return {
+          kind: 'refused',
+          result: {
+            issued: false,
+            reason: 'DAILY_CAP',
+            retryAfterSeconds: dailyCapRetryAfterSeconds(recent.oldest, now),
+          },
+        };
       }
 
       // One live link per user and type: the old one is superseded first (partial unique index).

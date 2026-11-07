@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { FixedClock } from '../../common/time/testing.js';
 import type { UserRole, UserStatus } from '../users/entities/user.entity.js';
 import {
+  dailyCapRetryAfterSeconds,
   generateLinkToken,
   hashLinkToken,
   isLinkTokenFormat,
@@ -165,5 +166,18 @@ describe('staffLinkTypeFor', () => {
     ['CUSTOMER', 'INVITED', null],
   ] as const)('%s %s gets %s', (role: UserRole, status: UserStatus, expected) => {
     expect(staffLinkTypeFor({ role, status })).toBe(expected);
+  });
+});
+
+describe('dailyCapRetryAfterSeconds', () => {
+  it('is the time until the oldest message leaves the 24-hour window, at least one second', () => {
+    const clock = new FixedClock(NOW);
+    const oldest = new Date(clock.now().getTime() - 23 * HOUR);
+
+    expect(dailyCapRetryAfterSeconds(oldest, clock.now())).toBe(3600);
+    expect(dailyCapRetryAfterSeconds(new Date(oldest.getTime() - 500), clock.now())).toBe(3600);
+    expect(
+      dailyCapRetryAfterSeconds(new Date(clock.now().getTime() - 24 * HOUR), clock.now()),
+    ).toBe(1);
   });
 });

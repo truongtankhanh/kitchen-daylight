@@ -4,7 +4,7 @@ import { USER_STATUSES } from './entities/user.entity.js';
 import type { UserStatus } from './entities/user.entity.js';
 import { canTransition, endsSessions, USER_STATUS_TRANSITIONS } from './user-status.js';
 
-/** Every allowed move; any pair not listed is refused (api-divergences D-038). */
+/** Every allowed move; any pair not listed is refused (api-divergences D-038, D-096). */
 const ALLOWED: readonly (readonly [UserStatus, UserStatus])[] = [
   ['INVITED', 'ACTIVE'],
   ['INVITED', 'SUSPENDED'],
@@ -12,6 +12,7 @@ const ALLOWED: readonly (readonly [UserStatus, UserStatus])[] = [
   ['ACTIVE', 'DELETED'],
   ['SUSPENDED', 'ACTIVE'],
   ['SUSPENDED', 'DELETED'],
+  ['SUSPENDED', 'INVITED'],
 ];
 
 const ALL_PAIRS = USER_STATUSES.flatMap((from) => USER_STATUSES.map((to) => [from, to] as const));

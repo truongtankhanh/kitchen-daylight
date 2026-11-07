@@ -7,8 +7,31 @@
 // - A payload is a signal (ADR-0007, "signal, then fetch"): ids, statuses, versions and counts,
 //   never personal data or record content.
 
-/** Map of realtime event name to payload type. Empty until the first emitting task adds an entry. */
-export type RealtimeEventMap = Record<never, never>;
+/**
+ * `user.suspended`: an admin suspended the account (A3-T4); audience `USER`, the account itself.
+ * The client signs out at once (api-outline, Realtime).
+ */
+export interface UserSuspendedPayload {
+  userId: string;
+}
+
+/** Why every session of a user was revoked by an admin action (A3-T4). */
+export type SessionRevokedReason = 'ROLE_CHANGE' | 'MFA_RESET';
+
+/**
+ * `session.revoked`: every refresh-token family of the user was revoked by an admin (role change
+ * or MFA reset; A3-T4); audience `USER`. The client signs out at once (api-outline, Realtime).
+ */
+export interface SessionRevokedPayload {
+  userId: string;
+  reason: SessionRevokedReason;
+}
+
+/** Map of realtime event name to payload type. A10-T2 completes the list. */
+export interface RealtimeEventMap {
+  'user.suspended': UserSuspendedPayload;
+  'session.revoked': SessionRevokedPayload;
+}
 
 /** Who receives an outbox event (data-model, `outbox_events.audience`). */
 export const OUTBOX_AUDIENCES = ['PUBLIC', 'BRANCH_STAFF', 'ADMIN', 'USER'] as const;

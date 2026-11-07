@@ -16,6 +16,9 @@ export type {
   OutboxEventInput,
   OutboxEventOf,
   RealtimeEventMap,
+  SessionRevokedPayload,
+  SessionRevokedReason,
+  UserSuspendedPayload,
 } from './events.js';
 export { OUTBOX_AUDIENCES, outboxEvent } from './events.js';
 export type { CursorPage, CursorQuery, EstimatedTotal, PageQuery, Paged } from './pagination.js';
