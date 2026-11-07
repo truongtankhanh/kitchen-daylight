@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { FixedClock } from '../../src/common/time/testing.js';
+import { AccessTokenService } from '../../src/modules/auth/access-token.service.js';
 import type { AuthProvider } from '../../src/modules/auth/entities/auth-identity.entity.js';
 import { SOCIAL_NONCE_TTL_MS } from '../../src/modules/auth/social/nonce.service.js';
 import { SOCIAL_IDENTITY_VERIFIER } from '../../src/modules/auth/social/social-identity-verifier.js';
@@ -553,6 +554,28 @@ describe('social sign-in (kd_app, real PostgreSQL, test verifier)', () => {
       const session = await passwordSignIn(LOCAL_EMAIL);
 
       expect((await unlink(session, 'APPLE')).problem?.code).toBe('NOT_FOUND');
+    });
+
+    it('refuses a staff caller with FORBIDDEN and spends no nonce', async () => {
+      await insertUser(STAFF_ID, STAFF_EMAIL, { role: 'STAFF' });
+      const { token } = await testApp.app.get(AccessTokenService).sign({
+        userId: STAFF_ID,
+        role: 'STAFF',
+        sessionId: '01930000-0000-7000-8000-000000000d21',
+      });
+      const body = await credentials('GOOGLE');
+
+      const response = await client.post('/api/v1/me/identities/GOOGLE', body, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.problem?.code).toBe('FORBIDDEN');
+      expect(await identities()).toEqual([]);
+      // The nonce is still unused: a customer can spend it.
+      await insertUser(LOCAL_ID, LOCAL_EMAIL);
+      const session = await passwordSignIn(LOCAL_EMAIL);
+      expect((await link(session, 'GOOGLE', body)).status).toBe(204);
     });
 
     it('needs an access token', async () => {

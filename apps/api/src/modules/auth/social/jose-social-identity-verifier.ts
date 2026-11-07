@@ -67,6 +67,14 @@ export const SOCIAL_PROVIDER_SETTINGS: Readonly<
   },
 };
 
+/**
+ * Longest `sub` stored in `auth_identities.provider_subject`, a `text` column with no `CHECK`
+ * (api-divergences D-043, D-075). Google, https://developers.google.com/identity/openid-connect/openid-connect
+ * (read 2026-11-07), `sub`: "Maximum length of 255 case-sensitive ASCII characters". Apple states no
+ * limit; its subjects are far shorter, so the same bound applies. A longer one is refused.
+ */
+export const SOCIAL_SUBJECT_MAX_LENGTH = 255;
+
 /** Provider clocks may run ahead or behind (decision 0008 section 11). */
 export const SOCIAL_CLOCK_TOLERANCE_SECONDS = 30;
 
@@ -124,7 +132,11 @@ export function identityOf(
   payload: JWTPayload,
   expectedNonce: string,
 ): VerifiedSocialIdentity {
-  if (typeof payload.sub !== 'string' || payload.sub === '') {
+  if (
+    typeof payload.sub !== 'string' ||
+    payload.sub === '' ||
+    payload.sub.length > SOCIAL_SUBJECT_MAX_LENGTH
+  ) {
     throw new SocialTokenRejectedError('claims');
   }
   if (!nonceClaimMatches(provider, payload['nonce'], expectedNonce)) {

@@ -63,7 +63,11 @@ export function deriveNonceKey(secret: Buffer): Buffer {
 export class NonceService {
   private readonly logger = new Logger(NonceService.name);
   private readonly key: Buffer;
-  /** MAC (base64url) → expiry in ms; insertion order is expiry order, as the TTL is fixed. */
+  /**
+   * Canonical MAC (base64url) → expiry in ms. Entries are inserted when a nonce is consumed, so the
+   * order is roughly, not strictly, the expiry order: `prune` drops expired entries from the front
+   * and sweeps the whole map before the cap refuses a nonce.
+   */
   private readonly consumed = new Map<string, number>();
 
   constructor(
@@ -91,7 +95,13 @@ export class NonceService {
     const [, expiresAtText, random, mac] = match as unknown as [string, string, string, string];
     const expected = Buffer.from(this.mac(`${expiresAtText}.${random}`), 'base64url');
     const given = Buffer.from(mac, 'base64url');
-    if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+    // A 43-character base64url MAC carries 2 unused trailing bits: a non-canonical spelling decodes
+    // to the same bytes, so it is refused, and the consumed map is keyed by the canonical form only.
+    if (
+      given.length !== expected.length ||
+      given.toString('base64url') !== mac ||
+      !timingSafeEqual(given, expected)
+    ) {
       return { ok: false, reason: 'bad_mac' };
     }
     const now = this.clock.now().getTime();
@@ -102,6 +112,11 @@ export class NonceService {
     this.prune(now);
     if (this.consumed.has(mac)) {
       return { ok: false, reason: 'reused' };
+    }
+    if (this.consumed.size >= SOCIAL_NONCE_MAX_CONSUMED) {
+      // O(n) over at most 50 000 entries, and only while the map is full: an abuse case already
+      // bounded by the per-IP throttle of `POST /auth/social/nonce`.
+      this.sweep(now);
     }
     if (this.consumed.size >= SOCIAL_NONCE_MAX_CONSUMED) {
       this.logger.warn(
@@ -123,13 +138,22 @@ export class NonceService {
     return createHmac('sha256', this.key).update(payload).digest('base64url');
   }
 
-  /** Drops expired entries from the front; the map is in expiry order. */
+  /** Drops expired entries from the front, up to the first live one: cheap, run on every consume. */
   private prune(now: number): void {
     for (const [mac, expiresAtMs] of this.consumed) {
       if (expiresAtMs > now) {
         return;
       }
       this.consumed.delete(mac);
+    }
+  }
+
+  /** Drops every expired entry; run only when the map is full. */
+  private sweep(now: number): void {
+    for (const [mac, expiresAtMs] of this.consumed) {
+      if (expiresAtMs <= now) {
+        this.consumed.delete(mac);
+      }
     }
   }
 }

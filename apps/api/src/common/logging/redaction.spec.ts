@@ -18,7 +18,7 @@ function capture(): { logger: pino.Logger; lines: string[] } {
 }
 
 describe('REDACT_PATHS', () => {
-  it('is the list of decision 0005 section 11, then the names appended by A2-T2', () => {
+  it('is the list of decision 0005 section 11, then the names appended by A2-T2 and A2-T6', () => {
     expect(REDACT_PATHS).toEqual([
       'req.headers.authorization',
       'req.headers.cookie',
@@ -37,6 +37,7 @@ describe('REDACT_PATHS', () => {
       '*.otp',
       '*.databaseUrl',
       '*.emailCode',
+      '*.nonce',
     ]);
   });
 
@@ -74,6 +75,19 @@ describe('redaction of the email-code field (A2-T2)', () => {
 
     const line = JSON.parse(lines.at(-1) ?? '{}') as Record<string, unknown>;
     expect(line['err']).toEqual({ type: 'QueryFailedError', code: '23505' });
+  });
+});
+
+describe('redaction of the social nonce (A2-T6)', () => {
+  it('censors nonce in a logged object and keeps the other fields', () => {
+    const { logger, lines } = capture();
+    const nonce = '1794027205463.kd-fixture-random-part-x.kd-fixture-mac';
+
+    logger.warn({ payload: { provider: 'GOOGLE', nonce }, event: 'auth.social_refused' }, 'nonce');
+
+    const line = JSON.parse(lines.at(-1) ?? '{}') as Record<string, unknown>;
+    expect(line['payload']).toEqual({ provider: 'GOOGLE', nonce: REDACT_CENSOR });
+    expect(lines.join('')).not.toContain(nonce);
   });
 });
 

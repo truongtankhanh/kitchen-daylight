@@ -3,7 +3,12 @@ import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { FixedClock } from '../../../common/time/testing.js';
-import { deriveNonceKey, NonceService, SOCIAL_NONCE_TTL_MS } from './nonce.service.js';
+import {
+  deriveNonceKey,
+  NonceService,
+  SOCIAL_NONCE_MAX_CONSUMED,
+  SOCIAL_NONCE_TTL_MS,
+} from './nonce.service.js';
 
 // A2-T6: the server-issued social nonce. Throw-away secret per run; no value is a real one.
 
@@ -65,6 +70,61 @@ describe('NonceService.consume', () => {
     const extended = `${Number(expiresAt) + 60 * SECOND}.${random}.${mac}`;
 
     expect(nonces.consume(extended)).toEqual({ ok: false, reason: 'bad_mac' });
+  });
+
+  it('refuses a non-canonical spelling of a valid MAC, so a nonce is used once only', () => {
+    const nonces = service();
+    const { nonce } = nonces.issue();
+    const [expiresAt, random, mac] = nonce.split('.') as [string, string, string];
+    // The last of 43 base64url characters carries 2 unused bits: flipping them keeps the bytes.
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const last = alphabet.indexOf(mac.at(-1) as string);
+    const twin = `${mac.slice(0, -1)}${alphabet[last ^ 1] as string}`;
+    expect(Buffer.from(twin, 'base64url').equals(Buffer.from(mac, 'base64url'))).toBe(true);
+
+    expect(nonces.consume(nonce)).toEqual({ ok: true });
+    expect(nonces.consume(`${expiresAt}.${random}.${twin}`)).toEqual({
+      ok: false,
+      reason: 'bad_mac',
+    });
+  });
+
+  it('fails closed when the store of consumed nonces is full, and recovers as they expire', () => {
+    const clock = new FixedClock(NOW);
+    const nonces = service(clock);
+    let accepted = 0;
+    for (let i = 0; i < SOCIAL_NONCE_MAX_CONSUMED; i += 1) {
+      accepted += nonces.consume(nonces.issue().nonce).ok ? 1 : 0;
+    }
+    expect(accepted).toBe(SOCIAL_NONCE_MAX_CONSUMED);
+
+    expect(nonces.consume(nonces.issue().nonce)).toEqual({ ok: false, reason: 'store_full' });
+
+    const late = nonces.issue().nonce;
+    clock.advance(SOCIAL_NONCE_TTL_MS);
+    expect(nonces.consume(nonces.issue().nonce)).toEqual({ ok: true });
+    expect(nonces.consume(late)).toEqual({ ok: false, reason: 'expired' });
+    expect(nonces.consumedCount).toBe(1);
+  });
+
+  it('sweeps an expired entry kept behind a live one before refusing a full store', () => {
+    const clock = new FixedClock(NOW);
+    const nonces = service(clock);
+    const early = nonces.issue().nonce;
+    clock.advance(SECOND);
+    const later = nonces.issue().nonce;
+    expect(nonces.consume(later)).toEqual({ ok: true });
+    expect(nonces.consume(early)).toEqual({ ok: true });
+    let accepted = 0;
+    for (let i = 0; i < SOCIAL_NONCE_MAX_CONSUMED - 2; i += 1) {
+      accepted += nonces.consume(nonces.issue().nonce).ok ? 1 : 0;
+    }
+    expect(accepted).toBe(SOCIAL_NONCE_MAX_CONSUMED - 2);
+
+    clock.advance(SOCIAL_NONCE_TTL_MS - SECOND);
+
+    expect(nonces.consume(nonces.issue().nonce)).toEqual({ ok: true });
+    expect(nonces.consumedCount).toBe(SOCIAL_NONCE_MAX_CONSUMED);
   });
 
   it.each(['', 'abc', 'a.b.c', `1.${'A'.repeat(22)}.${'A'.repeat(42)}`, ' x'])(

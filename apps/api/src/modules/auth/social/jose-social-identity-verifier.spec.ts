@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, UnsecuredJWT } from 'jose';
 import type { CryptoKey, JWTPayload, JWTVerifyGetKey } from 'jose';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +10,7 @@ import {
   JoseSocialIdentityVerifier,
   nonceClaimMatches,
   SOCIAL_PROVIDER_SETTINGS,
+  SOCIAL_SUBJECT_MAX_LENGTH,
 } from './jose-social-identity-verifier.js';
 import type { KeySetFactory } from './jose-social-identity-verifier.js';
 import { SocialTokenRejectedError } from './social-identity-verifier.js';
@@ -49,6 +50,7 @@ function verifier(
 
 interface TokenOptions {
   readonly claims?: JWTPayload;
+  readonly subject?: string;
   readonly issuer?: string;
   readonly audience?: string;
   readonly expiresAt?: number;
@@ -67,7 +69,7 @@ function token(provider: AuthProvider, options: TokenOptions = {}): Promise<stri
     ...options.claims,
   })
     .setProtectedHeader({ alg: 'RS256', kid: KEY_ID })
-    .setSubject('kd-subject-001')
+    .setSubject(options.subject ?? 'kd-subject-001')
     .setIssuer(options.issuer ?? (SOCIAL_PROVIDER_SETTINGS[provider].issuers[0] as string))
     .setAudience(options.audience ?? (provider === 'GOOGLE' ? GOOGLE_CLIENT_ID : APPLE_CLIENT_ID))
     .setIssuedAt(nowSeconds() - 60)
@@ -139,6 +141,43 @@ describe('JoseSocialIdentityVerifier', () => {
     const forged = await token('GOOGLE', { key: otherKey });
 
     expect(await rejection(verifier().verify('GOOGLE', forged, NONCE))).toBe('signature');
+  });
+
+  it('accepts a subject of 255 characters and refuses a longer one (D-075)', async () => {
+    const longest = 'k'.repeat(SOCIAL_SUBJECT_MAX_LENGTH);
+    const tooLong = 'k'.repeat(SOCIAL_SUBJECT_MAX_LENGTH + 1);
+
+    expect(SOCIAL_SUBJECT_MAX_LENGTH).toBe(255);
+    await expect(
+      verifier().verify('GOOGLE', await token('GOOGLE', { subject: longest }), NONCE),
+    ).resolves.toMatchObject({ subject: longest });
+    expect(
+      await rejection(
+        verifier().verify('GOOGLE', await token('GOOGLE', { subject: tooLong }), NONCE),
+      ),
+    ).toBe('claims');
+  });
+
+  it('refuses a token signed with an algorithm other than RS256', async () => {
+    const now = nowSeconds();
+    const hs256 = await new SignJWT({ nonce: NONCE })
+      .setProtectedHeader({ alg: 'HS256', kid: KEY_ID })
+      .setSubject('kd-subject-001')
+      .setIssuer('https://accounts.google.com')
+      .setAudience(GOOGLE_CLIENT_ID)
+      .setIssuedAt(now - 60)
+      .setExpirationTime(now + 600)
+      .sign(new TextEncoder().encode('kd-fixture-symmetric-key-of-32-bytes!'));
+    const unsigned = new UnsecuredJWT({ nonce: NONCE })
+      .setSubject('kd-subject-001')
+      .setIssuer('https://accounts.google.com')
+      .setAudience(GOOGLE_CLIENT_ID)
+      .setIssuedAt(now - 60)
+      .setExpirationTime(now + 600)
+      .encode();
+
+    expect(await rejection(verifier().verify('GOOGLE', hs256, NONCE))).toBe('signature');
+    expect(await rejection(verifier().verify('GOOGLE', unsigned, NONCE))).toBe('signature');
   });
 
   it('refuses a token that is not a JWT', async () => {

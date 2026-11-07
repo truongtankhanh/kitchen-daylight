@@ -11,6 +11,10 @@ export const REDACT_CENSOR = '[redacted]';
  * `code` of every serialized error (`err.code`: SQLSTATE, Node error code, catalogue code;
  * `error-serializer.ts`). The request field `code` never reaches a log line, because no body is
  * logged (`request-serializer.ts`), and no log call passes an email code under `code`.
+ *
+ * A2-T6 (social sign-in) appends `*.nonce` (decision 0008, Consequences). `*.recoveryCode` arrives
+ * with the MFA task of A3 that introduces the field. The differences from 0008 are api-divergences
+ * D-074.
  */
 export const REDACT_PATHS = [
   // Headers.
@@ -33,6 +37,8 @@ export const REDACT_PATHS = [
   '*.databaseUrl',
   // A2-T2: the 6-digit email code.
   '*.emailCode',
+  // A2-T6: the social sign-in nonce.
+  '*.nonce',
 ] as const;
 
 /** The `redact` option of pino, built from the list above. */
