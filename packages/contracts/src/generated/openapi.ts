@@ -82,6 +82,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `202` whatever happened: a reset link to an `ACTIVE` staff account, a fresh invitation to an
+         *     `INVITED` one, nothing otherwise (decision 0008 section 5; api-divergences D-084).
+         */
+        post: operations["AdminPasswordController_forgotPassword_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/auth/password/set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sets the password from an invitation or reset link; `CODE_INVALID` for any dead link. */
+        post: operations["AdminPasswordController_setPassword_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/auth/refresh": {
         parameters: {
             query?: never;
@@ -921,6 +958,18 @@ export interface components {
              */
             email?: string | null;
         };
+        SetPasswordDto: {
+            /**
+             * Format: password
+             * @description 12 to 128 Unicode code points after NFC; not the email or its local part.
+             */
+            password: string;
+            /**
+             * Format: password
+             * @description The token from the `#token=` fragment of the invitation or reset link.
+             */
+            token: string;
+        };
         SocialNonce: {
             /**
              * Format: date-time
@@ -1139,6 +1188,107 @@ export interface operations {
             };
             /** @description UNAUTHENTICATED */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminPasswordController_forgotPassword_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordDto"];
+            };
+        };
+        responses: {
+            /** @description The same answer whether or not the email has an account. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminPasswordController_setPassword_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED, CODE_INVALID */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

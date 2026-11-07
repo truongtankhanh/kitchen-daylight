@@ -156,6 +156,9 @@ export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   // Second step (A3-T2), same CSRF check. `/me/mfa/setup` and `/confirm` skip the global guard but
   // authenticate with their own (`MfaAccessGuard`, 401 without a token): not listed.
   'POST /api/v1/admin/auth/mfa/verify',
+  // Staff links (A3-T3), same CSRF check.
+  'POST /api/v1/admin/auth/password/forgot',
+  'POST /api/v1/admin/auth/password/set',
   'GET /api/v1/test-guards/public',
   'POST /api/v1/auth/test-throttle',
   'POST /api/v1/admin/auth/test-throttle',
@@ -171,4 +174,6 @@ export const CSRF_GUARDED_PUBLIC_ROUTES: readonly string[] = [
   'POST /api/v1/admin/auth/refresh',
   'POST /api/v1/admin/auth/logout',
   'POST /api/v1/admin/auth/mfa/verify',
+  'POST /api/v1/admin/auth/password/forgot',
+  'POST /api/v1/admin/auth/password/set',
 ];

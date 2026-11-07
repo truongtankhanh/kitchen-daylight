@@ -96,6 +96,15 @@ export const AUDIT_ACTIONS = [
   'auth.mfa_enrolled',
   'auth.mfa_recovery_code_used',
   'auth.mfa_recovery_codes_regenerated',
+  // Staff links (A3-T3): entity USER, never the token, its hash, the link, the password or the
+  // email typed. `password_reset_requested`: no actor (public `/admin/auth/password/forgot`), diff
+  // { linkType } (`RESET_PASSWORD`, or `INVITE` for an account still invited), written only when a
+  // link is issued. `password_set`: actor the user, the invitation link used (INVITED to ACTIVE).
+  // `password_reset_completed`: actor the user, the reset link used, every session revoked. Names
+  // are proposals (brief E17; api-divergences D-086).
+  'auth.password_reset_requested',
+  'auth.password_set',
+  'auth.password_reset_completed',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -12,6 +12,7 @@ import { UserSessionRevoker } from '../users/users.service.js';
 import { AccessTokenService } from './access-token.service.js';
 import { AdminAuthController } from './admin-auth.controller.js';
 import { AdminAuthService } from './admin-auth.service.js';
+import { AdminPasswordController } from './admin-password.controller.js';
 import { AuthCodesController } from './auth-codes.controller.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
@@ -28,6 +29,7 @@ import { NonceService, SOCIAL_NONCE_SECRET } from './social/nonce.service.js';
 import { SOCIAL_IDENTITY_VERIFIER } from './social/social-identity-verifier.js';
 import { SocialController } from './social/social.controller.js';
 import { SocialService } from './social/social.service.js';
+import { StaffLinkService } from './staff-link.service.js';
 
 /**
  * Tokens (A1-T6): the key set, access tokens and refresh tokens; the customer auth endpoints
@@ -47,6 +49,8 @@ import { SocialService } from './social/social.service.js';
  * Staff second factor (A3-T2: `MfaController` under `/me/mfa`, `MfaService`, `MfaAccessGuard`):
  * `SecretCipher` is built from the validated `MFA_ENCRYPTION_KEY` and previous keys (base64
  * decoding only, no I/O); `/admin/auth/mfa/verify` is on `AdminAuthController`.
+ * Staff links (A3-T3: `AdminPasswordController` under `/admin/auth/password`, `StaffLinkService`,
+ * exported for the admin user actions of A3-T4).
  */
 @Module({})
 export class AuthModule {
@@ -60,6 +64,7 @@ export class AuthModule {
         AuthCodesController,
         SocialController,
         AdminAuthController,
+        AdminPasswordController,
         MfaController,
       ],
       providers: [
@@ -86,9 +91,16 @@ export class AuthModule {
           useFactory: () => new JoseSocialIdentityVerifier(auth.social),
         },
         SocialService,
+        StaffLinkService,
         clockProvider,
       ],
-      exports: [AccessTokenService, RefreshTokenService, UserSessionRevoker, SocialService],
+      exports: [
+        AccessTokenService,
+        RefreshTokenService,
+        UserSessionRevoker,
+        SocialService,
+        StaffLinkService,
+      ],
     };
   }
 }

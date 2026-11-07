@@ -4,8 +4,8 @@ import { IsDefined, IsEmail, IsNotEmpty, MaxLength } from 'class-validator';
 import { EMAIL_MAX_LENGTH } from './register.dto.js';
 
 /**
- * `POST /api/v1/auth/password/forgot` (public). The answer is the same `202` whether or not the
- * address belongs to an account.
+ * `POST /api/v1/auth/password/forgot` and `POST /api/v1/admin/auth/password/forgot` (A3-T3), both
+ * public. The answer is the same `202` whether or not the address belongs to an account.
  */
 export class ForgotPasswordDto {
   /** Trimmed before validation, as at registration. */

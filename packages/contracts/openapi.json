@@ -1027,6 +1027,27 @@
         },
         "type": "object"
       },
+      "SetPasswordDto": {
+        "properties": {
+          "password": {
+            "description": "12 to 128 Unicode code points after NFC; not the email or its local part.",
+            "format": "password",
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "token": {
+            "description": "The token from the `#token=` fragment of the invitation or reset link.",
+            "format": "password",
+            "maxLength": 256,
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "type": "object"
+      },
       "SocialNonce": {
         "properties": {
           "expiresAt": {
@@ -1409,6 +1430,142 @@
         "summary": "The second step of a `MANAGER` or `ADMIN` (A3-T2): the challenge (`mfaToken` of\n`MFA_REQUIRED`) with a TOTP `code` or one `recoveryCode`. Success: `200` with the session and\n`recoveryCodesLeft`, and the cookie. Invalid or expired challenge, or an account that may no\nlonger sign in: `401 UNAUTHENTICATED`. Wrong, replayed or locked-out code: `400 CODE_INVALID`\n(counted toward the lockout; brief E15).",
         "tags": [
           "AdminAuth"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/password/forgot": {
+      "post": {
+        "operationId": "AdminPasswordController_forgotPassword_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "The same answer whether or not the email has an account."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "`202` whatever happened: a reset link to an `ACTIVE` staff account, a fresh invitation to an\n`INVITED` one, nothing otherwise (decision 0008 section 5; api-divergences D-084).",
+        "tags": [
+          "AdminPassword"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/password/set": {
+      "post": {
+        "operationId": "AdminPasswordController_setPassword_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "Sets the password from an invitation or reset link; `CODE_INVALID` for any dead link.",
+        "tags": [
+          "AdminPassword"
         ]
       }
     },

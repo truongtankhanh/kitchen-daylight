@@ -8,7 +8,8 @@ export const MAIL_PORT = Symbol('MAIL_PORT');
  * Template keys of data-model `email_templates`. Each key is added with its template; the table
  * itself arrives in A12-T3.
  */
-export type MailTemplateKey = 'VERIFY_EMAIL_CODE' | 'PASSWORD_RESET_CODE';
+export type MailTemplateKey =
+  'VERIFY_EMAIL_CODE' | 'PASSWORD_RESET_CODE' | 'STAFF_INVITE' | 'STAFF_PASSWORD_RESET';
 
 export interface MailMessage {
   /** Logged by the adapter in place of any content. */
