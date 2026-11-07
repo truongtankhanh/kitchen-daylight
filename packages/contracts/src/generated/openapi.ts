@@ -139,6 +139,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/auth/step-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A current TOTP code (not a recovery code) and a `purpose`: `200` with a step-up token valid 5
+         *     minutes for that purpose. Wrong, replayed (a step already used, for example by
+         *     the sign-in a moment ago: wait for the next code) or locked-out code: `400 CODE_INVALID`,
+         *     counted toward the lockout. No confirmed second factor: `409 MFA_NOT_ENABLED`.
+         */
+        post: operations["StepUpController_stepUp_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -1186,6 +1208,27 @@ export interface components {
         };
         /** @enum {string} */
         StaffRole: "STAFF" | "MANAGER" | "ADMIN";
+        StepUpDto: {
+            /** @description The current 6-digit code of the authenticator app (not a recovery code); spaces are ignored. */
+            code: string;
+            /**
+             * @description The action the token will authorise; the protected route checks it.
+             * @enum {string}
+             */
+            purpose: "settings.payment";
+        };
+        StepUpTokenDto: {
+            /**
+             * Format: date-time
+             * @description When the token stops being accepted (ISO 8601).
+             */
+            expiresAt: string;
+            /**
+             * Format: password
+             * @description Sent back in the `X-Step-Up-Token` header of the protected request; keep it in memory only.
+             */
+            stepUpToken: string;
+        };
         VerifyEmailDto: {
             /** @description The 6-digit code from the mail; spaces are ignored. */
             code: string;
@@ -1534,6 +1577,76 @@ export interface operations {
             };
             /** @description FORBIDDEN */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StepUpController_stepUp_v1: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Client": "admin-web";
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepUpTokenDto"];
+                };
+            };
+            /** @description VALIDATION_FAILED, CODE_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description MFA_NOT_ENABLED */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

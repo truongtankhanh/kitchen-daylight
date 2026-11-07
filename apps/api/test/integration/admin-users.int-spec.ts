@@ -432,9 +432,9 @@ describe('admin users (kd_app, real PostgreSQL)', () => {
       expect((rename.body as StaffItem).displayName).toBe('Tên Mới');
     });
 
-    it('refuses a change that leaves no ACTIVE admin (LAST_ADMIN)', async () => {
-      // The actor's token is still ADMIN while the account was suspended meanwhile (the
-      // fresh-role guard is A3-T6): the target is then the only active admin.
+    it('refuses a suspended admin whose token still says ADMIN, before any change (A3-T6)', async () => {
+      // Until A3-T6 this reached the service and answered LAST_ADMIN; the fresh-role guard now
+      // re-reads the actor's status and signs them out first.
       await insertUser(
         OTHER_ADMIN_ID,
         'fixture-users-other-admin@kd.example',
@@ -450,13 +450,42 @@ describe('admin users (kd_app, real PostgreSQL)', () => {
       );
       const suspend = await patch(ADMIN_ID, { status: 'SUSPENDED' }, OTHER_ADMIN_ID);
 
-      expectProblem(demote, 409, 'LAST_ADMIN');
-      expectProblem(suspend, 409, 'LAST_ADMIN');
+      expectProblem(demote, 401, 'UNAUTHENTICATED');
+      expectProblem(suspend, 401, 'UNAUTHENTICATED');
       expect(
         (
           await query<{ role: string }>('SELECT role FROM public.users WHERE id = $1', [ADMIN_ID])
         )[0]?.role,
       ).toBe('ADMIN');
+    });
+
+    it('keeps one ACTIVE admin when two admins demote each other at once (LAST_ADMIN)', async () => {
+      await insertUser(
+        OTHER_ADMIN_ID,
+        'fixture-users-other-admin@kd.example',
+        'ADMIN',
+        'ACTIVE',
+        'Quản trị Khác',
+      );
+
+      const results = await Promise.all([
+        patch(OTHER_ADMIN_ID, { role: 'STAFF', branchIds: [BRANCH_A] }, ADMIN_ID),
+        patch(ADMIN_ID, { role: 'STAFF', branchIds: [BRANCH_A] }, OTHER_ADMIN_ID),
+      ]);
+
+      // One wins. The other is refused by the service (LAST_ADMIN, the admins are locked) or, if it
+      // starts after the winner committed, by the fresh-role guard (its actor is no longer ADMIN).
+      const outcomes = results.map(
+        (response) => `${response.status} ${response.problem?.code ?? ''}`,
+      );
+      expect(outcomes.filter((outcome) => outcome.startsWith('200'))).toHaveLength(1);
+      expect(
+        outcomes.filter((outcome) => outcome === '409 LAST_ADMIN' || outcome === '403 FORBIDDEN'),
+      ).toHaveLength(1);
+      const admins = await query<{ id: string }>(
+        "SELECT id FROM public.users WHERE role = 'ADMIN' AND status = 'ACTIVE'",
+      );
+      expect(admins).toHaveLength(1);
     });
 
     it('a role change revokes every session and writes session.revoked to the outbox', async () => {

@@ -30,6 +30,8 @@ import { SOCIAL_IDENTITY_VERIFIER } from './social/social-identity-verifier.js';
 import { SocialController } from './social/social.controller.js';
 import { SocialService } from './social/social.service.js';
 import { StaffLinkService } from './staff-link.service.js';
+import { StepUpController } from './step-up/step-up.controller.js';
+import { StepUpService } from './step-up/step-up.service.js';
 
 /**
  * Tokens (A1-T6): the key set, access tokens and refresh tokens; the customer auth endpoints
@@ -51,6 +53,8 @@ import { StaffLinkService } from './staff-link.service.js';
  * decoding only, no I/O); `/admin/auth/mfa/verify` is on `AdminAuthController`.
  * Staff links (A3-T3: `AdminPasswordController` under `/admin/auth/password`, `StaffLinkService`,
  * exported for the admin user actions of A3-T4).
+ * Admin step-up (A3-T6: `StepUpController` at `POST /admin/auth/step-up`, `StepUpService`),
+ * exported for `StepUpGuard`, which `@RequiresStepUp` places on routes of other modules.
  */
 @Module({})
 export class AuthModule {
@@ -66,6 +70,7 @@ export class AuthModule {
         AdminAuthController,
         AdminPasswordController,
         MfaController,
+        StepUpController,
       ],
       providers: [
         AuthService,
@@ -92,6 +97,7 @@ export class AuthModule {
         },
         SocialService,
         StaffLinkService,
+        StepUpService,
         clockProvider,
       ],
       exports: [
@@ -100,6 +106,7 @@ export class AuthModule {
         UserSessionRevoker,
         SocialService,
         StaffLinkService,
+        StepUpService,
       ],
     };
   }

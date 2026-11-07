@@ -112,6 +112,13 @@ export const AUDIT_ACTIONS = [
   'auth.password_reset_requested',
   'auth.password_set',
   'auth.password_reset_completed',
+  // Admin step-up (A3-T6, `POST /admin/auth/step-up`): entity USER, actor the admin of the access
+  // token, never the code, the token or the secret. `step_up_succeeded`: diff { purpose }.
+  // `step_up_failed`: diff { purpose, reason, failedLoginCount? } (WRONG_CODE or LOCKED), counted
+  // toward the staff lockout like any wrong second factor. Names are proposals (brief E17, L14;
+  // api-divergences D-102).
+  'auth.step_up_succeeded',
+  'auth.step_up_failed',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

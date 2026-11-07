@@ -29,6 +29,7 @@ import { Roles } from '../../common/auth/roles.decorator.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { ApiProblemResponses } from '../../common/errors/api-problem-responses.decorator.js';
 import { createValidationPipe } from '../../common/errors/validation.pipe.js';
+import { Sensitive } from '../../common/fresh-role/sensitive.decorator.js';
 import { AdminUsersService } from './admin-users.service.js';
 import type { AdminStaffUserView, AdminUserView, LinkSendResult } from './admin-users.service.js';
 import { AdminUserCreateDto, AdminUserUpdateDto } from './dto/admin-user-input.dto.js';
@@ -81,11 +82,14 @@ const USER_ITEM_SCHEMA = {
 };
 
 /**
- * Staff and customer accounts (api-outline "Users and operations"; A3-T4). `ADMIN` only, from the
- * role of the access token (`RolesGuard`; the fresh-role guard is A3-T6). The acting admin comes
- * from the token. Branch scoping does not apply: user actions are admin only (A3-T5).
+ * Staff and customer accounts (api-outline "Users and operations"; A3-T4). `ADMIN` only: the role
+ * of the access token (`RolesGuard`), then the stored role and status re-read on every request
+ * (`@Sensitive()`, A3-T6), so a demoted or suspended admin is refused before the access token
+ * expires. The acting admin comes from the token. Branch scoping does not apply: user actions are
+ * admin only (A3-T5).
  */
 @Roles('ADMIN')
+@Sensitive()
 @ApiExtraModels(AdminStaffUserDto, AdminCustomerUserDto)
 @Controller('admin/users')
 export class AdminUsersController {

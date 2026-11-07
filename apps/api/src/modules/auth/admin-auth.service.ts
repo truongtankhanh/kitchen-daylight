@@ -57,7 +57,13 @@ export const ADMIN_AUTH_AUDIT = {
  * Why a sign-in of a staff email failed, stored in the `auth.login_failed` diff only (never in a
  * response): every one of them answers the same `INVALID_CREDENTIALS`.
  */
-export type StaffSignInFailure = 'WRONG_PASSWORD' | 'LOCKED' | 'NOT_ACTIVE' | 'NO_PASSWORD';
+export type StaffSignInFailure =
+  | 'WRONG_PASSWORD'
+  | 'LOCKED'
+  | 'NOT_ACTIVE'
+  | 'NO_PASSWORD'
+  // The right password of a `SUSPENDED` account (answered `ACCOUNT_SUSPENDED`; A3-T6).
+  | 'SUSPENDED';
 
 export interface AdminSessionUser {
   readonly id: string;
@@ -209,6 +215,9 @@ export class AdminAuthService {
       throw invalidCredentials();
     }
     if (user.status === 'SUSPENDED') {
+      // A failed sign-in of a staff email like the others (brief E17), not counted: the password
+      // was right (decision 0008 section 4).
+      await this.recordRefusal(user.id, 'SUSPENDED');
       throw new ApiError('ACCOUNT_SUSPENDED');
     }
 
@@ -366,8 +375,8 @@ export class AdminAuthService {
   }
 
   /**
-   * A refused attempt on a staff email (locked, not `ACTIVE`, no password): audited, not counted
-   * (decision 0008 section 4: no increment while locked).
+   * A refused attempt on a staff email (locked, not `ACTIVE`, no password, or suspended after the
+   * right password): audited, not counted (decision 0008 section 4: no increment while locked).
    */
   private async recordRefusal(userId: string, failure: StaffSignInFailure): Promise<void> {
     await this.audit.write({

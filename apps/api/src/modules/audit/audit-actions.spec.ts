@@ -36,6 +36,29 @@ describe('AUDIT_ACTIONS', () => {
       ]),
     );
   });
+
+  it('holds every staff login event of brief E17 and the step-up of L14', () => {
+    expect(AUDIT_ACTIONS).toEqual(
+      expect.arrayContaining([
+        // success and failure
+        'auth.login_succeeded',
+        'auth.login_failed',
+        // second step requested, code success and failure
+        'auth.mfa_requested',
+        'auth.mfa_succeeded',
+        'auth.mfa_failed',
+        // temporary lock
+        'auth.account_locked',
+        // password set (invitation, then reset link)
+        'auth.password_set',
+        'auth.password_reset_completed',
+        'auth.logout',
+        'auth.refresh_reuse',
+        'auth.step_up_succeeded',
+        'auth.step_up_failed',
+      ]),
+    );
+  });
 });
 
 describe('AUDIT_ACTION_FORMAT', () => {

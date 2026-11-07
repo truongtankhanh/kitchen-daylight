@@ -1407,6 +1407,46 @@
         ],
         "type": "string"
       },
+      "StepUpDto": {
+        "properties": {
+          "code": {
+            "description": "The current 6-digit code of the authenticator app (not a recovery code); spaces are ignored.",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "purpose": {
+            "description": "The action the token will authorise; the protected route checks it.",
+            "enum": [
+              "settings.payment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "code"
+        ],
+        "type": "object"
+      },
+      "StepUpTokenDto": {
+        "properties": {
+          "expiresAt": {
+            "description": "When the token stops being accepted (ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "stepUpToken": {
+            "description": "Sent back in the `X-Step-Up-Token` header of the protected request; keep it in memory only.",
+            "format": "password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stepUpToken",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
       "VerifyEmailDto": {
         "properties": {
           "code": {
@@ -1924,6 +1964,100 @@
         "summary": "Rotates the cookie (reuse detection, 10-second grace window). Any failure answers\n`401 UNAUTHENTICATED` and clears the cookie.",
         "tags": [
           "AdminAuth"
+        ]
+      }
+    },
+    "/api/v1/admin/auth/step-up": {
+      "post": {
+        "operationId": "StepUpController_stepUp_v1",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client",
+            "required": true,
+            "schema": {
+              "enum": [
+                "admin-web"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepUpDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StepUpTokenDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED, CODE_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "MFA_NOT_ENABLED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A current TOTP code (not a recovery code) and a `purpose`: `200` with a step-up token valid 5\nminutes for that purpose. Wrong, replayed (a step already used, for example by\nthe sign-in a moment ago: wait for the next code) or locked-out code: `400 CODE_INVALID`,\ncounted toward the lockout. No confirmed second factor: `409 MFA_NOT_ENABLED`.",
+        "tags": [
+          "StepUp"
         ]
       }
     },

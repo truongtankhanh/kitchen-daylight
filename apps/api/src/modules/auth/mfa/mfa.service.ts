@@ -76,6 +76,19 @@ export interface SecondStep<T> {
 /** Work joined to the transaction that spends a code (a session started, for example). */
 export type InTransaction<T> = (em: EntityManager, user: User) => Promise<T>;
 
+/**
+ * Who a refused code is audited for: the sign-in routes write `auth.mfa_failed` with no actor (the
+ * person typing is not known yet); a signed-in route such as the step-up names its own code and
+ * actor. `diff` is added to the failure diff (never a code or a secret).
+ */
+export interface CodeFailureAudit {
+  readonly action: AuditAction;
+  readonly actorUserId: string | null;
+  readonly diff?: Readonly<Record<string, unknown>>;
+}
+
+const SIGN_IN_FAILURE: CodeFailureAudit = { action: MFA_AUDIT.failed, actorUserId: null };
+
 function codeInvalid(): ApiError {
   // One body for a wrong, replayed or locked-out code (brief E15): no hint of the cause.
   return new ApiError('CODE_INVALID');
@@ -344,6 +357,41 @@ export class MfaService {
     return outcome;
   }
 
+  /**
+   * A current TOTP code of an enrolled account, for a signed-in route (the admin step-up, A3-T6).
+   * The same rules as the second step: no recovery code; a step already accepted (by the sign-in
+   * or an earlier step-up) is a replay and fails like a wrong code, so right after signing in the
+   * user waits for the next code; a wrong or replayed code counts toward the staff lockout and is
+   * audited as `failure`; while locked nothing is checked or counted. No confirmed credential:
+   * `409 MFA_NOT_ENABLED`. `then` runs in the transaction that claims the step.
+   */
+  async verifyCurrentCode<T>(
+    user: User,
+    typedCode: string,
+    failure: CodeFailureAudit,
+    then: InTransaction<T>,
+  ): Promise<T> {
+    const code = totpCodeOf(typedCode);
+    const credential = await this.credentialOf(user.id);
+    if (credential === null || credential.enabledAt === null) {
+      throw new ApiError('MFA_NOT_ENABLED');
+    }
+    await this.refuseWhileLocked(user, 'TOTP', failure);
+    const checked = this.checkTotp(credential, code);
+    if (checked === null) {
+      return this.wrongCode(user.id, 'TOTP', failure);
+    }
+    const outcome = await this.dataSource.transaction(async (em) => {
+      const left = await this.claimStep(em, credential, checked, {});
+      return left === null ? null : { value: await then(em, user) };
+    });
+    if (outcome === null) {
+      // Spent by a concurrent request between the check and the claim: a replay.
+      return this.wrongCode(user.id, 'TOTP', failure);
+    }
+    return outcome.value;
+  }
+
   /** `auth.mfa_requested` after a correct password (login answers `MFA_REQUIRED`). */
   async recordRequested(userId: string, enrolled: boolean): Promise<void> {
     await this.audit.write({
@@ -439,19 +487,23 @@ export class MfaService {
    * While `locked_until` is in the future no code is checked or counted (decision 0008 section 4);
    * the answer is the same `CODE_INVALID` as a wrong code, so the lock is not revealed (E15).
    */
-  private async refuseWhileLocked(user: User, method: SecondFactorMethod): Promise<void> {
+  private async refuseWhileLocked(
+    user: User,
+    method: SecondFactorMethod,
+    failure: CodeFailureAudit = SIGN_IN_FAILURE,
+  ): Promise<void> {
     if (!isLocked(user, this.clock.now())) {
       return;
     }
     await this.audit.write({
-      actorUserId: null,
-      action: MFA_AUDIT.failed,
+      actorUserId: failure.actorUserId,
+      action: failure.action,
       entityType: 'USER',
       entityId: user.id,
-      diff: { method, reason: 'LOCKED' },
+      diff: { ...failure.diff, method, reason: 'LOCKED' },
     });
     this.logger.warn(
-      { event: MFA_AUDIT.failed, userId: user.id, method, reason: 'LOCKED' },
+      { event: failure.action, userId: user.id, method, reason: 'LOCKED' },
       'second factor refused',
     );
     throw codeInvalid();
@@ -461,16 +513,25 @@ export class MfaService {
    * Counts a wrong code toward the staff lockout (the same counter as a wrong password, brief
    * E15), audits it and the lock in one transaction, then answers `CODE_INVALID`.
    */
-  private async wrongCode(userId: string, method: SecondFactorMethod): Promise<never> {
+  private async wrongCode(
+    userId: string,
+    method: SecondFactorMethod,
+    audited: CodeFailureAudit = SIGN_IN_FAILURE,
+  ): Promise<never> {
     const result = await this.dataSource.transaction(async (em) => {
       const failure = await this.users.recordFailedLogin(userId, em);
       await this.audit.write(
         {
-          actorUserId: null,
-          action: MFA_AUDIT.failed,
+          actorUserId: audited.actorUserId,
+          action: audited.action,
           entityType: 'USER',
           entityId: userId,
-          diff: { method, reason: 'WRONG_CODE', failedLoginCount: failure.failedLoginCount },
+          diff: {
+            ...audited.diff,
+            method,
+            reason: 'WRONG_CODE',
+            failedLoginCount: failure.failedLoginCount,
+          },
         },
         em,
       );
@@ -492,7 +553,7 @@ export class MfaService {
       return failure;
     });
     this.logger.warn(
-      { event: MFA_AUDIT.failed, userId, method, failedLoginCount: result.failedLoginCount },
+      { event: audited.action, userId, method, failedLoginCount: result.failedLoginCount },
       'second factor failed',
     );
     if (result.counted && result.lockedUntil !== null) {
