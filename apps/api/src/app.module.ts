@@ -7,10 +7,12 @@ import { RolesGuard } from './common/auth/roles.guard.js';
 import { BranchScopeGuard } from './common/branch-scope/branch-scope.guard.js';
 import { BranchScopeModule } from './common/branch-scope/branch-scope.module.js';
 import { ProblemDetailsFilter } from './common/errors/problem-details.filter.js';
+import { AppGatesGuard } from './common/gates/app-gates.guard.js';
 import { createValidationPipe } from './common/errors/validation.pipe.js';
 import { LoggingModule } from './common/logging/logging.module.js';
 import { AppThrottlerGuard } from './common/throttling/app-throttler.guard.js';
 import { ThrottlingModule } from './common/throttling/throttling.module.js';
+import { clockProvider } from './common/time/clock.js';
 import { AppConfigModule } from './config/config.module.js';
 import type { ServerConfig } from './config/load-config.js';
 import { DatabaseModule } from './database/database.module.js';
@@ -38,19 +40,24 @@ export class AppModule {
         UsersModule,
         // `BranchScopeService` for the global `BranchScopeGuard` (A3-T5).
         BranchScopeModule,
-        // The `app_settings` store and typed getters (A4-T1).
+        // Settings, `/admin/app-settings`, `/admin/meta/config`, `/meta/config` and the snapshot of
+        // the request gates (A4-T1 to A4-T3).
         SettingsModule,
       ],
       // Global pipe and filter as providers, so the filter can inject the logger (decision 0007 section 3).
-      // The global guards run in the order listed here: throttler, authentication, roles (A1-T7),
-      // branch scoping (A3-T5).
+      // The global guards run in the order listed here: throttler, the maintenance and
+      // minimum-version gates (A4-T3, before authentication so a blocked path answers the same with
+      // or without a token), authentication, roles (A1-T7), branch scoping (A3-T5).
       providers: [
         { provide: APP_PIPE, useFactory: createValidationPipe },
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },
         { provide: APP_GUARD, useClass: AppThrottlerGuard },
+        { provide: APP_GUARD, useClass: AppGatesGuard },
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: APP_GUARD, useClass: BranchScopeGuard },
+        // The `Clock` of `AppGatesGuard` (`Retry-After`).
+        clockProvider,
       ],
     };
   }

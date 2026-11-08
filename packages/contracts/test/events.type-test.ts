@@ -18,9 +18,9 @@ export type AudienceIsTheArray = Assert<
   Equal<OutboxAudience, 'PUBLIC' | 'BRANCH_STAFF' | 'ADMIN' | 'USER'>
 >;
 
-/** The events registered so far (A3-T4); A10-T2 completes the list. */
+/** The events registered so far (A3-T4, A4-T3); A10-T2 completes the list. */
 export type RegisteredEvents = Assert<
-  Equal<keyof RealtimeEventMap, 'user.suspended' | 'session.revoked'>
+  Equal<keyof RealtimeEventMap, 'user.suspended' | 'session.revoked' | 'config.changed'>
 >;
 export type TypedRowType = Assert<
   Equal<OutboxEventInput<'session.revoked'>['type'], 'session.revoked'>

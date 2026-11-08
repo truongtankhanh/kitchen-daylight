@@ -1,10 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { outboxEvent } from '@kd/contracts';
 import type { StaleVersionActor } from '@kd/contracts';
 import { DataSource } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 
 import type { RequestUser } from '../../common/auth/request-user.js';
 import { BranchScopeService } from '../../common/branch-scope/branch-scope.service.js';
+import { GateSnapshot } from '../../common/gates/gate-snapshot.js';
 import { staleVersionPayload } from '../../common/concurrency/row-version.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -18,6 +20,7 @@ import type { BranchStatus } from '../branches/entities/branch.entity.js';
 import { MailService } from '../mail/mail.service.js';
 import { MailDeliveryError } from '../mail/ports/mail.port.js';
 import { renderPaymentSettingsNotice } from '../mail/templates/payment-settings-notice.template.js';
+import { OutboxService } from '../realtime/outbox.service.js';
 import { PASSWORD_MIN_LENGTH } from '../users/password-policy.js';
 import { permissionsFor } from './permissions.js';
 import type { PermissionKey, StaffRole } from './permissions.js';
@@ -136,6 +139,9 @@ export const ADMIN_SETTINGS_EVENTS = {
 
 const STALE_DETAIL = 'The setting was changed by someone else.';
 
+/** `outbox_events.entity_type` of `config.changed`, in the lower case of the other outbox rows. */
+export const CONFIG_CHANGED_ENTITY_TYPE = 'app_settings';
+
 export function toRecordView<Value>(record: SettingRecord<Value>): SettingRecordView<Value> {
   return {
     value: record.value,
@@ -243,6 +249,18 @@ export function buildMetaConfig(input: MetaConfigInput): AdminMetaConfigView {
   };
 }
 
+/** One `config.changed` outbox row for a saved key (api-outline Realtime; brief L9). */
+export function configChangedEvent(key: SettingKey, storageKey: string, version: number) {
+  return outboxEvent({
+    type: 'config.changed',
+    audience: 'PUBLIC',
+    entityType: CONFIG_CHANGED_ENTITY_TYPE,
+    entityId: storageKey,
+    version,
+    payload: { keys: [key], version },
+  });
+}
+
 function isStale(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'STALE_VERSION';
 }
@@ -304,7 +322,8 @@ export interface SettingSaveInput {
 /**
  * `/admin/app-settings` and `/admin/meta/config` (A4-T2). The store and the per-key rules are
  * `SettingsService` (A4-T1). A save, its audit row and (A4-T3) its outbox event share one
- * transaction; the payment notice is sent after the commit and never delays the answer.
+ * transaction; the snapshot of the request gates is invalidated after the commit, and the payment
+ * notice is sent after it and never delays the answer.
  */
 @Injectable()
 export class AdminSettingsService {
@@ -317,6 +336,8 @@ export class AdminSettingsService {
     @Inject(MailService) private readonly mail: MailService,
     @Inject(StepUpService) private readonly stepUps: StepUpService,
     @Inject(BranchScopeService) private readonly scopes: BranchScopeService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
+    @Inject(GateSnapshot) private readonly gates: GateSnapshot,
   ) {}
 
   /** Every key with its concurrency state, plus the read-only `security` block. */
@@ -360,8 +381,13 @@ export class AdminSettingsService {
         },
         em,
       );
+      // `config.changed` (A4-T3): a signal with the key and its version, never the value or the
+      // editor; rolled back with the save.
+      await this.outbox.add(em, configChangedEvent(key, storageKey, after.rowVersion));
       return after;
     });
+    // After the commit, so no request can cache the old value again (common/gates/gate-snapshot.ts).
+    this.gates.invalidate();
 
     if (key === 'payment') {
       // Not awaited: the response never waits for the mail transport (decision 0008 section 5).

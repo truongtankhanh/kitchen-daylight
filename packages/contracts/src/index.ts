@@ -11,6 +11,7 @@ export type {
 } from './errors.js';
 export { ERROR_CODES, ERROR_STATUS, FIELD_ERROR_CODES } from './errors.js';
 export type {
+  ConfigChangedPayload,
   OutboxAudience,
   OutboxAudienceScope,
   OutboxEventInput,

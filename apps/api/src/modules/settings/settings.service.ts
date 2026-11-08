@@ -61,6 +61,19 @@ export class SettingsService {
   }
 
   /**
+   * The value of a key only, the code default when it has no row: one primary-key read and no
+   * editor lookup, for the request gates and the public config (A4-T3).
+   */
+  async getValue<Key extends SettingKey>(
+    key: Key,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<SettingValues[Key]> {
+    const schema = schemaOf(key);
+    const row = await manager.findOne(AppSetting, { where: { key: schema.storageKey } });
+    return row === null ? defaultOf(key) : schema.fromStored(row.value as SettingStoredValues[Key]);
+  }
+
+  /**
    * Saves one key in the caller's transaction. `value` is the camelCase API value, validated here
    * with the key's rules (`400 VALIDATION_FAILED`, fields with the full camelCase path). The
    * update runs `WHERE row_version = :expected`; `expectedRowVersion` 0 inserts the first row, and

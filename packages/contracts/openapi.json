@@ -2111,6 +2111,172 @@
         ],
         "type": "string"
       },
+      "PublicBrand": {
+        "properties": {
+          "hotline": {
+            "description": "E.164; a landline is allowed.",
+            "nullable": true,
+            "type": "string"
+          },
+          "logoUrl": {
+            "description": "`null` until media URLs exist (A6).",
+            "format": "uri",
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "description": "The brand name (a working name until the owner settles it).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "logoUrl",
+          "hotline",
+          "name"
+        ],
+        "type": "object"
+      },
+      "PublicConfig": {
+        "properties": {
+          "attributions": {
+            "description": "Attribution lines of the map and data sources; empty for now.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/PublicBrand"
+          },
+          "cdnBaseUrl": {
+            "description": "`null` until the CDN rule is decided (decision 0009, A6-T1).",
+            "format": "uri",
+            "nullable": true,
+            "type": "string"
+          },
+          "featureFlags": {
+            "$ref": "#/components/schemas/PublicFeatureFlags"
+          },
+          "loyalty": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LoyaltySetting"
+              }
+            ],
+            "description": "Rates for the cart preview (mobile G134); `null` until the owner gives them."
+          },
+          "maintenance": {
+            "$ref": "#/components/schemas/MaintenanceSetting"
+          },
+          "mapStyleUrl": {
+            "description": "`null` until the map tile source is decided (ADR-0008 open item 1).",
+            "format": "uri",
+            "nullable": true,
+            "type": "string"
+          },
+          "minAppVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MinAppVersionSetting"
+              }
+            ],
+            "description": "`x.y.z` per platform; the server also compares it with `X-App-Version` (brief L12)."
+          },
+          "ordering": {
+            "$ref": "#/components/schemas/PublicOrdering"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/PublicPayment"
+          }
+        },
+        "required": [
+          "cdnBaseUrl",
+          "mapStyleUrl",
+          "attributions",
+          "brand",
+          "minAppVersion",
+          "maintenance",
+          "featureFlags",
+          "ordering",
+          "payment",
+          "loyalty"
+        ],
+        "type": "object"
+      },
+      "PublicFeatureFlags": {
+        "properties": {
+          "delivery": {
+            "type": "boolean"
+          },
+          "loyalty": {
+            "type": "boolean"
+          },
+          "ordering": {
+            "type": "boolean"
+          },
+          "reservations": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ordering",
+          "delivery",
+          "reservations",
+          "loyalty"
+        ],
+        "type": "object"
+      },
+      "PublicOrdering": {
+        "properties": {
+          "callHintMinutes": {
+            "description": "Minutes without acceptance before the app suggests calling the branch (mobile G70).",
+            "type": "number"
+          },
+          "itemNoteMax": {
+            "description": "Length limit of an item note (mobile G32).",
+            "type": "number"
+          },
+          "maxCartLines": {
+            "description": "Default 30 (mobile G33).",
+            "type": "number"
+          },
+          "maxItemQuantity": {
+            "description": "Quantity limit of one cart line, at most 99.",
+            "type": "number"
+          },
+          "reviewWindowDays": {
+            "type": "number"
+          },
+          "scheduleMaxDaysAhead": {
+            "type": "number"
+          },
+          "scheduleMinLeadMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "maxItemQuantity",
+          "maxCartLines",
+          "itemNoteMax",
+          "scheduleMinLeadMinutes",
+          "scheduleMaxDaysAhead",
+          "callHintMinutes",
+          "reviewWindowDays"
+        ],
+        "type": "object"
+      },
+      "PublicPayment": {
+        "properties": {
+          "bankTransferEnabled": {
+            "description": "True only when the bank transfer details are complete; the details are never public.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bankTransferEnabled"
+        ],
+        "type": "object"
+      },
       "ReceiptSetting": {
         "properties": {
           "footer": {
@@ -5828,6 +5994,39 @@
         "summary": "Signs one device out. Revoking the current session ends it at the next refresh.",
         "tags": [
           "Me"
+        ]
+      }
+    },
+    "/api/v1/meta/config": {
+      "get": {
+        "operationId": "MetaController_read_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConfig"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "Brand, minimum versions, maintenance, flags, ordering limits, transfer availability, rates.",
+        "tags": [
+          "Meta"
         ]
       }
     },

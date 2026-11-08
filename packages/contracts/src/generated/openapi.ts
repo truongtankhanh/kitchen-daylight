@@ -707,6 +707,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/meta/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Brand, minimum versions, maintenance, flags, ordering limits, transfer availability, rates. */
+        get: operations["MetaController_read_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provinces": {
         parameters: {
             query?: never;
@@ -1428,6 +1445,63 @@ export interface components {
         };
         /** @enum {string} */
         ProvinceType: "CITY" | "PROVINCE";
+        PublicBrand: {
+            /** @description E.164; a landline is allowed. */
+            hotline: string | null;
+            /**
+             * Format: uri
+             * @description `null` until media URLs exist (A6).
+             */
+            logoUrl: string | null;
+            /** @description The brand name (a working name until the owner settles it). */
+            name: string;
+        };
+        PublicConfig: {
+            /** @description Attribution lines of the map and data sources; empty for now. */
+            attributions: string[];
+            brand: components["schemas"]["PublicBrand"];
+            /**
+             * Format: uri
+             * @description `null` until the CDN rule is decided (decision 0009, A6-T1).
+             */
+            cdnBaseUrl: string | null;
+            featureFlags: components["schemas"]["PublicFeatureFlags"];
+            /** @description Rates for the cart preview (mobile G134); `null` until the owner gives them. */
+            loyalty: components["schemas"]["LoyaltySetting"];
+            maintenance: components["schemas"]["MaintenanceSetting"];
+            /**
+             * Format: uri
+             * @description `null` until the map tile source is decided (ADR-0008 open item 1).
+             */
+            mapStyleUrl: string | null;
+            /** @description `x.y.z` per platform; the server also compares it with `X-App-Version` (brief L12). */
+            minAppVersion: components["schemas"]["MinAppVersionSetting"];
+            ordering: components["schemas"]["PublicOrdering"];
+            payment: components["schemas"]["PublicPayment"];
+        };
+        PublicFeatureFlags: {
+            delivery: boolean;
+            loyalty: boolean;
+            ordering: boolean;
+            reservations: boolean;
+        };
+        PublicOrdering: {
+            /** @description Minutes without acceptance before the app suggests calling the branch (mobile G70). */
+            callHintMinutes: number;
+            /** @description Length limit of an item note (mobile G32). */
+            itemNoteMax: number;
+            /** @description Default 30 (mobile G33). */
+            maxCartLines: number;
+            /** @description Quantity limit of one cart line, at most 99. */
+            maxItemQuantity: number;
+            reviewWindowDays: number;
+            scheduleMaxDaysAhead: number;
+            scheduleMinLeadMinutes: number;
+        };
+        PublicPayment: {
+            /** @description True only when the bank transfer details are complete; the details are never public. */
+            bankTransferEnabled: boolean;
+        };
         ReceiptSetting: {
             /** @description At most 200 characters and 4 lines; may be empty. */
             footer: string;
@@ -4199,6 +4273,34 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MetaController_read_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConfig"];
                 };
             };
             /** @description RATE_LIMITED */

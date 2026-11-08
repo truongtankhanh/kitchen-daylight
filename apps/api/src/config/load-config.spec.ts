@@ -9,6 +9,7 @@ import {
   DEFAULT_ADMIN_ORIGINS,
   DEFAULT_MAIL_FROM,
   PLACEHOLDER_PASSWORD_PREFIX,
+  STORE_URL_RULE,
 } from './config.schema.js';
 import {
   REQUIRED_AUTH_VARIABLES,
@@ -112,8 +113,10 @@ describe('loadConfig (server)', () => {
         smtp: { host: SMTP_HOST, port: SMTP_PORT },
       },
       adminOrigins: ['http://localhost:4200'],
+      appStoreUrls: { ios: null, android: null },
     });
     expect(Object.isFrozen(config)).toBe(true);
+    expect(Object.isFrozen(config.appStoreUrls)).toBe(true);
     expect(Object.isFrozen(config.adminOrigins)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
     expect(Object.isFrozen(config.auth)).toBe(true);
@@ -490,6 +493,39 @@ describe('loadConfig (ADMIN_ORIGINS)', () => {
   it('is not read by the CLI', () => {
     expect(() => loadConfig({ ...VALID_CLI, ADMIN_ORIGINS: '*' }, 'cli')).not.toThrow();
     expect(loadConfig(VALID_CLI, 'cli')).not.toHaveProperty('adminOrigins');
+  });
+});
+
+describe('loadConfig (store URLs)', () => {
+  const IOS = 'https://apps.apple.invalid/app/kitchen-daylight';
+  const ANDROID = 'https://play.google.invalid/store/apps/details?id=com.example.kitchendaylight';
+
+  it('maps both store URLs, each optional', () => {
+    const config = loadConfig(
+      { ...VALID_SERVER, APP_STORE_URL_IOS: IOS, APP_STORE_URL_ANDROID: ANDROID },
+      'server',
+    );
+
+    expect(config.appStoreUrls).toEqual({ ios: IOS, android: ANDROID });
+    expect(loadConfig({ ...VALID_SERVER, APP_STORE_URL_IOS: IOS }, 'server').appStoreUrls).toEqual({
+      ios: IOS,
+      android: null,
+    });
+  });
+
+  it.each([
+    ['an http URL', 'http://apps.apple.invalid/app/kitchen-daylight'],
+    ['no scheme', 'apps.apple.invalid/app/kitchen-daylight'],
+    ['not a URL', 'store'],
+  ])('refuses %s without echoing it', (_case, value) => {
+    const error = failure({ ...VALID_SERVER, APP_STORE_URL_ANDROID: value });
+
+    expect(error.issues).toEqual([{ name: 'APP_STORE_URL_ANDROID', rule: STORE_URL_RULE }]);
+    expect(error.message).not.toContain(value);
+  });
+
+  it('is not read by the CLI', () => {
+    expect(() => loadConfig({ ...VALID_CLI, APP_STORE_URL_IOS: 'store' }, 'cli')).not.toThrow();
   });
 });
 

@@ -79,6 +79,14 @@ export interface ServerConfig extends CliConfig {
    * staff links (A3-T3).
    */
   readonly adminOrigins: readonly string[];
+  /** `APP_STORE_URL_IOS`, `APP_STORE_URL_ANDROID`; `null` when unset (A4-T3). */
+  readonly appStoreUrls: AppStoreUrls;
+}
+
+/** The store page of each mobile platform, for `UPGRADE_REQUIRED` (brief L12). */
+export interface AppStoreUrls {
+  readonly ios: string | null;
+  readonly android: string | null;
 }
 
 export interface ConfigIssue {
@@ -156,6 +164,8 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
     raw['LOG_LEVEL'] = read(env, 'LOG_LEVEL');
     raw['TRUST_PROXY_HOPS'] = read(env, 'TRUST_PROXY_HOPS');
     raw['ADMIN_ORIGINS'] = read(env, 'ADMIN_ORIGINS');
+    raw['APP_STORE_URL_IOS'] = read(env, 'APP_STORE_URL_IOS');
+    raw['APP_STORE_URL_ANDROID'] = read(env, 'APP_STORE_URL_ANDROID');
     for (const name of [...AUTH_VARIABLES, ...MAIL_VARIABLES]) {
       raw[name] = read(env, name);
     }
@@ -200,6 +210,10 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
       auth: toAuthConfig(instance),
       mail: toMailConfig(instance),
       adminOrigins: Object.freeze(instance.ADMIN_ORIGINS?.split(',') ?? [...DEFAULT_ADMIN_ORIGINS]),
+      appStoreUrls: Object.freeze({
+        ios: instance.APP_STORE_URL_IOS ?? null,
+        android: instance.APP_STORE_URL_ANDROID ?? null,
+      }),
     });
   }
   return Object.freeze({ appEnv: instance.APP_ENV, database });

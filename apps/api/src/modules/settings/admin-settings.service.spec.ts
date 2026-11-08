@@ -2,14 +2,17 @@ import type { DataSource } from 'typeorm';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BranchScopeService } from '../../common/branch-scope/branch-scope.service.js';
+import type { GateSnapshot } from '../../common/gates/gate-snapshot.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import type { AuditService } from '../audit/audit.service.js';
 import type { StepUpService } from '../auth/step-up/step-up.service.js';
 import type { MailService } from '../mail/mail.service.js';
+import type { OutboxService } from '../realtime/outbox.service.js';
 import {
   accountNumberLast5,
   AdminSettingsService,
   buildMetaConfig,
+  configChangedEvent,
   NAV_COUNTS_REFETCH_SECONDS,
   SECURITY_SETTINGS,
   settingsAuditDiff,
@@ -239,6 +242,8 @@ describe('AdminSettingsService.save', () => {
       {} as MailService,
       { verify } as unknown as StepUpService,
       {} as BranchScopeService,
+      {} as OutboxService,
+      {} as GateSnapshot,
     );
     const actor = { id: ADMIN.id, role: 'ADMIN', sessionId: ADMIN.id } as const;
     const input = { key: 'payment', value: PAYMENT, rowVersion: 0 } as const;
@@ -254,5 +259,18 @@ describe('AdminSettingsService.save', () => {
     expect(verify).toHaveBeenCalledTimes(1);
     expect(verify).toHaveBeenCalledWith('not-a-step-up-token', ADMIN.id, 'settings.payment');
     expect(transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('configChangedEvent', () => {
+  it('is a PUBLIC signal with the key and the version, never a value or the editor', () => {
+    expect(configChangedEvent('minAppVersion', 'min_app_version', 3)).toEqual({
+      type: 'config.changed',
+      audience: 'PUBLIC',
+      entityType: 'app_settings',
+      entityId: 'min_app_version',
+      version: 3,
+      payload: { keys: ['minAppVersion'], version: 3 },
+    });
   });
 });

@@ -365,6 +365,10 @@ function AuthValue(check: AuthCheck): PropertyDecorator {
 }
 
 /** Variables read by the server. */
+/** `APP_STORE_URL_IOS`, `APP_STORE_URL_ANDROID`: an absolute `https` URL with a host. */
+export const STORE_URL_RULE = 'must be an https URL';
+const STORE_URL_OPTIONS = { protocols: ['https'], require_protocol: true };
+
 export class ServerEnvironment extends CliEnvironment {
   @IsOptional()
   @Type(() => Number)
@@ -450,4 +454,14 @@ export class ServerEnvironment extends CliEnvironment {
   )
   @AdminOriginList()
   ADMIN_ORIGINS?: string;
+
+  // The store pages of the forced-update answer (A4-T3; api-outline `UPGRADE_REQUIRED`, brief L12).
+  // Optional in every tier: unset means `storeUrl: null`. Not secrets; never committed as real.
+  @IsOptional()
+  @IsUrl(STORE_URL_OPTIONS, { message: STORE_URL_RULE })
+  APP_STORE_URL_IOS?: string;
+
+  @IsOptional()
+  @IsUrl(STORE_URL_OPTIONS, { message: STORE_URL_RULE })
+  APP_STORE_URL_ANDROID?: string;
 }

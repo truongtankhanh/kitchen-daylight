@@ -27,10 +27,23 @@ export interface SessionRevokedPayload {
   reason: SessionRevokedReason;
 }
 
+/**
+ * `config.changed`: an admin saved a settings key (A4-T3); audience `PUBLIC`. `keys` are the API
+ * names of the saved keys (for example `maintenance`, `minAppVersion`, `featureFlags`) and
+ * `version` the new row version; never a value or the editor (api-outline, Realtime; brief L9).
+ * The API writes one outbox row per saved key with one key; the relay (A10-T3) may fold rows into
+ * one event. The customer app refetches `GET /meta/config`, the admin web `GET /admin/meta/config`.
+ */
+export interface ConfigChangedPayload {
+  keys: string[];
+  version: number;
+}
+
 /** Map of realtime event name to payload type. A10-T2 completes the list. */
 export interface RealtimeEventMap {
   'user.suspended': UserSuspendedPayload;
   'session.revoked': SessionRevokedPayload;
+  'config.changed': ConfigChangedPayload;
 }
 
 /** Who receives an outbox event (data-model, `outbox_events.audience`). */
