@@ -117,3 +117,8 @@ registerScopingCase({
   kind: 'action',
   request: (branchId) => ({ path: `${PROBE_BASE}/branches/${branchId}` }),
 });
+
+// A4-T2: `GET /api/v1/admin/meta/config` takes no branch parameter and is `@NotBranchScoped(reason)`
+// (it lists the caller's own branches through `BranchScopeService`), so it has no case here: a case
+// for a route that is not `@BranchScoped` fails the spec. `branch-scoping.int-spec.ts` lists it with
+// its reason in the route table; `admin-settings.int-spec.ts` checks its branches per role.

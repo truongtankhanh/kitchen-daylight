@@ -10,6 +10,7 @@ import { Branch } from '../modules/branches/entities/branch.entity.js';
 import { Province } from '../modules/geo/entities/province.entity.js';
 import { Ward } from '../modules/geo/entities/ward.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
+import { AppSetting } from '../modules/settings/entities/app-setting.entity.js';
 import { ConsentDocument } from '../modules/users/entities/consent-document.entity.js';
 import { CustomerAddress } from '../modules/users/entities/customer-address.entity.js';
 import { StaffBranch } from '../modules/users/entities/staff-branch.entity.js';
@@ -46,6 +47,7 @@ describe('createDataSourceOptions', () => {
         Province,
         Ward,
         CustomerAddress,
+        AppSetting,
       ],
     });
   });

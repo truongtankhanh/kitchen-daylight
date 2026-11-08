@@ -6,14 +6,16 @@ export const MAIL_PORT = Symbol('MAIL_PORT');
 
 /**
  * Template keys of data-model `email_templates`. Each key is added with its template; the table
- * itself arrives in A12-T3.
+ * itself arrives in A12-T3. `PAYMENT_SETTINGS_NOTICE` is not one of the five keys of data-model: its
+ * text lives in code only and is not editable (A4-T2; api-divergences D-110).
  */
 export type MailTemplateKey =
   | 'VERIFY_EMAIL_CODE'
   | 'PASSWORD_RESET_CODE'
   | 'STAFF_INVITE'
   | 'STAFF_PASSWORD_RESET'
-  | 'MFA_RESET_NOTICE';
+  | 'MFA_RESET_NOTICE'
+  | 'PAYMENT_SETTINGS_NOTICE';
 
 export interface MailMessage {
   /** Logged by the adapter in place of any content. */

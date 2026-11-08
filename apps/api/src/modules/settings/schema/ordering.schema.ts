@@ -1,3 +1,8 @@
+// class-transformer's `@Type` reads Reflect metadata when the class is defined. Load the polyfill
+// here, not through Nest, because the schema specs import this file without Nest (as
+// config/config.schema.ts does).
+import 'reflect-metadata';
+
 import { Type } from 'class-transformer';
 import { IsDefined, IsInt, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 

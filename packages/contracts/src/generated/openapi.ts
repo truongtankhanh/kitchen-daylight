@@ -20,6 +20,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/app-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every key as `{ value, rowVersion, updatedBy, updatedAt }`, plus read-only `security`. */
+        get: operations["AdminSettingsController_read_v1"];
+        /**
+         * Saves one key. A stale `rowVersion` is `409 STALE_VERSION` with `current { rowVersion,
+         *     updatedBy, updatedAt, value }` (a `payment` value shows only `accountNumberLast5`). Field errors
+         *     carry the full camelCase path, for example `ordering.boardThresholds.accept.warn`. The
+         *     `payment` key also needs `X-Step-Up-Token` for `settings.payment` (`403 FORBIDDEN` without it),
+         *     and the other admins are emailed after the save.
+         */
+        put: operations["AdminSettingsController_save_v1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/auth/login": {
         parameters: {
             query?: never;
@@ -155,6 +179,23 @@ export interface paths {
          *     counted toward the lockout. No confirmed second factor: `409 MFA_NOT_ENABLED`.
          */
         post: operations["StepUpController_stepUp_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/meta/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller, their branches, their permission keys and the settings the console reads. */
+        get: operations["AdminMetaController_config_v1"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -809,6 +850,17 @@ export interface components {
              */
             wardCode?: string | null;
         };
+        AdminAppSettings: {
+            brand: components["schemas"]["BrandSettingRecord"];
+            featureFlags: components["schemas"]["FeatureFlagsSettingRecord"];
+            loyalty: components["schemas"]["LoyaltySettingRecord"];
+            maintenance: components["schemas"]["MaintenanceSettingRecord"];
+            minAppVersion: components["schemas"]["MinAppVersionSettingRecord"];
+            ordering: components["schemas"]["OrderingSettingRecord"];
+            payment: components["schemas"]["PaymentSettingRecord"];
+            reports: components["schemas"]["ReportsSettingRecord"];
+            security: components["schemas"]["SecuritySettings"];
+        };
         AdminCustomerUser: {
             completedOrders: number;
             displayName: string;
@@ -824,6 +876,65 @@ export interface components {
             role: "CUSTOMER";
             /** @enum {string} */
             status: "INVITED" | "ACTIVE" | "SUSPENDED" | "DELETED";
+        };
+        AdminMetaBranch: {
+            code: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+        };
+        AdminMetaBrand: {
+            /** @description E.164 (brief C33). */
+            hotline: string | null;
+            receipt: components["schemas"]["AdminMetaReceipt"];
+        };
+        AdminMetaConfig: {
+            branches: components["schemas"]["AdminMetaBranch"][];
+            brand: components["schemas"]["AdminMetaBrand"];
+            features: components["schemas"]["FeatureFlagsSetting"];
+            maintenance: components["schemas"]["MaintenanceSetting"];
+            /** @description How often the sidebar counts are refetched (brief Z4); a code constant, not a setting. */
+            navCountsRefetchSeconds: number;
+            ordering: components["schemas"]["AdminMetaOrdering"];
+            payment: components["schemas"]["AdminMetaPayment"];
+            /** @description Capability keys computed from the role and the feature flags (brief Z2). */
+            permissions: ("orders.read" | "orders.write" | "menu.write" | "branches.write" | "reviews.read" | "reviews.moderate" | "reports.read" | "exports.read" | "promotions.write" | "invoices.manage" | "admin.users" | "admin.settings" | "admin.email" | "admin.audit")[];
+            reports: components["schemas"]["ReportsSetting"];
+            user: components["schemas"]["AdminMetaUser"];
+        };
+        AdminMetaOrdering: {
+            boardRefetchSeconds: number;
+            boardThresholds: components["schemas"]["SettingBoardThresholds"];
+        };
+        AdminMetaPayment: {
+            accountNumber: string | null;
+            bankCode: string | null;
+            bankName: string | null;
+            /** @description The account holder. */
+            holder: string | null;
+            /**
+             * Format: uri
+             * @description The QR image URL; `null` until media uploads exist (A6).
+             */
+            qrUrl: string | null;
+        };
+        AdminMetaReceipt: {
+            /** @enum {number} */
+            paperWidth: 58 | 80;
+        };
+        AdminMetaUser: {
+            displayName: string;
+            /** Format: uuid */
+            id: string;
+            /** @description A confirmed TOTP credential exists. */
+            mfaEnabled: boolean;
+            /**
+             * @description The role of the access token.
+             * @enum {string}
+             */
+            role: "STAFF" | "MANAGER" | "ADMIN";
         };
         AdminMfaSession: {
             /** @description ES256 JWT for `Authorization: Bearer`; kept in memory by the admin web. */
@@ -911,6 +1022,28 @@ export interface components {
             /** @enum {string} */
             status?: "ACTIVE" | "SUSPENDED";
         };
+        AppSettingSave: {
+            /** @enum {string} */
+            key: "brand" | "reports" | "minAppVersion" | "maintenance" | "featureFlags" | "payment" | "ordering" | "loyalty";
+            rowVersion: number;
+            value: {
+                [key: string]: unknown;
+            } & (components["schemas"]["BrandSetting"] | components["schemas"]["ReportsSetting"] | components["schemas"]["MinAppVersionSetting"] | components["schemas"]["MaintenanceSetting"] | components["schemas"]["FeatureFlagsSetting"] | components["schemas"]["PaymentSetting"] | components["schemas"]["OrderingSetting"] | components["schemas"]["LoyaltySetting"]);
+        };
+        AppSettingSaved: {
+            /** @enum {string} */
+            key: "brand" | "reports" | "minAppVersion" | "maintenance" | "featureFlags" | "payment" | "ordering" | "loyalty";
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["BrandSetting"] | components["schemas"]["ReportsSetting"] | components["schemas"]["MinAppVersionSetting"] | components["schemas"]["MaintenanceSetting"] | components["schemas"]["FeatureFlagsSetting"] | components["schemas"]["PaymentSetting"] | components["schemas"]["OrderingSetting"] | components["schemas"]["LoyaltySetting"];
+        };
         AuthSession: {
             /** @description ES256 JWT for `Authorization: Bearer`. */
             accessToken: string;
@@ -932,6 +1065,37 @@ export interface components {
             /** Format: uuid */
             id: string;
         };
+        BrandSetting: {
+            businessAddress: string | null;
+            /**
+             * @description E.164; a landline is allowed.
+             * @example +842800000001
+             */
+            hotline: string | null;
+            /**
+             * Format: uuid
+             * @description A `media` id (brief L5).
+             */
+            logo: string | null;
+            name: string;
+            receipt: components["schemas"]["ReceiptSetting"];
+            /** Format: email */
+            supportEmail: string | null;
+            /** @description 10 or 13 digits. */
+            taxCode: string | null;
+        };
+        BrandSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["BrandSetting"];
+        };
         /** @enum {string} */
         ConsentAction: "GRANTED" | "WITHDRAWN";
         /** @enum {string} */
@@ -941,6 +1105,29 @@ export interface components {
          * @enum {string}
          */
         ErrorCode: "VALIDATION_FAILED" | "CODE_INVALID" | "UNAUTHENTICATED" | "TOKEN_EXPIRED" | "INVALID_CREDENTIALS" | "FORBIDDEN" | "EMAIL_NOT_VERIFIED" | "ACCOUNT_SUSPENDED" | "NOT_FOUND" | "STALE_VERSION" | "ALREADY_EXISTS" | "IN_USE" | "UPGRADE_REQUIRED" | "RATE_LIMITED" | "MAINTENANCE" | "LAST_ADMIN" | "SELF_CHANGE" | "REVIEW_EXISTS" | "BRANCH_CLOSED" | "ITEM_UNAVAILABLE" | "PRICE_CHANGED" | "OPTION_INVALID" | "OUT_OF_ZONE" | "BELOW_MIN_ORDER" | "PHONE_REQUIRED" | "VOUCHER_INVALID" | "INSUFFICIENT_POINTS" | "INVALID_TRANSITION" | "ORDER_NOT_CANCELLABLE" | "PAYMENT_NOT_CONFIRMED" | "ORDER_NOT_REVIEWABLE" | "SLOT_UNAVAILABLE" | "HAS_ACTIVE_ORDERS" | "MFA_REQUIRED" | "ORDER_NOT_EDITABLE" | "INVALID_STATE" | "MFA_NOT_ENABLED" | "REVIEW_NOT_PUBLISHED" | "DUPLICATE_REPORT" | "IDEMPOTENCY_CONFLICT" | "DUPLICATE_RESERVATION" | "TOO_LARGE" | "UNSUPPORTED_TYPE" | "INTERNAL_ERROR";
+        FeatureFlagsSetting: {
+            charts: boolean;
+            delivery: boolean;
+            /** @description Off while e-invoices are deferred. */
+            einvoice: boolean;
+            loyalty: boolean;
+            ordering: boolean;
+            promotions: boolean;
+            reservations: boolean;
+            vouchers: boolean;
+        };
+        FeatureFlagsSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["FeatureFlagsSetting"];
+        };
         FieldError: {
             code: string;
             field: string;
@@ -986,6 +1173,45 @@ export interface components {
             email: string;
             /** Format: password */
             password: string;
+        };
+        LoyaltySetting: {
+            earnVndPerPoint: number | null;
+            /** @description `null`: points never expire. */
+            expiryMonths: number | null;
+            minRedeemPoints: number | null;
+            redeemVndPerPoint: number | null;
+        };
+        LoyaltySettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["LoyaltySetting"];
+        };
+        MaintenanceSetting: {
+            enabled: boolean;
+            /** Format: date-time */
+            expectedBackAt: string | null;
+            message: string | null;
+            /** Format: date-time */
+            since: string | null;
+        };
+        MaintenanceSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["MaintenanceSetting"];
         };
         Me: {
             /** @description Read only: there is no avatar upload. */
@@ -1063,6 +1289,30 @@ export interface components {
             /** @description One unused recovery code, `XXXXX-XXXXX`; case, spaces and hyphens are ignored. */
             recoveryCode?: string;
         };
+        MinAppVersionSetting: {
+            /**
+             * @description `x.y.z`.
+             * @example 1.0.0
+             */
+            android: string;
+            /**
+             * @description `x.y.z`.
+             * @example 1.0.0
+             */
+            ios: string;
+        };
+        MinAppVersionSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["MinAppVersionSetting"];
+        };
         MyConsent: {
             action: components["schemas"]["ConsentAction"];
             /** Format: uuid */
@@ -1098,6 +1348,63 @@ export interface components {
             pageSize: number;
             total: number;
         };
+        OrderingSetting: {
+            /** @description `null`: off. Otherwise above `boardThresholds.accept.late`. */
+            autoCancelUnacceptedMinutes: number | null;
+            boardRefetchSeconds: number;
+            boardThresholds: components["schemas"]["SettingBoardThresholds"];
+            callHintMinutes: number;
+            /** @description 1 to 200 (the `order_items.note` CHECK). */
+            itemNoteMax: number;
+            listMaxRangeDays: number;
+            maxCartLines: number;
+            /** @description 1 to 99 (the `order_items.quantity` CHECK). */
+            maxItemQuantity: number;
+            readyUnservedLateMinutes: number;
+            /** @description Below `readyUnservedLateMinutes`. */
+            readyUnservedWarnMinutes: number;
+            reviewWindowDays: number;
+            scheduleMaxDaysAhead: number;
+            scheduleMinLeadMinutes: number;
+        };
+        OrderingSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["OrderingSetting"];
+        };
+        PaymentSetting: {
+            accountHolder: string | null;
+            /** @description Digits only, one continuous string. */
+            accountNumber: string | null;
+            /** @description 6 digits. */
+            bankCode: string | null;
+            bankName: string | null;
+            /**
+             * Format: uuid
+             * @description A `media` id.
+             */
+            qrMediaId: string | null;
+            transferNoteRule: string | null;
+        };
+        PaymentSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["PaymentSetting"];
+        };
         ProblemDetails: {
             /** @description Stable code of the catalogue (decision 0007 section 9). */
             code: components["schemas"]["ErrorCode"];
@@ -1121,6 +1428,15 @@ export interface components {
         };
         /** @enum {string} */
         ProvinceType: "CITY" | "PROVINCE";
+        ReceiptSetting: {
+            /** @description At most 200 characters and 4 lines; may be empty. */
+            footer: string;
+            /** @enum {number} */
+            paperWidth: 58 | 80;
+            showTaxCode: boolean;
+            /** @description At most 40 characters. */
+            title: string;
+        };
         RefreshTokenDto: {
             /** @description The opaque refresh token from the last sign-in or refresh. */
             refreshToken: string;
@@ -1149,6 +1465,25 @@ export interface components {
              */
             phone?: string | null;
         };
+        ReportsSetting: {
+            /**
+             * @description `HH:mm`, Vietnam time.
+             * @example 04:00
+             */
+            businessDayStartsAt: string;
+        };
+        ReportsSettingRecord: {
+            /** @description `0` for a key never saved: it reads as its default, and the first save sends 0. */
+            rowVersion: number;
+            /**
+             * Format: date-time
+             * @description `null` for a key never saved.
+             */
+            updatedAt: string | null;
+            /** @description `null` for a key never saved or written by the seed. */
+            updatedBy: components["schemas"]["SettingActor"] | null;
+            value: components["schemas"]["ReportsSetting"];
+        };
         ResetPasswordDto: {
             /** @description The 6-digit code from the mail; spaces are ignored. */
             code: string;
@@ -1158,6 +1493,20 @@ export interface components {
              * @description 10 to 128 Unicode code points after NFC; not the email or its local part.
              */
             newPassword: string;
+        };
+        SecuritySettings: {
+            accessTokenMinutes: number;
+            /** @description Lifetime of an invitation link. */
+            inviteHours: number;
+            /** @description Lifetime of a staff password reset link. */
+            resetMinutes: number;
+            /** @description Staff refresh absolute lifetime. */
+            sessionAbsoluteDays: number;
+            /** @description Staff refresh idle lifetime. */
+            sessionIdleDays: number;
+            /** @description Code points, after NFC. */
+            staffPasswordMinLength: number;
+            totpRequiredRoles: ("STAFF" | "MANAGER" | "ADMIN")[];
         };
         SendEmailCodeDto: {
             /**
@@ -1178,6 +1527,23 @@ export interface components {
              * @description The token from the `#token=` fragment of the invitation or reset link.
              */
             token: string;
+        };
+        SettingActor: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        SettingBoardThresholds: {
+            /** @description From placed until accepted. */
+            accept: components["schemas"]["SettingThresholdPair"];
+            /** @description From preparing until ready (brief L4). */
+            ready: components["schemas"]["SettingThresholdPair"];
+        };
+        SettingThresholdPair: {
+            /** @description Minutes. */
+            late: number;
+            /** @description Minutes; below `late`. */
+            warn: number;
         };
         SocialNonce: {
             /**
@@ -1279,6 +1645,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+        };
+    };
+    AdminSettingsController_read_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAppSettings"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminSettingsController_save_v1: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when `key` is `payment`: a step-up token for `settings.payment` from POST /api/v1/admin/auth/step-up. */
+                "X-Step-Up-Token"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppSettingSave"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppSettingSaved"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -1647,6 +2130,52 @@ export interface operations {
             };
             /** @description MFA_NOT_ENABLED */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminMetaController_config_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMetaConfig"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

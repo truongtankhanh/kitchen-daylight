@@ -242,6 +242,49 @@
         },
         "type": "object"
       },
+      "AdminAppSettings": {
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/BrandSettingRecord"
+          },
+          "featureFlags": {
+            "$ref": "#/components/schemas/FeatureFlagsSettingRecord"
+          },
+          "loyalty": {
+            "$ref": "#/components/schemas/LoyaltySettingRecord"
+          },
+          "maintenance": {
+            "$ref": "#/components/schemas/MaintenanceSettingRecord"
+          },
+          "minAppVersion": {
+            "$ref": "#/components/schemas/MinAppVersionSettingRecord"
+          },
+          "ordering": {
+            "$ref": "#/components/schemas/OrderingSettingRecord"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/PaymentSettingRecord"
+          },
+          "reports": {
+            "$ref": "#/components/schemas/ReportsSettingRecord"
+          },
+          "security": {
+            "$ref": "#/components/schemas/SecuritySettings"
+          }
+        },
+        "required": [
+          "brand",
+          "reports",
+          "minAppVersion",
+          "maintenance",
+          "featureFlags",
+          "payment",
+          "ordering",
+          "loyalty",
+          "security"
+        ],
+        "type": "object"
+      },
       "AdminCustomerUser": {
         "properties": {
           "completedOrders": {
@@ -302,6 +345,219 @@
           "pointsBalance",
           "completedOrders",
           "displayName"
+        ],
+        "type": "object"
+      },
+      "AdminMetaBranch": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "TEMPORARILY_CLOSED",
+              "CLOSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "code",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AdminMetaBrand": {
+        "properties": {
+          "hotline": {
+            "description": "E.164 (brief C33).",
+            "nullable": true,
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/AdminMetaReceipt"
+          }
+        },
+        "required": [
+          "hotline",
+          "receipt"
+        ],
+        "type": "object"
+      },
+      "AdminMetaConfig": {
+        "properties": {
+          "branches": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMetaBranch"
+            },
+            "type": "array"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/AdminMetaBrand"
+          },
+          "features": {
+            "$ref": "#/components/schemas/FeatureFlagsSetting"
+          },
+          "maintenance": {
+            "$ref": "#/components/schemas/MaintenanceSetting"
+          },
+          "navCountsRefetchSeconds": {
+            "description": "How often the sidebar counts are refetched (brief Z4); a code constant, not a setting.",
+            "type": "number"
+          },
+          "ordering": {
+            "$ref": "#/components/schemas/AdminMetaOrdering"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/AdminMetaPayment"
+          },
+          "permissions": {
+            "description": "Capability keys computed from the role and the feature flags (brief Z2).",
+            "items": {
+              "enum": [
+                "orders.read",
+                "orders.write",
+                "menu.write",
+                "branches.write",
+                "reviews.read",
+                "reviews.moderate",
+                "reports.read",
+                "exports.read",
+                "promotions.write",
+                "invoices.manage",
+                "admin.users",
+                "admin.settings",
+                "admin.email",
+                "admin.audit"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reports": {
+            "$ref": "#/components/schemas/ReportsSetting"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AdminMetaUser"
+          }
+        },
+        "required": [
+          "branches",
+          "permissions",
+          "user",
+          "features",
+          "ordering",
+          "payment",
+          "brand",
+          "reports",
+          "maintenance",
+          "navCountsRefetchSeconds"
+        ],
+        "type": "object"
+      },
+      "AdminMetaOrdering": {
+        "properties": {
+          "boardRefetchSeconds": {
+            "type": "number"
+          },
+          "boardThresholds": {
+            "$ref": "#/components/schemas/SettingBoardThresholds"
+          }
+        },
+        "required": [
+          "boardThresholds",
+          "boardRefetchSeconds"
+        ],
+        "type": "object"
+      },
+      "AdminMetaPayment": {
+        "properties": {
+          "accountNumber": {
+            "nullable": true,
+            "type": "string"
+          },
+          "bankCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "bankName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "holder": {
+            "description": "The account holder.",
+            "nullable": true,
+            "type": "string"
+          },
+          "qrUrl": {
+            "description": "The QR image URL; `null` until media uploads exist (A6).",
+            "format": "uri",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bankName",
+          "accountNumber",
+          "holder",
+          "bankCode",
+          "qrUrl"
+        ],
+        "type": "object"
+      },
+      "AdminMetaReceipt": {
+        "properties": {
+          "paperWidth": {
+            "enum": [
+              58,
+              80
+            ],
+            "type": "number"
+          }
+        },
+        "required": [
+          "paperWidth"
+        ],
+        "type": "object"
+      },
+      "AdminMetaUser": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mfaEnabled": {
+            "description": "A confirmed TOTP credential exists.",
+            "type": "boolean"
+          },
+          "role": {
+            "description": "The role of the access token.",
+            "enum": [
+              "STAFF",
+              "MANAGER",
+              "ADMIN"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "displayName",
+          "mfaEnabled"
         ],
         "type": "object"
       },
@@ -609,6 +865,135 @@
         },
         "type": "object"
       },
+      "AppSettingSave": {
+        "properties": {
+          "key": {
+            "enum": [
+              "brand",
+              "reports",
+              "minAppVersion",
+              "maintenance",
+              "featureFlags",
+              "payment",
+              "ordering",
+              "loyalty"
+            ],
+            "type": "string"
+          },
+          "rowVersion": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "value": {
+            "additionalProperties": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BrandSetting"
+              },
+              {
+                "$ref": "#/components/schemas/ReportsSetting"
+              },
+              {
+                "$ref": "#/components/schemas/MinAppVersionSetting"
+              },
+              {
+                "$ref": "#/components/schemas/MaintenanceSetting"
+              },
+              {
+                "$ref": "#/components/schemas/FeatureFlagsSetting"
+              },
+              {
+                "$ref": "#/components/schemas/PaymentSetting"
+              },
+              {
+                "$ref": "#/components/schemas/OrderingSetting"
+              },
+              {
+                "$ref": "#/components/schemas/LoyaltySetting"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
+      "AppSettingSaved": {
+        "properties": {
+          "key": {
+            "enum": [
+              "brand",
+              "reports",
+              "minAppVersion",
+              "maintenance",
+              "featureFlags",
+              "payment",
+              "ordering",
+              "loyalty"
+            ],
+            "type": "string"
+          },
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BrandSetting"
+              },
+              {
+                "$ref": "#/components/schemas/ReportsSetting"
+              },
+              {
+                "$ref": "#/components/schemas/MinAppVersionSetting"
+              },
+              {
+                "$ref": "#/components/schemas/MaintenanceSetting"
+              },
+              {
+                "$ref": "#/components/schemas/FeatureFlagsSetting"
+              },
+              {
+                "$ref": "#/components/schemas/PaymentSetting"
+              },
+              {
+                "$ref": "#/components/schemas/OrderingSetting"
+              },
+              {
+                "$ref": "#/components/schemas/LoyaltySetting"
+              }
+            ]
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "key",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "AuthSession": {
         "properties": {
           "accessToken": {
@@ -661,6 +1046,86 @@
           "email",
           "emailVerifiedAt",
           "displayName"
+        ],
+        "type": "object"
+      },
+      "BrandSetting": {
+        "properties": {
+          "businessAddress": {
+            "nullable": true,
+            "type": "string"
+          },
+          "hotline": {
+            "description": "E.164; a landline is allowed.",
+            "example": "+842800000001",
+            "nullable": true,
+            "type": "string"
+          },
+          "logo": {
+            "description": "A `media` id (brief L5).",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/ReceiptSetting"
+          },
+          "supportEmail": {
+            "format": "email",
+            "nullable": true,
+            "type": "string"
+          },
+          "taxCode": {
+            "description": "10 or 13 digits.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "logo",
+          "hotline",
+          "supportEmail",
+          "businessAddress",
+          "taxCode",
+          "name",
+          "receipt"
+        ],
+        "type": "object"
+      },
+      "BrandSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/BrandSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
         ],
         "type": "object"
       },
@@ -727,6 +1192,80 @@
           "INTERNAL_ERROR"
         ],
         "type": "string"
+      },
+      "FeatureFlagsSetting": {
+        "properties": {
+          "charts": {
+            "type": "boolean"
+          },
+          "delivery": {
+            "type": "boolean"
+          },
+          "einvoice": {
+            "description": "Off while e-invoices are deferred.",
+            "type": "boolean"
+          },
+          "loyalty": {
+            "type": "boolean"
+          },
+          "ordering": {
+            "type": "boolean"
+          },
+          "promotions": {
+            "type": "boolean"
+          },
+          "reservations": {
+            "type": "boolean"
+          },
+          "vouchers": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ordering",
+          "delivery",
+          "reservations",
+          "loyalty",
+          "vouchers",
+          "promotions",
+          "charts",
+          "einvoice"
+        ],
+        "type": "object"
+      },
+      "FeatureFlagsSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/FeatureFlagsSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
       },
       "FieldError": {
         "properties": {
@@ -858,6 +1397,130 @@
         "required": [
           "password",
           "email"
+        ],
+        "type": "object"
+      },
+      "LoyaltySetting": {
+        "properties": {
+          "earnVndPerPoint": {
+            "nullable": true,
+            "type": "number"
+          },
+          "expiryMonths": {
+            "description": "`null`: points never expire.",
+            "nullable": true,
+            "type": "number"
+          },
+          "minRedeemPoints": {
+            "nullable": true,
+            "type": "number"
+          },
+          "redeemVndPerPoint": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "earnVndPerPoint",
+          "redeemVndPerPoint",
+          "minRedeemPoints",
+          "expiryMonths"
+        ],
+        "type": "object"
+      },
+      "LoyaltySettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/LoyaltySetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
+      "MaintenanceSetting": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedBackAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "message": {
+            "nullable": true,
+            "type": "string"
+          },
+          "since": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "expectedBackAt",
+          "since",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "MaintenanceSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/MaintenanceSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
         ],
         "type": "object"
       },
@@ -1042,6 +1705,59 @@
         ],
         "type": "object"
       },
+      "MinAppVersionSetting": {
+        "properties": {
+          "android": {
+            "description": "`x.y.z`.",
+            "example": "1.0.0",
+            "type": "string"
+          },
+          "ios": {
+            "description": "`x.y.z`.",
+            "example": "1.0.0",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ios",
+          "android"
+        ],
+        "type": "object"
+      },
+      "MinAppVersionSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/MinAppVersionSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "MyConsent": {
         "properties": {
           "action": {
@@ -1147,6 +1863,179 @@
         ],
         "type": "object"
       },
+      "OrderingSetting": {
+        "properties": {
+          "autoCancelUnacceptedMinutes": {
+            "description": "`null`: off. Otherwise above `boardThresholds.accept.late`.",
+            "nullable": true,
+            "type": "number"
+          },
+          "boardRefetchSeconds": {
+            "type": "number"
+          },
+          "boardThresholds": {
+            "$ref": "#/components/schemas/SettingBoardThresholds"
+          },
+          "callHintMinutes": {
+            "type": "number"
+          },
+          "itemNoteMax": {
+            "description": "1 to 200 (the `order_items.note` CHECK).",
+            "type": "number"
+          },
+          "listMaxRangeDays": {
+            "type": "number"
+          },
+          "maxCartLines": {
+            "type": "number"
+          },
+          "maxItemQuantity": {
+            "description": "1 to 99 (the `order_items.quantity` CHECK).",
+            "type": "number"
+          },
+          "readyUnservedLateMinutes": {
+            "type": "number"
+          },
+          "readyUnservedWarnMinutes": {
+            "description": "Below `readyUnservedLateMinutes`.",
+            "type": "number"
+          },
+          "reviewWindowDays": {
+            "type": "number"
+          },
+          "scheduleMaxDaysAhead": {
+            "type": "number"
+          },
+          "scheduleMinLeadMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "autoCancelUnacceptedMinutes",
+          "maxItemQuantity",
+          "maxCartLines",
+          "itemNoteMax",
+          "scheduleMinLeadMinutes",
+          "scheduleMaxDaysAhead",
+          "reviewWindowDays",
+          "boardThresholds",
+          "boardRefetchSeconds",
+          "readyUnservedWarnMinutes",
+          "readyUnservedLateMinutes",
+          "callHintMinutes",
+          "listMaxRangeDays"
+        ],
+        "type": "object"
+      },
+      "OrderingSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/OrderingSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
+      "PaymentSetting": {
+        "properties": {
+          "accountHolder": {
+            "nullable": true,
+            "type": "string"
+          },
+          "accountNumber": {
+            "description": "Digits only, one continuous string.",
+            "nullable": true,
+            "type": "string"
+          },
+          "bankCode": {
+            "description": "6 digits.",
+            "nullable": true,
+            "type": "string"
+          },
+          "bankName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "qrMediaId": {
+            "description": "A `media` id.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "transferNoteRule": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bankName",
+          "accountNumber",
+          "accountHolder",
+          "transferNoteRule",
+          "bankCode",
+          "qrMediaId"
+        ],
+        "type": "object"
+      },
+      "PaymentSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PaymentSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "ProblemDetails": {
         "properties": {
           "code": {
@@ -1222,6 +2111,35 @@
         ],
         "type": "string"
       },
+      "ReceiptSetting": {
+        "properties": {
+          "footer": {
+            "description": "At most 200 characters and 4 lines; may be empty.",
+            "type": "string"
+          },
+          "paperWidth": {
+            "enum": [
+              58,
+              80
+            ],
+            "type": "number"
+          },
+          "showTaxCode": {
+            "type": "boolean"
+          },
+          "title": {
+            "description": "At most 40 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paperWidth",
+          "title",
+          "footer",
+          "showTaxCode"
+        ],
+        "type": "object"
+      },
       "RefreshTokenDto": {
         "properties": {
           "refreshToken": {
@@ -1283,6 +2201,53 @@
         ],
         "type": "object"
       },
+      "ReportsSetting": {
+        "properties": {
+          "businessDayStartsAt": {
+            "description": "`HH:mm`, Vietnam time.",
+            "example": "04:00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "businessDayStartsAt"
+        ],
+        "type": "object"
+      },
+      "ReportsSettingRecord": {
+        "properties": {
+          "rowVersion": {
+            "description": "`0` for a key never saved: it reads as its default, and the first save sends 0.",
+            "type": "number"
+          },
+          "updatedAt": {
+            "description": "`null` for a key never saved.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingActor"
+              }
+            ],
+            "description": "`null` for a key never saved or written by the seed.",
+            "nullable": true,
+            "type": "object"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ReportsSetting"
+          }
+        },
+        "required": [
+          "updatedBy",
+          "updatedAt",
+          "value",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "ResetPasswordDto": {
         "properties": {
           "code": {
@@ -1305,6 +2270,54 @@
           "newPassword",
           "email",
           "code"
+        ],
+        "type": "object"
+      },
+      "SecuritySettings": {
+        "properties": {
+          "accessTokenMinutes": {
+            "type": "number"
+          },
+          "inviteHours": {
+            "description": "Lifetime of an invitation link.",
+            "type": "number"
+          },
+          "resetMinutes": {
+            "description": "Lifetime of a staff password reset link.",
+            "type": "number"
+          },
+          "sessionAbsoluteDays": {
+            "description": "Staff refresh absolute lifetime.",
+            "type": "number"
+          },
+          "sessionIdleDays": {
+            "description": "Staff refresh idle lifetime.",
+            "type": "number"
+          },
+          "staffPasswordMinLength": {
+            "description": "Code points, after NFC.",
+            "type": "number"
+          },
+          "totpRequiredRoles": {
+            "items": {
+              "enum": [
+                "STAFF",
+                "MANAGER",
+                "ADMIN"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "totpRequiredRoles",
+          "staffPasswordMinLength",
+          "accessTokenMinutes",
+          "sessionIdleDays",
+          "sessionAbsoluteDays",
+          "inviteHours",
+          "resetMinutes"
         ],
         "type": "object"
       },
@@ -1338,6 +2351,64 @@
         "required": [
           "token",
           "password"
+        ],
+        "type": "object"
+      },
+      "SettingActor": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "SettingBoardThresholds": {
+        "properties": {
+          "accept": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingThresholdPair"
+              }
+            ],
+            "description": "From placed until accepted."
+          },
+          "ready": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettingThresholdPair"
+              }
+            ],
+            "description": "From preparing until ready (brief L4)."
+          }
+        },
+        "required": [
+          "accept",
+          "ready"
+        ],
+        "type": "object"
+      },
+      "SettingThresholdPair": {
+        "properties": {
+          "late": {
+            "description": "Minutes.",
+            "type": "number"
+          },
+          "warn": {
+            "description": "Minutes; below `late`.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "warn",
+          "late"
         ],
         "type": "object"
       },
@@ -1545,6 +2616,148 @@
         "security": [],
         "tags": [
           "Health"
+        ]
+      }
+    },
+    "/api/v1/admin/app-settings": {
+      "get": {
+        "operationId": "AdminSettingsController_read_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAppSettings"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Every key as `{ value, rowVersion, updatedBy, updatedAt }`, plus read-only `security`.",
+        "tags": [
+          "AdminSettings"
+        ]
+      },
+      "put": {
+        "operationId": "AdminSettingsController_save_v1",
+        "parameters": [
+          {
+            "description": "Required when `key` is `payment`: a step-up token for `settings.payment` from POST /api/v1/admin/auth/step-up.",
+            "in": "header",
+            "name": "X-Step-Up-Token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppSettingSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppSettingSaved"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Saves one key. A stale `rowVersion` is `409 STALE_VERSION` with `current { rowVersion,\nupdatedBy, updatedAt, value }` (a `payment` value shows only `accountNumberLast5`). Field errors\ncarry the full camelCase path, for example `ordering.boardThresholds.accept.warn`. The\n`payment` key also needs `X-Step-Up-Token` for `settings.payment` (`403 FORBIDDEN` without it),\nand the other admins are emailed after the save.",
+        "tags": [
+          "AdminSettings"
         ]
       }
     },
@@ -2058,6 +3271,58 @@
         "summary": "A current TOTP code (not a recovery code) and a `purpose`: `200` with a step-up token valid 5\nminutes for that purpose. Wrong, replayed (a step already used, for example by\nthe sign-in a moment ago: wait for the next code) or locked-out code: `400 CODE_INVALID`,\ncounted toward the lockout. No confirmed second factor: `409 MFA_NOT_ENABLED`.",
         "tags": [
           "StepUp"
+        ]
+      }
+    },
+    "/api/v1/admin/meta/config": {
+      "get": {
+        "operationId": "AdminMetaController_config_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMetaConfig"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "The caller, their branches, their permission keys and the settings the console reads.",
+        "tags": [
+          "AdminMeta"
         ]
       }
     },
