@@ -161,6 +161,8 @@ export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   'POST /api/v1/admin/auth/password/set',
   // Public config (A4-T3): read by the apps before sign-in, never gated.
   'GET /api/v1/meta/config',
+  // Legal documents (A4-T4): a guest reads the Terms and Privacy before registering (mobile G104).
+  'GET /api/v1/legal/documents/current',
   'GET /api/v1/test-guards/public',
   'POST /api/v1/auth/test-throttle',
   'POST /api/v1/admin/auth/test-throttle',

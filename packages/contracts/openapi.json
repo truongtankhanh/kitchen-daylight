@@ -1136,12 +1136,75 @@
         ],
         "type": "string"
       },
+      "ConsentDocument": {
+        "properties": {
+          "content": {
+            "description": "The full text as published.",
+            "type": "string"
+          },
+          "contentSha256": {
+            "description": "Lower-case hex SHA-256 of the UTF-8 bytes of `content`.",
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "description": "Send it in `acceptedDocumentIds` of `POST /auth/register`.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "locale": {
+            "description": "The locale of this text: `vi` when the requested locale has no document.",
+            "type": "string"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConsentDocumentType"
+              }
+            ]
+          },
+          "version": {
+            "description": "Free text, never compared; a version starting with `placeholder-` is not legal text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "contentSha256",
+          "version",
+          "locale",
+          "publishedAt",
+          "content"
+        ],
+        "type": "object"
+      },
       "ConsentDocumentType": {
         "enum": [
           "TERMS_OF_SERVICE",
           "PRIVACY_POLICY"
         ],
         "type": "string"
+      },
+      "CurrentConsentDocuments": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/ConsentDocument"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "type": "object"
       },
       "ErrorCode": {
         "description": "Stable code of the catalogue (decision 0007 section 9).",
@@ -4898,6 +4961,89 @@
         "security": [],
         "tags": [
           "Social"
+        ]
+      }
+    },
+    "/api/v1/legal/documents/current": {
+      "get": {
+        "operationId": "LegalController_current_v1",
+        "parameters": [
+          {
+            "description": "Locale of the documents; default `vi`. A locale with no published document falls back to `vi`.",
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "default": "vi",
+              "example": "vi",
+              "maxLength": 35,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentConsentDocuments"
+                }
+              }
+            },
+            "description": "",
+            "headers": {
+              "Cache-Control": {
+                "description": "public, max-age=300",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Strong tag from the document ids and hashes; send it back as `If-None-Match`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (`If-None-Match` matched)."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "security": [],
+        "summary": "The current Terms of Service and Privacy Policy, with their text and the ids to accept.",
+        "tags": [
+          "Legal"
         ]
       }
     },

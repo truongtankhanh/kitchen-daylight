@@ -502,6 +502,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal/documents/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The current Terms of Service and Privacy Policy, with their text and the ids to accept. */
+        get: operations["LegalController_current_v1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -1115,8 +1132,29 @@ export interface components {
         };
         /** @enum {string} */
         ConsentAction: "GRANTED" | "WITHDRAWN";
+        ConsentDocument: {
+            /** @description The full text as published. */
+            content: string;
+            /** @description Lower-case hex SHA-256 of the UTF-8 bytes of `content`. */
+            contentSha256: string;
+            /**
+             * Format: uuid
+             * @description Send it in `acceptedDocumentIds` of `POST /auth/register`.
+             */
+            id: string;
+            /** @description The locale of this text: `vi` when the requested locale has no document. */
+            locale: string;
+            /** Format: date-time */
+            publishedAt: string;
+            type: components["schemas"]["ConsentDocumentType"];
+            /** @description Free text, never compared; a version starting with `placeholder-` is not legal text. */
+            version: string;
+        };
         /** @enum {string} */
         ConsentDocumentType: "TERMS_OF_SERVICE" | "PRIVACY_POLICY";
+        CurrentConsentDocuments: {
+            documents: components["schemas"]["ConsentDocument"][];
+        };
         /**
          * @description Stable code of the catalogue (decision 0007 section 9).
          * @enum {string}
@@ -3379,6 +3417,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SocialNonce"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LegalController_current_v1: {
+        parameters: {
+            query?: {
+                /** @description Locale of the documents; default `vi`. A locale with no published document falls back to `vi`. */
+                locale?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description public, max-age=300 */
+                    "Cache-Control"?: string;
+                    /** @description Strong tag from the document ids and hashes; send it back as `If-None-Match`. */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentConsentDocuments"];
+                };
+            };
+            /** @description Not modified (`If-None-Match` matched). */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description RATE_LIMITED */
