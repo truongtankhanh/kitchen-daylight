@@ -159,6 +159,8 @@ export const EXPECTED_PUBLIC_ROUTES: readonly string[] = [
   // Staff links (A3-T3), same CSRF check.
   'POST /api/v1/admin/auth/password/forgot',
   'POST /api/v1/admin/auth/password/set',
+  // Public config (A4-T3): read by the apps before sign-in, never gated.
+  'GET /api/v1/meta/config',
   'GET /api/v1/test-guards/public',
   'POST /api/v1/auth/test-throttle',
   'POST /api/v1/admin/auth/test-throttle',
