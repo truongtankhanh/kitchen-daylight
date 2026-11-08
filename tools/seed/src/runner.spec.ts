@@ -119,4 +119,15 @@ describe('reportLine', () => {
       reportLine('geography', counts('wards', { stale: 3, staleSample: ['90001', '90002'] })),
     ).toBe('geography  wards  inserted 0  updated 0  unchanged 0  stale 3 (90001, 90002, ...)');
   });
+
+  it('appends the note of a table in brackets', () => {
+    expect(
+      reportLine(
+        'first-admin',
+        counts('users', { inserted: 1, note: 'ADMIN invited @kitchendaylight.example' }),
+      ),
+    ).toBe(
+      'first-admin  users  inserted 1  updated 0  unchanged 0  stale 0  (ADMIN invited @kitchendaylight.example)',
+    );
+  });
 });

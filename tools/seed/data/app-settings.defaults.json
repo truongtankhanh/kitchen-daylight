@@ -1,0 +1,85 @@
+{
+  "_meta": {
+    "purpose": "Default app_settings rows written by `seed reference` (step app-settings) only when a key has no row; an existing row is never overwritten.",
+    "source": "A copy of SETTING_DEFAULTS in apps/api/src/modules/settings/settings-defaults.ts, in the stored snake_case form. @kd/seed may not import @kd/api (decision 0003 section 6), so the two copies can drift (api-divergences D-122): verify reference checks the stored rows against the rules, and the A4-T6 sheet compares these values with GET /admin/app-settings.",
+    "references": [
+      "data-model.md, app_settings row: every value is a proposal until the owner confirms it",
+      "ADR-0009 WA16: ordering defaults accepted (board thresholds 5/10 to accept and 15/25 to finish, refetch 15 s, call hint 10 min, auto-cancel off)",
+      "ADR-0009 WA14: reports.business_day_starts_at 04:00",
+      "migration-plan.md, seed reference row: payment empty",
+      "api-divergences D-106: loyalty rates not given, all null; brand.name is a working name"
+    ],
+    "fictional": "No real business data: the name is the working name, every contact, tax and bank field is null."
+  },
+  "rows": {
+    "brand": {
+      "name": "Kitchen Daylight",
+      "logo": null,
+      "hotline": null,
+      "support_email": null,
+      "business_address": null,
+      "tax_code": null,
+      "receipt": {
+        "title": "HÓA ĐƠN BÁN HÀNG",
+        "footer": "",
+        "paper_width": 80,
+        "show_tax_code": false
+      }
+    },
+    "reports": {
+      "business_day_starts_at": "04:00"
+    },
+    "min_app_version": {
+      "ios": "0.0.0",
+      "android": "0.0.0"
+    },
+    "maintenance": {
+      "enabled": false,
+      "message": null,
+      "expected_back_at": null,
+      "since": null
+    },
+    "feature_flags": {
+      "ordering": true,
+      "delivery": true,
+      "reservations": false,
+      "loyalty": false,
+      "vouchers": false,
+      "promotions": false,
+      "charts": false,
+      "einvoice": false
+    },
+    "payment": {
+      "bank_name": null,
+      "account_number": null,
+      "account_holder": null,
+      "transfer_note_rule": null,
+      "bank_code": null,
+      "qr_media_id": null
+    },
+    "ordering": {
+      "max_item_quantity": 20,
+      "max_cart_lines": 30,
+      "item_note_max": 200,
+      "schedule_min_lead_minutes": 30,
+      "schedule_max_days_ahead": 3,
+      "review_window_days": 7,
+      "auto_cancel_unaccepted_minutes": null,
+      "board_thresholds": {
+        "accept": { "warn": 5, "late": 10 },
+        "ready": { "warn": 15, "late": 25 }
+      },
+      "board_refetch_seconds": 15,
+      "ready_unserved_warn_minutes": 5,
+      "ready_unserved_late_minutes": 10,
+      "call_hint_minutes": 10,
+      "list_max_range_days": 92
+    },
+    "loyalty": {
+      "earn_vnd_per_point": null,
+      "redeem_vnd_per_point": null,
+      "min_redeem_points": null,
+      "expiry_months": null
+    }
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * The pieces shared by every step of a seed mode: the one `pg` method a step uses, the counts of
  * one table and the step contract (plan, apply, report line). A13 and the vocabulary tasks (A5-T1,
- * A6-T4) add their steps to the lists of `steps/index.ts`.
+ * A6-T4) and the email templates (A12-T3) add their steps to the lists of `steps/index.ts`.
  */
 
 /** The subset of `pg.Client` the steps use, so a spec can pass a fake that records statements. */
@@ -21,6 +21,8 @@ export interface TableCounts {
   readonly stale: number;
   /** The first stale codes (public reference codes, never personal data), for the report. */
   readonly staleSample: readonly string[];
+  /** A short remark appended to the report line; never a value that identifies a person. */
+  readonly note?: string;
 }
 
 export interface SeedStep {
@@ -51,12 +53,16 @@ export function reportLine(step: string, counts: TableCounts): string {
     counts.stale === 0
       ? 'stale 0'
       : `stale ${counts.stale} (${counts.staleSample.join(', ')}${counts.stale > counts.staleSample.length ? ', ...' : ''})`;
-  return [
+  const parts = [
     step,
     counts.table,
     `inserted ${counts.inserted}`,
     `updated ${counts.updated}`,
     `unchanged ${counts.unchanged}`,
     stale,
-  ].join('  ');
+  ];
+  if (counts.note !== undefined) {
+    parts.push(`(${counts.note})`);
+  }
+  return parts.join('  ');
 }

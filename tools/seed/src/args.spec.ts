@@ -21,7 +21,6 @@ describe('parseSeedArgs', () => {
     [[], 'missing mode'],
     [['--commit'], 'missing mode'],
     [['images'], 'unknown mode: images'],
-    [['verify'], 'unknown mode: verify'],
     [['seed'], 'unknown mode: seed'],
     [['reference', 'business'], 'unexpected argument: business'],
     [['reference', '--force'], "Unknown option '--force'"],
@@ -34,6 +33,22 @@ describe('parseSeedArgs', () => {
 
   it('is a dry run unless --commit is given', () => {
     expect(parseSeedArgs(['reference'])).toMatchObject({ commit: false });
+  });
+});
+
+describe('parseSeedArgs: verify', () => {
+  it('reads verify reference', () => {
+    expect(parseSeedArgs(['verify', 'reference'])).toEqual({ kind: 'verify', scope: 'reference' });
+  });
+
+  it.each([
+    [['verify'], 'missing verify scope'],
+    [['verify', 'business'], 'unknown verify scope: business'],
+    [['verify', 'reference', 'extra'], 'unexpected argument: extra'],
+    [['verify', 'reference', '--commit'], 'verify reads only and takes no --commit'],
+  ])('rejects %j with a usage error', (argv, message) => {
+    expect(() => parseSeedArgs(argv)).toThrow(UsageError);
+    expect(() => parseSeedArgs(argv)).toThrow(message);
   });
 });
 
@@ -53,6 +68,8 @@ describe('MODES and USAGE', () => {
       expect(USAGE).toContain(mode);
     }
     expect(USAGE).toContain('--commit');
+    expect(USAGE).toContain('verify <scope>');
+    expect(USAGE).toContain('SEED_ADMIN_EMAIL');
     for (const code of ['0', '1', '2', '3', '4']) {
       expect(USAGE).toMatch(new RegExp(`^  ${code}  `, 'm'));
     }

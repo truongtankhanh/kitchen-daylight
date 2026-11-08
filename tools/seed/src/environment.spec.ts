@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { MODES } from './args.js';
 import type { SeedMode } from './args.js';
-import { APP_ENVS, assertModeAllowed, ConfigError, readSeedConfig } from './environment.js';
+import {
+  APP_ENVS,
+  assertModeAllowed,
+  ConfigError,
+  emailDomain,
+  readConsentDocumentsFile,
+  readFirstAdmin,
+  readSeedConfig,
+} from './environment.js';
 import type { AppEnv, Environment } from './environment.js';
 
 // Fictional local URLs; the password is the repository's local placeholder.
@@ -148,5 +156,103 @@ describe('messages never contain a value', () => {
     expect(error.message).not.toContain('S3cr3t-Value');
     expect(error.message).not.toContain('db.example.com');
     expect(JSON.stringify(error.issues)).not.toContain('S3cr3t-Value');
+  });
+});
+
+describe('readFirstAdmin: SEED_ADMIN_EMAIL and SEED_ADMIN_NAME', () => {
+  // Fictional person on a reserved domain.
+  const EMAIL = 'owner@kitchendaylight.example';
+
+  function adminError(env: Environment): ConfigError {
+    try {
+      readFirstAdmin(env);
+    } catch (error) {
+      if (error instanceof ConfigError) {
+        return error;
+      }
+      throw error;
+    }
+    throw new Error('expected a ConfigError');
+  }
+
+  it('is null when both are unset or empty: the step is skipped', () => {
+    expect(readFirstAdmin({})).toBeNull();
+    expect(readFirstAdmin({ SEED_ADMIN_EMAIL: '', SEED_ADMIN_NAME: '' })).toBeNull();
+  });
+
+  it('trims and lower-cases the email, trims the name', () => {
+    expect(
+      readFirstAdmin({
+        SEED_ADMIN_EMAIL: '  Owner@KitchenDaylight.example ',
+        SEED_ADMIN_NAME: ' Chủ mẫu ',
+      }),
+    ).toEqual({ email: EMAIL, name: 'Chủ mẫu' });
+  });
+
+  it('accepts a name of exactly 60 characters, counted as characters', () => {
+    const name = 'Ư'.repeat(60);
+    expect(readFirstAdmin({ SEED_ADMIN_EMAIL: EMAIL, SEED_ADMIN_NAME: name })?.name).toBe(name);
+  });
+
+  it.each<[string, Environment, string]>([
+    ['the email alone', { SEED_ADMIN_EMAIL: EMAIL }, 'SEED_ADMIN_NAME: required'],
+    ['the name alone', { SEED_ADMIN_NAME: 'Chủ mẫu' }, 'SEED_ADMIN_EMAIL: required'],
+    [
+      'an email without a domain dot',
+      { SEED_ADMIN_EMAIL: 'owner@localhost', SEED_ADMIN_NAME: 'Chủ mẫu' },
+      'SEED_ADMIN_EMAIL: must be an email address',
+    ],
+    [
+      'an email over 254 characters',
+      {
+        SEED_ADMIN_EMAIL: `${'a'.repeat(250)}@kitchendaylight.example`,
+        SEED_ADMIN_NAME: 'Chủ mẫu',
+      },
+      'SEED_ADMIN_EMAIL: must be an email address',
+    ],
+    [
+      'a blank name',
+      { SEED_ADMIN_EMAIL: EMAIL, SEED_ADMIN_NAME: '   ' },
+      'SEED_ADMIN_NAME: must be 1 to 60 characters',
+    ],
+    [
+      'a name of 61 characters',
+      { SEED_ADMIN_EMAIL: EMAIL, SEED_ADMIN_NAME: 'a'.repeat(61) },
+      'SEED_ADMIN_NAME: must be 1 to 60 characters',
+    ],
+  ])('refuses %s (exit 3)', (_case, env, message) => {
+    expect(adminError(env).message).toContain(message);
+  });
+
+  it('never puts a value in a message', () => {
+    const error = adminError({ SEED_ADMIN_EMAIL: 'S3cr3t-Value', SEED_ADMIN_NAME: 'x'.repeat(61) });
+    expect(error.message).not.toContain('S3cr3t-Value');
+    expect(JSON.stringify(error.issues)).not.toContain('S3cr3t-Value');
+  });
+
+  it('emailDomain keeps the part after the @ only', () => {
+    expect(emailDomain(EMAIL)).toBe('kitchendaylight.example');
+  });
+});
+
+describe('readConsentDocumentsFile: SEED_CONSENT_DOCUMENTS_FILE', () => {
+  it('is null when unset or empty: the placeholders are used', () => {
+    expect(readConsentDocumentsFile({})).toBeNull();
+    expect(readConsentDocumentsFile({ SEED_CONSENT_DOCUMENTS_FILE: '' })).toBeNull();
+  });
+
+  it('returns an absolute path', () => {
+    expect(
+      readConsentDocumentsFile({ SEED_CONSENT_DOCUMENTS_FILE: '/secure/legal/documents.json' }),
+    ).toBe('/secure/legal/documents.json');
+  });
+
+  it('refuses a relative path (exit 3), without the value in the message', () => {
+    expect(() =>
+      readConsentDocumentsFile({ SEED_CONSENT_DOCUMENTS_FILE: 'S3cr3t-Value.json' }),
+    ).toThrow(ConfigError);
+    expect(() =>
+      readConsentDocumentsFile({ SEED_CONSENT_DOCUMENTS_FILE: 'S3cr3t-Value.json' }),
+    ).not.toThrow(/S3cr3t-Value/u);
   });
 });

@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "purpose": "Placeholder Terms of Service and Privacy Policy written by `seed reference` (step consent-documents) only when no document of that type exists for the locale.",
+    "warning": "NOT legal text. The real text comes from the owner and counsel at deploy time (migration-plan open item 3) and is published as a new row with a version that does not start with placeholder-. verify reference FAILs in prod while a current document is a placeholder.",
+    "marker": "version starts with placeholder- (isPlaceholderDocument, apps/api/src/modules/legal/legal.service.ts); the first line of the text says in Vietnamese that it is a placeholder and not legal text"
+  },
+  "rows": [
+    {
+      "type": "TERMS_OF_SERVICE",
+      "locale": "vi",
+      "version": "placeholder-1",
+      "content": "VĂN BẢN GIỮ CHỖ: đây không phải văn bản pháp lý và không có giá trị áp dụng.\nĐiều khoản sử dụng chính thức sẽ do chủ cửa hàng và luật sư cung cấp trước khi phát hành ứng dụng.\nKhông dùng văn bản này trong môi trường production."
+    },
+    {
+      "type": "PRIVACY_POLICY",
+      "locale": "vi",
+      "version": "placeholder-1",
+      "content": "VĂN BẢN GIỮ CHỖ: đây không phải văn bản pháp lý và không có giá trị áp dụng.\nChính sách quyền riêng tư chính thức sẽ do chủ cửa hàng và luật sư cung cấp trước khi phát hành ứng dụng.\nKhông dùng văn bản này trong môi trường production."
+    }
+  ]
+}

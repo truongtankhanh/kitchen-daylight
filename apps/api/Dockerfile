@@ -52,6 +52,9 @@ COPY --from=build /repo/apps/api/migrations ./migrations
 COPY --from=build /prod/seed/package.json ./seed/package.json
 COPY --from=build /prod/seed/node_modules ./seed/node_modules
 COPY --from=build /repo/tools/seed/dist ./seed/dist
+# The seed's own data files (A4-T5): default settings and placeholder consent documents, read from
+# dist/steps/ as ../../data/. Fictional or placeholder content only.
+COPY --from=build /repo/tools/seed/data ./seed/data
 
 # The non-root `node` user of the official image (uid and gid 1000), written numerically so a
 # runtime can verify it is not root before starting the container (hadolint DL3066).
