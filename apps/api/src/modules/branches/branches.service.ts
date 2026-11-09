@@ -16,6 +16,8 @@ import { toOffset } from '../../common/pagination/page-query.dto.js';
 import { slugify } from '../../common/text/slugify.js';
 import { assertEntityLabel, AuditService } from '../audit/audit.service.js';
 import { escapeLike } from '../users/admin-users.service.js';
+import { BranchHoursService } from './branch-hours.service.js';
+import type { TodayHoursView } from './branch-hours.service.js';
 import {
   BRANCH_SLUG_MAX_LENGTH,
   RESERVATION_DURATION,
@@ -65,8 +67,8 @@ export interface AdminBranchRowView {
   readonly codeLocked: boolean;
   readonly ordersToday: number;
   readonly activeOrders: number;
-  /** Filled by A5-T3 (hours and special days). */
-  readonly todayHours: null;
+  /** Today's effective `STORE` sessions, special days applied; `[]` when closed today (A5-T3). */
+  readonly todayHours: readonly TodayHoursView[];
 }
 
 /** The detail of one branch: the row plus the edit form's fields. */
@@ -544,6 +546,7 @@ export class BranchesService {
     @Inject(BranchScopeService) private readonly scopes: BranchScopeService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ORDERS_FACTS) private readonly orders: OrdersFacts,
+    @Inject(BranchHoursService) private readonly hours: BranchHoursService,
   ) {}
 
   /**
@@ -857,15 +860,19 @@ export class BranchesService {
     };
   }
 
-  /** Rows with the figures of the orders-facts port: one stats call, one lock check per row. */
+  /**
+   * Rows with the figures of the orders-facts port (one stats call, one lock check per row) and
+   * today's hours (one read for all rows).
+   */
   private async rowViews(records: readonly RowRecord[]): Promise<AdminBranchRowView[]> {
     if (records.length === 0) {
       return [];
     }
     const ids = records.map((record) => record.id);
-    const [stats, locked] = await Promise.all([
+    const [stats, locked, todayHours] = await Promise.all([
       this.orders.branchTodayStats(ids),
       Promise.all(ids.map((id) => this.orders.branchHasAnyOrder(id))),
+      this.hours.todayStoreHours(ids),
     ]);
     return records.map((record, index) => {
       const today = stats.get(record.id) ?? EMPTY_TODAY_STATS;
@@ -891,7 +898,7 @@ export class BranchesService {
         codeLocked: locked[index] ?? false,
         ordersToday: today.ordersToday,
         activeOrders: today.activeOrders,
-        todayHours: null,
+        todayHours: todayHours.get(record.id) ?? [],
       };
     });
   }

@@ -229,6 +229,30 @@ export interface paths {
         patch: operations["AdminBranchesController_update_v1"];
         trace?: never;
     };
+    "/api/v1/admin/branches/{id}/hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly periods per service and a page of special days: from today on, plus the last 30 days
+         *     with `includePast=true` (brief C17).
+         */
+        get: operations["AdminBranchHoursController_get_v1"];
+        /**
+         * Replaces the weekly periods and the special days that end today or later, with `rowVersion`.
+         *     `OVERLAP`, `EQUAL_TIMES`, `INVALID_TIME`, `RANGE_INVALID` per item (brief C14 to C16).
+         */
+        put: operations["AdminBranchHoursController_replace_v1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/meta/config": {
         parameters: {
             query?: never;
@@ -1021,14 +1045,21 @@ export interface components {
             staffCount: number;
             /** @enum {string} */
             status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
-            /** @description Today's store hours with special days applied; always `null` until A5-T3. */
-            todayHours: {
-                [key: string]: unknown;
-            } | null;
+            /**
+             * @description Today's effective store sessions (Vietnam date), special days applied; `[]` when closed today
+             *     (a proposal, api-divergences D-139).
+             */
+            todayHours: components["schemas"]["TodayHoursSession"][];
             /** Format: date-time */
             updatedAt: string;
             wardCode: string | null;
             websiteUrl: string | null;
+        };
+        AdminBranchHours: {
+            periods: components["schemas"]["BranchHoursPeriod"][];
+            /** @description The branch `rowVersion`. */
+            rowVersion: number;
+            special: components["schemas"]["BranchSpecialDayPage"];
         };
         AdminBranchLocation: {
             lat: number;
@@ -1069,10 +1100,11 @@ export interface components {
             staffCount: number;
             /** @enum {string} */
             status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
-            /** @description Today's store hours with special days applied; always `null` until A5-T3. */
-            todayHours: {
-                [key: string]: unknown;
-            } | null;
+            /**
+             * @description Today's effective store sessions (Vietnam date), special days applied; `[]` when closed today
+             *     (a proposal, api-divergences D-139).
+             */
+            todayHours: components["schemas"]["TodayHoursSession"][];
             wardCode: string | null;
         };
         AdminBranchUpdateDto: {
@@ -1321,9 +1353,74 @@ export interface components {
             en?: string;
             vi: string;
         };
+        BranchHoursPeriod: {
+            /** @description Derived: true when `closeTime` is at or before `openTime`. */
+            closesNextDay: boolean;
+            /** @description `HH:mm`. */
+            closeTime: string;
+            dayOfWeek: number;
+            /** @description `HH:mm`. */
+            openTime: string;
+            /** @enum {string} */
+            service: "STORE" | "DELIVERY";
+        };
+        BranchHoursPeriodInputDto: {
+            /** @description `HH:mm`; at or before `openTime` means the next day. A 24-hour day is 00:00 to 23:59. */
+            closeTime: string;
+            /** @description 1 (Monday) to 7 (Sunday). */
+            dayOfWeek: number;
+            /** @description `HH:mm`, 00:00 to 23:59. */
+            openTime: string;
+            /** @enum {string} */
+            service: "STORE" | "DELIVERY";
+        };
+        BranchHoursUpdateDto: {
+            periods: components["schemas"]["BranchHoursPeriodInputDto"][];
+            rowVersion: number;
+            special: components["schemas"]["BranchSpecialDayInputDto"][];
+        };
         BranchLocationInputDto: {
             lat: number;
             lng: number;
+        };
+        BranchSpecialDay: {
+            closesNextDay: boolean | null;
+            closeTime: string | null;
+            displayNote: string | null;
+            /** Format: date */
+            endsOn: string;
+            isClosed: boolean;
+            note: string | null;
+            openTime: string | null;
+            /** @enum {string} */
+            service: "STORE" | "DELIVERY";
+            /** Format: date */
+            startsOn: string;
+        };
+        BranchSpecialDayInputDto: {
+            closeTime?: string | null;
+            /** @description Customer-facing, for example "Nghỉ Tết" (mobile G12). */
+            displayNote?: string | null;
+            /**
+             * Format: date
+             * @description On or after `startsOn`, and today or later.
+             */
+            endsOn: string;
+            isClosed: boolean;
+            /** @description Internal, never shown to customers (brief C13). */
+            note?: string | null;
+            /** @description Required on an open day, absent or `null` on a closed one. */
+            openTime?: string | null;
+            /** @enum {string} */
+            service: "STORE" | "DELIVERY";
+            /** Format: date */
+            startsOn: string;
+        };
+        BranchSpecialDayPage: {
+            items: components["schemas"]["BranchSpecialDay"][];
+            page: number;
+            pageSize: number;
+            total: number;
         };
         BrandSetting: {
             businessAddress: string | null;
@@ -1936,6 +2033,13 @@ export interface components {
              * @description Sent back in the `X-Step-Up-Token` header of the protected request; keep it in memory only.
              */
             stepUpToken: string;
+        };
+        TodayHoursSession: {
+            closesNextDay: boolean;
+            /** @description `HH:mm`. */
+            closeTime: string;
+            /** @description `HH:mm`. */
+            openTime: string;
         };
         VerifyEmailDto: {
             /** @description The 6-digit code from the mail; spaces are ignored. */
@@ -2822,6 +2926,161 @@ export interface operations {
                 };
             };
             /** @description STALE_VERSION, ALREADY_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchHoursController_get_v1: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Also the special days that ended within the last 30 days, never older (brief C17; the name is
+                 *     a proposal, api-divergences D-138).
+                 */
+                includePast?: boolean;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchHours"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchHoursController_replace_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchHoursUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchHours"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -91,7 +91,7 @@ interface BranchRow {
   codeLocked: boolean;
   ordersToday: number;
   activeOrders: number;
-  todayHours: null;
+  todayHours: { openTime: string; closeTime: string; closesNextDay: boolean }[];
 }
 
 interface BranchDetail extends BranchRow {
@@ -366,7 +366,7 @@ describe('admin branches (kd_app, real PostgreSQL)', () => {
         codeLocked: false,
         ordersToday: 0,
         activeOrders: 0,
-        todayHours: null,
+        todayHours: [],
         amenityIds: [],
         websiteUrl: null,
         pauseMessage: null,
@@ -480,7 +480,7 @@ describe('admin branches (kd_app, real PostgreSQL)', () => {
         codeLocked: true,
         ordersToday: 7,
         activeOrders: 2,
-        todayHours: null,
+        todayHours: [],
         location: { lat: 10.77, lng: 106.7 },
       });
       expect(page.items[1]).toMatchObject({

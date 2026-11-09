@@ -550,10 +550,11 @@
             "type": "string"
           },
           "todayHours": {
-            "additionalProperties": true,
-            "description": "Today's store hours with special days applied; always `null` until A5-T3.",
-            "nullable": true,
-            "type": "object"
+            "description": "Today's effective store sessions (Vietnam date), special days applied; `[]` when closed today\n(a proposal, api-divergences D-139).",
+            "items": {
+              "$ref": "#/components/schemas/TodayHoursSession"
+            },
+            "type": "array"
           },
           "updatedAt": {
             "format": "date-time",
@@ -604,6 +605,30 @@
           "acceptsDelivery",
           "acceptsReservations",
           "codeLocked"
+        ],
+        "type": "object"
+      },
+      "AdminBranchHours": {
+        "properties": {
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/BranchHoursPeriod"
+            },
+            "type": "array"
+          },
+          "rowVersion": {
+            "description": "The branch `rowVersion`.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "special": {
+            "$ref": "#/components/schemas/BranchSpecialDayPage"
+          }
+        },
+        "required": [
+          "rowVersion",
+          "periods",
+          "special"
         ],
         "type": "object"
       },
@@ -738,10 +763,11 @@
             "type": "string"
           },
           "todayHours": {
-            "additionalProperties": true,
-            "description": "Today's store hours with special days applied; always `null` until A5-T3.",
-            "nullable": true,
-            "type": "object"
+            "description": "Today's effective store sessions (Vietnam date), special days applied; `[]` when closed today\n(a proposal, api-divergences D-139).",
+            "items": {
+              "$ref": "#/components/schemas/TodayHoursSession"
+            },
+            "type": "array"
           },
           "wardCode": {
             "nullable": true,
@@ -1692,6 +1718,105 @@
         ],
         "type": "object"
       },
+      "BranchHoursPeriod": {
+        "properties": {
+          "closeTime": {
+            "description": "`HH:mm`.",
+            "type": "string"
+          },
+          "closesNextDay": {
+            "description": "Derived: true when `closeTime` is at or before `openTime`.",
+            "type": "boolean"
+          },
+          "dayOfWeek": {
+            "maximum": 7,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "openTime": {
+            "description": "`HH:mm`.",
+            "type": "string"
+          },
+          "service": {
+            "enum": [
+              "STORE",
+              "DELIVERY"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "dayOfWeek",
+          "openTime",
+          "closeTime",
+          "closesNextDay"
+        ],
+        "type": "object"
+      },
+      "BranchHoursPeriodInputDto": {
+        "properties": {
+          "closeTime": {
+            "description": "`HH:mm`; at or before `openTime` means the next day. A 24-hour day is 00:00 to 23:59.",
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+            "type": "string"
+          },
+          "dayOfWeek": {
+            "description": "1 (Monday) to 7 (Sunday).",
+            "maximum": 7,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "openTime": {
+            "description": "`HH:mm`, 00:00 to 23:59.",
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+            "type": "string"
+          },
+          "service": {
+            "enum": [
+              "STORE",
+              "DELIVERY"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "dayOfWeek",
+          "openTime",
+          "closeTime"
+        ],
+        "type": "object"
+      },
+      "BranchHoursUpdateDto": {
+        "properties": {
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/BranchHoursPeriodInputDto"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "rowVersion": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "special": {
+            "items": {
+              "$ref": "#/components/schemas/BranchSpecialDayInputDto"
+            },
+            "maxItems": 100,
+            "type": "array"
+          }
+        },
+        "required": [
+          "rowVersion",
+          "periods",
+          "special"
+        ],
+        "type": "object"
+      },
       "BranchLocationInputDto": {
         "properties": {
           "lat": {
@@ -1708,6 +1833,142 @@
         "required": [
           "lat",
           "lng"
+        ],
+        "type": "object"
+      },
+      "BranchSpecialDay": {
+        "properties": {
+          "closeTime": {
+            "nullable": true,
+            "type": "string"
+          },
+          "closesNextDay": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "displayNote": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "isClosed": {
+            "type": "boolean"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openTime": {
+            "nullable": true,
+            "type": "string"
+          },
+          "service": {
+            "enum": [
+              "STORE",
+              "DELIVERY"
+            ],
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startsOn",
+          "endsOn",
+          "service",
+          "openTime",
+          "closeTime",
+          "closesNextDay",
+          "note",
+          "displayNote",
+          "isClosed"
+        ],
+        "type": "object"
+      },
+      "BranchSpecialDayInputDto": {
+        "properties": {
+          "closeTime": {
+            "nullable": true,
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+            "type": "string"
+          },
+          "displayNote": {
+            "description": "Customer-facing, for example \"Nghỉ Tết\" (mobile G12).",
+            "maxLength": 80,
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "On or after `startsOn`, and today or later.",
+            "format": "date",
+            "type": "string"
+          },
+          "isClosed": {
+            "type": "boolean"
+          },
+          "note": {
+            "description": "Internal, never shown to customers (brief C13).",
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "openTime": {
+            "description": "Required on an open day, absent or `null` on a closed one.",
+            "nullable": true,
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+            "type": "string"
+          },
+          "service": {
+            "enum": [
+              "STORE",
+              "DELIVERY"
+            ],
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startsOn",
+          "endsOn",
+          "service",
+          "isClosed"
+        ],
+        "type": "object"
+      },
+      "BranchSpecialDayPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BranchSpecialDay"
+            },
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageSize": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
         ],
         "type": "object"
       },
@@ -3410,6 +3671,27 @@
         ],
         "type": "object"
       },
+      "TodayHoursSession": {
+        "properties": {
+          "closeTime": {
+            "description": "`HH:mm`.",
+            "type": "string"
+          },
+          "closesNextDay": {
+            "type": "boolean"
+          },
+          "openTime": {
+            "description": "`HH:mm`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "openTime",
+          "closeTime",
+          "closesNextDay"
+        ],
+        "type": "object"
+      },
       "VerifyEmailDto": {
         "properties": {
           "code": {
@@ -4625,6 +4907,220 @@
         "summary": "A partial change with `rowVersion`. `LOCKED` on `code` once an order exists (C6);\n`acceptsDelivery` needs an active zone (C8); `location` confirms the pin (C9).",
         "tags": [
           "AdminBranches"
+        ]
+      }
+    },
+    "/api/v1/admin/branches/{id}/hours": {
+      "get": {
+        "operationId": "AdminBranchHoursController_get_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number, from 1.",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Rows per page.",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Also the special days that ended within the last 30 days, never older (brief C17; the name is\na proposal, api-divergences D-138).",
+            "in": "query",
+            "name": "includePast",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchHours"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Weekly periods per service and a page of special days: from today on, plus the last 30 days\nwith `includePast=true` (brief C17).",
+        "tags": [
+          "AdminBranchHours"
+        ]
+      },
+      "put": {
+        "operationId": "AdminBranchHoursController_replace_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchHoursUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchHours"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Replaces the weekly periods and the special days that end today or later, with `rowVersion`.\n`OVERLAP`, `EQUAL_TIMES`, `INVALID_TIME`, `RANGE_INVALID` per item (brief C14 to C16).",
+        "tags": [
+          "AdminBranchHours"
         ]
       }
     },

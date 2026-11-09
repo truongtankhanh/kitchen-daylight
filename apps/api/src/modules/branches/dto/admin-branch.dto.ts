@@ -8,6 +8,7 @@ import type {
 } from '../branches.service.js';
 import { BRANCH_STATUSES } from '../entities/branch.entity.js';
 import type { BranchDescription, BranchStatus } from '../entities/branch.entity.js';
+import { TodayHoursSessionDto } from './branch-hours.dto.js';
 
 /** WGS 84 degrees, read from `geography(Point, 4326)`. */
 @ApiSchema({ name: 'AdminBranchLocation' })
@@ -84,9 +85,12 @@ export class AdminBranchRowDto implements AdminBranchRowView {
   @ApiProperty({ type: 'integer', minimum: 0 })
   activeOrders!: number;
 
-  /** Today's store hours with special days applied; always `null` until A5-T3. */
-  @ApiProperty({ type: 'object', nullable: true, additionalProperties: true })
-  todayHours!: null;
+  /**
+   * Today's effective store sessions (Vietnam date), special days applied; `[]` when closed today
+   * (a proposal, api-divergences D-139).
+   */
+  @ApiProperty({ type: TodayHoursSessionDto, isArray: true })
+  todayHours!: TodayHoursSessionDto[];
 }
 
 /**
