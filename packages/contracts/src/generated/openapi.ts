@@ -186,6 +186,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's branches, with the figures of the list (brief C2, C4). */
+        get: operations["AdminBranchesController_list_v1"];
+        put?: never;
+        /** A new branch; delivery stays off until a zone exists (brief C8). */
+        post: operations["AdminBranchesController_create_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/branches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One branch with `rowVersion`, services, reservation rules and amenities. */
+        get: operations["AdminBranchesController_detail_v1"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft delete. `HAS_ACTIVE_ORDERS` with `details { orders, reservations }` while work is open
+         *     (C1); `INVALID_STATE` for the last branch in operation.
+         */
+        delete: operations["AdminBranchesController_remove_v1"];
+        options?: never;
+        head?: never;
+        /**
+         * A partial change with `rowVersion`. `LOCKED` on `code` once an order exists (C6);
+         *     `acceptsDelivery` needs an active zone (C8); `location` confirms the pin (C9).
+         */
+        patch: operations["AdminBranchesController_update_v1"];
+        trace?: never;
+    };
     "/api/v1/admin/meta/config": {
         parameters: {
             query?: never;
@@ -896,6 +939,180 @@ export interface components {
             reports: components["schemas"]["ReportsSettingRecord"];
             security: components["schemas"]["SecuritySettings"];
         };
+        AdminBranchCreateDto: {
+            /** @description Must be `false` on create: no active delivery zone exists yet (brief C8). */
+            acceptsDelivery: boolean;
+            acceptsPickup: boolean;
+            acceptsReservations: boolean;
+            /** @description Street and number; trimmed, 1 to 200 characters. */
+            addressLine: string;
+            /** @description 2 to 4 upper-case letters, unique; the prefix of every order number. */
+            code: string;
+            defaultPrepMinutes: number;
+            description?: components["schemas"]["BranchDescriptionInputDto"] | null;
+            location: components["schemas"]["BranchLocationInputDto"];
+            /** @description Trimmed; 1 to 100 characters. */
+            name: string;
+            orderCutoffMinutes: number;
+            /** @description E.164 (`+` and the country code); spaces, dots and hyphens are removed first. */
+            phone: string;
+            /** @description Official province code (`GET /provinces`). */
+            provinceCode: string;
+            /** @description 30 to 240 in steps of 15; 90 when absent. */
+            reservationDurationMinutes?: number;
+            reservationLeadMinutes: number;
+            reservationMaxDaysAhead: number;
+            reservationMaxParty: number;
+            /**
+             * @description 15 or 30.
+             * @enum {integer}
+             */
+            reservationSlotStepMinutes: 15 | 30;
+            /** @description Unique and immutable; derived from `name` when absent (api-divergences D-130). */
+            slug?: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+            /** @description Official ward code of that province (`GET /wards`). */
+            wardCode?: string | null;
+        };
+        AdminBranchDetail: {
+            acceptsDelivery: boolean;
+            acceptsPickup: boolean;
+            acceptsReservations: boolean;
+            /** @description Orders not yet in a final state. */
+            activeOrders: number;
+            activeZoneCount: number;
+            addressLine: string;
+            amenityIds: string[];
+            code: string;
+            /** @description True once an order exists: `code` can no longer change (brief C6). */
+            codeLocked: boolean;
+            defaultPrepMinutes: number;
+            /** @description Translations with a `vi` key; `null` when none. */
+            description: ({
+                vi?: string;
+            } & {
+                [key: string]: string;
+            }) | null;
+            /** Format: uuid */
+            id: string;
+            location: components["schemas"]["AdminBranchLocation"];
+            name: string;
+            orderCutoffMinutes: number;
+            /** @description Orders placed today (Vietnam business day). */
+            ordersToday: number;
+            /** @description Shown by the customer app on a `TEMPORARILY_CLOSED` branch (mobile G11). */
+            pauseMessage: string | null;
+            /** @description E.164. */
+            phone: string;
+            provinceCode: string;
+            /** @description Plain average of published reviews, one decimal; `null` without reviews (open item 7). */
+            ratingAverage: number | null;
+            reservationDurationMinutes: number;
+            reservationLeadMinutes: number;
+            reservationMaxDaysAhead: number;
+            reservationMaxParty: number;
+            reservationSlotStepMinutes: number;
+            reviewCount: number;
+            rowVersion: number;
+            slug: string;
+            sortOrder: number;
+            /** @description Rows of `staff_branches` for the branch. */
+            staffCount: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+            /** @description Today's store hours with special days applied; always `null` until A5-T3. */
+            todayHours: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: date-time */
+            updatedAt: string;
+            wardCode: string | null;
+            websiteUrl: string | null;
+        };
+        AdminBranchLocation: {
+            lat: number;
+            lng: number;
+        };
+        AdminBranchPage: {
+            items: components["schemas"]["AdminBranchRow"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        AdminBranchRow: {
+            acceptsDelivery: boolean;
+            acceptsPickup: boolean;
+            acceptsReservations: boolean;
+            /** @description Orders not yet in a final state. */
+            activeOrders: number;
+            activeZoneCount: number;
+            addressLine: string;
+            code: string;
+            /** @description True once an order exists: `code` can no longer change (brief C6). */
+            codeLocked: boolean;
+            /** Format: uuid */
+            id: string;
+            location: components["schemas"]["AdminBranchLocation"];
+            name: string;
+            /** @description Orders placed today (Vietnam business day). */
+            ordersToday: number;
+            /** @description E.164. */
+            phone: string;
+            provinceCode: string;
+            /** @description Plain average of published reviews, one decimal; `null` without reviews (open item 7). */
+            ratingAverage: number | null;
+            reviewCount: number;
+            slug: string;
+            sortOrder: number;
+            /** @description Rows of `staff_branches` for the branch. */
+            staffCount: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+            /** @description Today's store hours with special days applied; always `null` until A5-T3. */
+            todayHours: {
+                [key: string]: unknown;
+            } | null;
+            wardCode: string | null;
+        };
+        AdminBranchUpdateDto: {
+            /** @description Switching it on needs an active delivery zone (brief C8). */
+            acceptsDelivery?: boolean;
+            acceptsPickup?: boolean;
+            acceptsReservations?: boolean;
+            addressLine?: string;
+            /** @description Replaces the whole list in one transaction; `[]` removes every amenity. */
+            amenityIds?: string[];
+            /** @description Refused with `LOCKED` once the branch has an order (brief C6). */
+            code?: string;
+            defaultPrepMinutes?: number;
+            /** @description `null` removes the description. */
+            description?: components["schemas"]["BranchDescriptionInputDto"] | null;
+            /** @description Sent only when the pin is confirmed; writes `branch.location_confirm` (brief C9). */
+            location?: components["schemas"]["BranchLocationInputDto"];
+            name?: string;
+            orderCutoffMinutes?: number;
+            /**
+             * @description The line the customer app shows on a paused branch (mobile G11); `null` removes it. Resuming
+             *     orders does not clear it.
+             */
+            pauseMessage?: string | null;
+            phone?: string;
+            provinceCode?: string;
+            reservationDurationMinutes?: number;
+            reservationLeadMinutes?: number;
+            reservationMaxDaysAhead?: number;
+            reservationMaxParty?: number;
+            /** @enum {integer} */
+            reservationSlotStepMinutes?: 15 | 30;
+            rowVersion: number;
+            /** @enum {string} */
+            status?: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+            /** @description `null` removes the ward. */
+            wardCode?: string | null;
+            /** @description One https link of at most 255 characters; `null` removes it (brief C28). */
+            websiteUrl?: string | null;
+        };
         AdminCustomerUser: {
             completedOrders: number;
             displayName: string;
@@ -1099,6 +1316,14 @@ export interface components {
             emailVerifiedAt: string | null;
             /** Format: uuid */
             id: string;
+        };
+        BranchDescriptionInputDto: {
+            en?: string;
+            vi: string;
+        };
+        BranchLocationInputDto: {
+            lat: number;
+            lng: number;
         };
         BrandSetting: {
             businessAddress: string | null;
@@ -2246,6 +2471,357 @@ export interface operations {
                 };
             };
             /** @description MFA_NOT_ENABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchesController_list_v1: {
+        parameters: {
+            query?: {
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+                /** @description A fragment of the name or the code, accent and case insensitive. */
+                q?: string;
+                status?: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchPage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchesController_create_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBranchCreateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchDetail"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ALREADY_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchesController_detail_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchDetail"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchesController_remove_v1: {
+        parameters: {
+            query: {
+                rowVersion: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION, HAS_ACTIVE_ORDERS, INVALID_STATE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminBranchesController_update_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBranchUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchDetail"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION, ALREADY_EXISTS */
             409: {
                 headers: {
                     [name: string]: unknown;

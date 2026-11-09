@@ -59,6 +59,11 @@ export const AUDIT_ACTIONS = [
   'menu.overwrite',
   // Branch pin confirmed, old and new coordinates. Proposal (brief C9).
   'branch.location_confirm',
+  // Branch created and soft-deleted by an admin (A5-T2): entity BRANCH, `branch_id` the branch,
+  // `entity_label` its name; diff keys `branchCode`, `name`, `status`, `deletedAt`, never the
+  // phone or coordinates. Names are proposals (brief G7 "create and delete branch").
+  'branch.create',
+  'branch.delete',
   // Delivery zones, old and new diff. Proposals (brief C25).
   'delivery_zone.create',
   'delivery_zone.update',

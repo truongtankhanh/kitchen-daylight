@@ -10,6 +10,7 @@ import { ProblemDetailsFilter } from './common/errors/problem-details.filter.js'
 import { AppGatesGuard } from './common/gates/app-gates.guard.js';
 import { createValidationPipe } from './common/errors/validation.pipe.js';
 import { LoggingModule } from './common/logging/logging.module.js';
+import { NoOrdersFacts, OrdersFactsModule } from './common/orders-facts/orders-facts.port.js';
 import { AppThrottlerGuard } from './common/throttling/app-throttler.guard.js';
 import { ThrottlingModule } from './common/throttling/throttling.module.js';
 import { clockProvider } from './common/time/clock.js';
@@ -18,6 +19,7 @@ import type { ServerConfig } from './config/load-config.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { BranchesModule } from './modules/branches/branches.module.js';
 import { GeoModule } from './modules/geo/geo.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -43,6 +45,11 @@ export class AppModule {
         // Settings, `/admin/app-settings`, `/admin/meta/config`, `/meta/config` and the snapshot of
         // the request gates (A4-T1 to A4-T3).
         SettingsModule,
+        // `ORDERS_FACTS` for the branch and menu slices: `NoOrdersFacts` (exact while no order or
+        // reservation table exists) until A8-T8 binds the orders implementation (A5-T2).
+        OrdersFactsModule.forRoot(NoOrdersFacts),
+        // `/admin/branches` (A5-T2).
+        BranchesModule,
       ],
       // Global pipe and filter as providers, so the filter can inject the logger (decision 0007 section 3).
       // The global guards run in the order listed here: throttler, the maintenance and

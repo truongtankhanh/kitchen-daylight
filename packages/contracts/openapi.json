@@ -285,6 +285,633 @@
         ],
         "type": "object"
       },
+      "AdminBranchCreateDto": {
+        "properties": {
+          "acceptsDelivery": {
+            "description": "Must be `false` on create: no active delivery zone exists yet (brief C8).",
+            "type": "boolean"
+          },
+          "acceptsPickup": {
+            "type": "boolean"
+          },
+          "acceptsReservations": {
+            "type": "boolean"
+          },
+          "addressLine": {
+            "description": "Street and number; trimmed, 1 to 200 characters.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "code": {
+            "description": "2 to 4 upper-case letters, unique; the prefix of every order number.",
+            "type": "string"
+          },
+          "defaultPrepMinutes": {
+            "maximum": 1440,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BranchDescriptionInputDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "location": {
+            "$ref": "#/components/schemas/BranchLocationInputDto"
+          },
+          "name": {
+            "description": "Trimmed; 1 to 100 characters.",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "orderCutoffMinutes": {
+            "maximum": 1440,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "phone": {
+            "description": "E.164 (`+` and the country code); spaces, dots and hyphens are removed first.",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "provinceCode": {
+            "description": "Official province code (`GET /provinces`).",
+            "maxLength": 10,
+            "type": "string"
+          },
+          "reservationDurationMinutes": {
+            "description": "30 to 240 in steps of 15; 90 when absent.",
+            "maximum": 240,
+            "minimum": 30,
+            "multipleOf": 15,
+            "type": "integer"
+          },
+          "reservationLeadMinutes": {
+            "maximum": 1440,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reservationMaxDaysAhead": {
+            "maximum": 90,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "reservationMaxParty": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "reservationSlotStepMinutes": {
+            "description": "15 or 30.",
+            "enum": [
+              15,
+              30
+            ],
+            "maximum": 30,
+            "minimum": 15,
+            "type": "integer"
+          },
+          "slug": {
+            "description": "Unique and immutable; derived from `name` when absent (api-divergences D-130).",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "TEMPORARILY_CLOSED",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "wardCode": {
+            "description": "Official ward code of that province (`GET /wards`).",
+            "maxLength": 10,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "location",
+          "status",
+          "defaultPrepMinutes",
+          "orderCutoffMinutes",
+          "reservationSlotStepMinutes",
+          "reservationMaxParty",
+          "reservationLeadMinutes",
+          "reservationMaxDaysAhead",
+          "code",
+          "name",
+          "addressLine",
+          "provinceCode",
+          "phone",
+          "acceptsPickup",
+          "acceptsDelivery",
+          "acceptsReservations"
+        ],
+        "type": "object"
+      },
+      "AdminBranchDetail": {
+        "properties": {
+          "acceptsDelivery": {
+            "type": "boolean"
+          },
+          "acceptsPickup": {
+            "type": "boolean"
+          },
+          "acceptsReservations": {
+            "type": "boolean"
+          },
+          "activeOrders": {
+            "description": "Orders not yet in a final state.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "activeZoneCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "amenityIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "code": {
+            "type": "string"
+          },
+          "codeLocked": {
+            "description": "True once an order exists: `code` can no longer change (brief C6).",
+            "type": "boolean"
+          },
+          "defaultPrepMinutes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Translations with a `vi` key; `null` when none.",
+            "nullable": true,
+            "properties": {
+              "vi": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/AdminBranchLocation"
+          },
+          "name": {
+            "type": "string"
+          },
+          "orderCutoffMinutes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ordersToday": {
+            "description": "Orders placed today (Vietnam business day).",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pauseMessage": {
+            "description": "Shown by the customer app on a `TEMPORARILY_CLOSED` branch (mobile G11).",
+            "nullable": true,
+            "type": "string"
+          },
+          "phone": {
+            "description": "E.164.",
+            "type": "string"
+          },
+          "provinceCode": {
+            "type": "string"
+          },
+          "ratingAverage": {
+            "description": "Plain average of published reviews, one decimal; `null` without reviews (open item 7).",
+            "maximum": 5,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "reservationDurationMinutes": {
+            "type": "integer"
+          },
+          "reservationLeadMinutes": {
+            "type": "integer"
+          },
+          "reservationMaxDaysAhead": {
+            "type": "integer"
+          },
+          "reservationMaxParty": {
+            "type": "integer"
+          },
+          "reservationSlotStepMinutes": {
+            "type": "integer"
+          },
+          "reviewCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rowVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "staffCount": {
+            "description": "Rows of `staff_branches` for the branch.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "TEMPORARILY_CLOSED",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "todayHours": {
+            "additionalProperties": true,
+            "description": "Today's store hours with special days applied; always `null` until A5-T3.",
+            "nullable": true,
+            "type": "object"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "wardCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "websiteUrl": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "wardCode",
+          "location",
+          "status",
+          "sortOrder",
+          "staffCount",
+          "ratingAverage",
+          "reviewCount",
+          "activeZoneCount",
+          "ordersToday",
+          "activeOrders",
+          "todayHours",
+          "rowVersion",
+          "description",
+          "websiteUrl",
+          "pauseMessage",
+          "defaultPrepMinutes",
+          "orderCutoffMinutes",
+          "reservationDurationMinutes",
+          "reservationSlotStepMinutes",
+          "reservationMaxParty",
+          "reservationLeadMinutes",
+          "reservationMaxDaysAhead",
+          "amenityIds",
+          "updatedAt",
+          "code",
+          "slug",
+          "name",
+          "addressLine",
+          "provinceCode",
+          "phone",
+          "acceptsPickup",
+          "acceptsDelivery",
+          "acceptsReservations",
+          "codeLocked"
+        ],
+        "type": "object"
+      },
+      "AdminBranchLocation": {
+        "properties": {
+          "lat": {
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "lng": {
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "type": "object"
+      },
+      "AdminBranchPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBranchRow"
+            },
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageSize": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object"
+      },
+      "AdminBranchRow": {
+        "properties": {
+          "acceptsDelivery": {
+            "type": "boolean"
+          },
+          "acceptsPickup": {
+            "type": "boolean"
+          },
+          "acceptsReservations": {
+            "type": "boolean"
+          },
+          "activeOrders": {
+            "description": "Orders not yet in a final state.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "activeZoneCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "codeLocked": {
+            "description": "True once an order exists: `code` can no longer change (brief C6).",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/AdminBranchLocation"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ordersToday": {
+            "description": "Orders placed today (Vietnam business day).",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "phone": {
+            "description": "E.164.",
+            "type": "string"
+          },
+          "provinceCode": {
+            "type": "string"
+          },
+          "ratingAverage": {
+            "description": "Plain average of published reviews, one decimal; `null` without reviews (open item 7).",
+            "maximum": 5,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "reviewCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "staffCount": {
+            "description": "Rows of `staff_branches` for the branch.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "TEMPORARILY_CLOSED",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "todayHours": {
+            "additionalProperties": true,
+            "description": "Today's store hours with special days applied; always `null` until A5-T3.",
+            "nullable": true,
+            "type": "object"
+          },
+          "wardCode": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "wardCode",
+          "location",
+          "status",
+          "sortOrder",
+          "staffCount",
+          "ratingAverage",
+          "reviewCount",
+          "activeZoneCount",
+          "ordersToday",
+          "activeOrders",
+          "todayHours",
+          "code",
+          "slug",
+          "name",
+          "addressLine",
+          "provinceCode",
+          "phone",
+          "acceptsPickup",
+          "acceptsDelivery",
+          "acceptsReservations",
+          "codeLocked"
+        ],
+        "type": "object"
+      },
+      "AdminBranchUpdateDto": {
+        "properties": {
+          "acceptsDelivery": {
+            "description": "Switching it on needs an active delivery zone (brief C8).",
+            "type": "boolean"
+          },
+          "acceptsPickup": {
+            "type": "boolean"
+          },
+          "acceptsReservations": {
+            "type": "boolean"
+          },
+          "addressLine": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "amenityIds": {
+            "description": "Replaces the whole list in one transaction; `[]` removes every amenity.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "code": {
+            "description": "Refused with `LOCKED` once the branch has an order (brief C6).",
+            "pattern": "^[A-Z]{2,4}$",
+            "type": "string"
+          },
+          "defaultPrepMinutes": {
+            "maximum": 1440,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BranchDescriptionInputDto"
+              }
+            ],
+            "description": "`null` removes the description.",
+            "nullable": true,
+            "type": "object"
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BranchLocationInputDto"
+              }
+            ],
+            "description": "Sent only when the pin is confirmed; writes `branch.location_confirm` (brief C9)."
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "orderCutoffMinutes": {
+            "maximum": 1440,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pauseMessage": {
+            "description": "The line the customer app shows on a paused branch (mobile G11); `null` removes it. Resuming\norders does not clear it.",
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "phone": {
+            "maxLength": 32,
+            "type": "string"
+          },
+          "provinceCode": {
+            "maxLength": 10,
+            "type": "string"
+          },
+          "reservationDurationMinutes": {
+            "maximum": 240,
+            "minimum": 30,
+            "multipleOf": 15,
+            "type": "integer"
+          },
+          "reservationLeadMinutes": {
+            "maximum": 1440,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reservationMaxDaysAhead": {
+            "maximum": 90,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "reservationMaxParty": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "reservationSlotStepMinutes": {
+            "enum": [
+              15,
+              30
+            ],
+            "maximum": 30,
+            "minimum": 15,
+            "type": "integer"
+          },
+          "rowVersion": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "TEMPORARILY_CLOSED",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "wardCode": {
+            "description": "`null` removes the ward.",
+            "maxLength": 10,
+            "nullable": true,
+            "type": "string"
+          },
+          "websiteUrl": {
+            "description": "One https link of at most 255 characters; `null` removes it (brief C28).",
+            "maxLength": 255,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "AdminCustomerUser": {
         "properties": {
           "completedOrders": {
@@ -1046,6 +1673,41 @@
           "email",
           "emailVerifiedAt",
           "displayName"
+        ],
+        "type": "object"
+      },
+      "BranchDescriptionInputDto": {
+        "properties": {
+          "en": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "vi": {
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "vi"
+        ],
+        "type": "object"
+      },
+      "BranchLocationInputDto": {
+        "properties": {
+          "lat": {
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "lng": {
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
         ],
         "type": "object"
       },
@@ -3501,6 +4163,468 @@
         "summary": "A current TOTP code (not a recovery code) and a `purpose`: `200` with a step-up token valid 5\nminutes for that purpose. Wrong, replayed (a step already used, for example by\nthe sign-in a moment ago: wait for the next code) or locked-out code: `400 CODE_INVALID`,\ncounted toward the lockout. No confirmed second factor: `409 MFA_NOT_ENABLED`.",
         "tags": [
           "StepUp"
+        ]
+      }
+    },
+    "/api/v1/admin/branches": {
+      "get": {
+        "operationId": "AdminBranchesController_list_v1",
+        "parameters": [
+          {
+            "description": "Page number, from 1.",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Rows per page.",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "TEMPORARILY_CLOSED",
+                "CLOSED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "A fragment of the name or the code, accent and case insensitive.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchPage"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "The caller's branches, with the figures of the list (brief C2, C4).",
+        "tags": [
+          "AdminBranches"
+        ]
+      },
+      "post": {
+        "operationId": "AdminBranchesController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminBranchCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchDetail"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A new branch; delivery stays off until a zone exists (brief C8).",
+        "tags": [
+          "AdminBranches"
+        ]
+      }
+    },
+    "/api/v1/admin/branches/{id}": {
+      "delete": {
+        "operationId": "AdminBranchesController_remove_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rowVersion",
+            "required": true,
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION, HAS_ACTIVE_ORDERS, INVALID_STATE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Soft delete. `HAS_ACTIVE_ORDERS` with `details { orders, reservations }` while work is open\n(C1); `INVALID_STATE` for the last branch in operation.",
+        "tags": [
+          "AdminBranches"
+        ]
+      },
+      "get": {
+        "operationId": "AdminBranchesController_detail_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchDetail"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "One branch with `rowVersion`, services, reservation rules and amenities.",
+        "tags": [
+          "AdminBranches"
+        ]
+      },
+      "patch": {
+        "operationId": "AdminBranchesController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminBranchUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchDetail"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION, ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A partial change with `rowVersion`. `LOCKED` on `code` once an order exists (C6);\n`acceptsDelivery` needs an active zone (C8); `location` confirms the pin (C9).",
+        "tags": [
+          "AdminBranches"
         ]
       }
     },
