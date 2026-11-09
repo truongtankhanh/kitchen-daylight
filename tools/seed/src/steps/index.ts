@@ -34,8 +34,8 @@ export interface ReferenceOptions {
 
 /**
  * The ordered steps of `seed reference`. Still to come, each as its own step added here by its
- * task: amenities (A5-T1), tags (A6-T4) and the email templates (A12-T3), whose tables do not exist
- * yet.
+ * task: amenities and tags (A6-T5, the vocabulary seed) and the email templates (A12-T3)
+ * (api-divergences D-125).
  */
 export function referenceSteps(options: ReferenceOptions): readonly SeedStep[] {
   const ownerFile = options.consentDocumentsFile;

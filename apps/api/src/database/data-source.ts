@@ -9,7 +9,12 @@ import { AuthIdentity } from '../modules/auth/entities/auth-identity.entity.js';
 import { EmailToken } from '../modules/auth/entities/email-token.entity.js';
 import { MfaCredential } from '../modules/auth/entities/mfa-credential.entity.js';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity.js';
+import { Amenity } from '../modules/branches/entities/amenity.entity.js';
+import { BranchAmenity } from '../modules/branches/entities/branch-amenity.entity.js';
+import { BranchOpeningPeriod } from '../modules/branches/entities/branch-opening-period.entity.js';
+import { BranchSpecialHours } from '../modules/branches/entities/branch-special-hours.entity.js';
 import { Branch } from '../modules/branches/entities/branch.entity.js';
+import { DeliveryZone } from '../modules/branches/entities/delivery-zone.entity.js';
 import { Province } from '../modules/geo/entities/province.entity.js';
 import { Ward } from '../modules/geo/entities/ward.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
@@ -53,6 +58,11 @@ export function createDataSourceOptions(config: CliConfig): PostgresDataSourceOp
       Ward,
       CustomerAddress,
       AppSetting,
+      BranchOpeningPeriod,
+      BranchSpecialHours,
+      DeliveryZone,
+      Amenity,
+      BranchAmenity,
     ],
     logging: false,
   };

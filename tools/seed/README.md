@@ -20,7 +20,7 @@ In the API image the same command is `node seed/dist/cli.js <mode> [--commit]` (
 | `business`  | not implemented (A13): exits 2                                                                                             |
 | `demo`      | not implemented (A13): exits 2; refused when `APP_ENV=prod`                                                                |
 
-**Steps still to come in `reference`**, each added to `referenceSteps` in `src/steps/index.ts` by the task that creates its table: amenities (A5-T1), tags (A6-T4), email templates with `MFA_RESET_NOTICE` (A12-T3) (api-divergences D-125).
+**Steps still to come in `reference`**, each added to `referenceSteps` in `src/steps/index.ts` by the task that owns it: amenities and tags (A6-T5, the vocabulary seed), email templates with `MFA_RESET_NOTICE` (A12-T3) (api-divergences D-125).
 
 ## How a run works
 
