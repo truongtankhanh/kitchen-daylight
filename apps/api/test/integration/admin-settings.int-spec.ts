@@ -320,6 +320,7 @@ describe('admin settings and meta config (kd_app, real PostgreSQL)', () => {
 
       clock.advance(60_000);
       const again = await saveAs('maintenance', CHANGED.maintenance, 3);
+      expect(again.status).toBe(200);
       expect((again.body as RecordBody).value).toMatchObject({
         enabled: true,
         since: '2026-11-08T03:02:00.000Z',

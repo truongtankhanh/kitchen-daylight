@@ -1540,7 +1540,7 @@
             "type": "string"
           },
           "since": {
-            "description": "When maintenance began. Set by the server: stamped when `enabled` turns on, kept while it stays\non, `null` when it is off; a value sent in `PUT /admin/app-settings` is ignored.",
+            "description": "When maintenance began. Set by the server: stamped when `enabled` turns on, kept while it stays\non, `null` when it is off. In `PUT /admin/app-settings` send `null`: the value sent is ignored.",
             "format": "date-time",
             "nullable": true,
             "type": "string"

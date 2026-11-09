@@ -135,7 +135,7 @@ export class MaintenanceValueDto implements MaintenanceSetting {
 
   /**
    * When maintenance began. Set by the server: stamped when `enabled` turns on, kept while it stays
-   * on, `null` when it is off; a value sent in `PUT /admin/app-settings` is ignored.
+   * on, `null` when it is off. In `PUT /admin/app-settings` send `null`: the value sent is ignored.
    */
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   since!: string | null;

@@ -1257,7 +1257,7 @@ export interface components {
             /**
              * Format: date-time
              * @description When maintenance began. Set by the server: stamped when `enabled` turns on, kept while it stays
-             *     on, `null` when it is off; a value sent in `PUT /admin/app-settings` is ignored.
+             *     on, `null` when it is off. In `PUT /admin/app-settings` send `null`: the value sent is ignored.
              */
             since: string | null;
         };
