@@ -44,6 +44,15 @@
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/tsconfig/*.json"],
       "outputs": ["coverage/**"]
     },
+    "@kd/api#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/tsconfig/*.json",
+        "$TURBO_ROOT$/tools/seed/data/app-settings.defaults.json"
+      ],
+      "outputs": ["coverage/**"]
+    },
     "format:check": {
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/eslint-config/*.{js,json}"],
       "outputs": []
