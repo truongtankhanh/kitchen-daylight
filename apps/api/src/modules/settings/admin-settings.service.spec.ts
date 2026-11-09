@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BranchScopeService } from '../../common/branch-scope/branch-scope.service.js';
 import type { GateSnapshot } from '../../common/gates/gate-snapshot.js';
 import { ApiError } from '../../common/errors/api-error.js';
+import { FixedClock } from '../../common/time/testing.js';
 import type { AuditService } from '../audit/audit.service.js';
 import type { StepUpService } from '../auth/step-up/step-up.service.js';
 import type { MailService } from '../mail/mail.service.js';
@@ -18,6 +19,7 @@ import {
   settingsAuditDiff,
   staleSettingError,
   toRecordView,
+  withServerSince,
 } from './admin-settings.service.js';
 import type { MetaConfigInput } from './admin-settings.service.js';
 import type { SettingValues } from './schema/registry.js';
@@ -244,6 +246,7 @@ describe('AdminSettingsService.save', () => {
       {} as BranchScopeService,
       {} as OutboxService,
       {} as GateSnapshot,
+      new FixedClock(UPDATED_AT),
     );
     const actor = { id: ADMIN.id, role: 'ADMIN', sessionId: ADMIN.id } as const;
     const input = { key: 'payment', value: PAYMENT, rowVersion: 0 } as const;
@@ -259,6 +262,61 @@ describe('AdminSettingsService.save', () => {
     expect(verify).toHaveBeenCalledTimes(1);
     expect(verify).toHaveBeenCalledWith('not-a-step-up-token', ADMIN.id, 'settings.payment');
     expect(transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('withServerSince', () => {
+  const NOW = new Date('2026-11-09T01:00:00.000Z');
+  const OFF = SETTING_DEFAULTS.maintenance;
+  const ON = {
+    enabled: true,
+    message: 'Hệ thống đang bảo trì.',
+    expectedBackAt: null,
+    since: '2026-11-09T00:30:00.000Z',
+  } as const;
+
+  it('stamps now when maintenance turns on, whatever the client sent', () => {
+    for (const since of [null, '2020-01-01T00:00:00.000Z', 'not an instant']) {
+      expect(withServerSince({ ...ON, since }, OFF, NOW)).toEqual({
+        ...ON,
+        since: '2026-11-09T01:00:00.000Z',
+      });
+    }
+    const withoutSince = { enabled: ON.enabled, message: ON.message, expectedBackAt: null };
+    expect(withServerSince(withoutSince, OFF, NOW)).toEqual({
+      ...ON,
+      since: '2026-11-09T01:00:00.000Z',
+    });
+  });
+
+  it('keeps the stored instant while maintenance stays on', () => {
+    expect(withServerSince({ ...ON, message: 'Sắp xong.', since: null }, ON, NOW)).toEqual({
+      ...ON,
+      message: 'Sắp xong.',
+      since: '2026-11-09T00:30:00.000Z',
+    });
+  });
+
+  it('stamps now when maintenance is on but no instant is stored', () => {
+    expect(withServerSince(ON, { ...ON, since: null }, NOW)).toEqual({
+      ...ON,
+      since: '2026-11-09T01:00:00.000Z',
+    });
+  });
+
+  it('clears since when maintenance is off', () => {
+    expect(withServerSince({ ...OFF, since: '2026-11-09T00:30:00.000Z' }, ON, NOW)).toEqual(OFF);
+    expect(withServerSince({ ...OFF, enabled: 'yes' }, OFF, NOW)).toEqual({
+      ...OFF,
+      enabled: 'yes',
+      since: null,
+    });
+  });
+
+  it('leaves a value that is not an object to the validation rules', () => {
+    for (const value of [null, 'on', 1, [ON]]) {
+      expect(withServerSince(value, OFF, NOW)).toBe(value);
+    }
   });
 });
 

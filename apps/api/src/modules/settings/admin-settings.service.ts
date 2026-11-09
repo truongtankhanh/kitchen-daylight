@@ -9,6 +9,7 @@ import { BranchScopeService } from '../../common/branch-scope/branch-scope.servi
 import { GateSnapshot } from '../../common/gates/gate-snapshot.js';
 import { staleVersionPayload } from '../../common/concurrency/row-version.js';
 import { ApiError } from '../../common/errors/api-error.js';
+import { Clock } from '../../common/time/clock.js';
 import { AuditService } from '../audit/audit.service.js';
 import { ACCOUNT_NUMBER_KEPT_DIGITS, sanitizeDiff } from '../audit/sanitize-diff.js';
 import { ACCESS_TOKEN_TTL_SECONDS } from '../auth/access-token.service.js';
@@ -26,6 +27,7 @@ import { permissionsFor } from './permissions.js';
 import type { PermissionKey, StaffRole } from './permissions.js';
 import type { BoardThresholds } from './schema/ordering.schema.js';
 import type { ReceiptPaperWidth } from './schema/brand.schema.js';
+import type { MaintenanceSetting } from './schema/maintenance.schema.js';
 import type { PaymentSetting } from './schema/payment.schema.js';
 import { SETTING_SCHEMAS } from './schema/registry.js';
 import type { SettingValues } from './schema/registry.js';
@@ -261,6 +263,24 @@ export function configChangedEvent(key: SettingKey, storageKey: string, version:
   });
 }
 
+/**
+ * A `maintenance` value with `since` set by the server, never by the client (D-127): switching
+ * maintenance on stamps `now`, keeping it on keeps the stored instant (or stamps `now` when none
+ * is stored), and switching it off clears it. The other fields are left for the key's rules.
+ */
+export function withServerSince(value: unknown, before: MaintenanceSetting, now: Date): unknown {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return value;
+  }
+  const enabled = (value as { enabled?: unknown }).enabled === true;
+  const since = !enabled
+    ? null
+    : before.enabled && before.since !== null
+      ? before.since
+      : now.toISOString();
+  return { ...value, since };
+}
+
 function isStale(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'STALE_VERSION';
 }
@@ -338,6 +358,7 @@ export class AdminSettingsService {
     @Inject(BranchScopeService) private readonly scopes: BranchScopeService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
     @Inject(GateSnapshot) private readonly gates: GateSnapshot,
+    @Inject(Clock) private readonly clock: Clock,
   ) {}
 
   /** Every key with its concurrency state, plus the read-only `security` block. */
@@ -368,7 +389,12 @@ export class AdminSettingsService {
     const saved = await this.dataSource.transaction(async (em) => {
       await em.query(LOCK_SETTING_SQL, [storageKey]);
       const before = await this.settings.get(key, em);
-      const after = await this.writeOrStale(em, input, actor.id);
+      // Under the row lock, so two concurrent saves agree on whether maintenance was already on.
+      const value =
+        key === 'maintenance'
+          ? withServerSince(input.value, before.value as MaintenanceSetting, this.clock.now())
+          : input.value;
+      const after = await this.writeOrStale(em, { ...input, value }, actor.id);
       await this.audit.write(
         {
           actorUserId: actor.id,

@@ -1540,6 +1540,7 @@
             "type": "string"
           },
           "since": {
+            "description": "When maintenance began. Set by the server: stamped when `enabled` turns on, kept while it stays\non, `null` when it is off; a value sent in `PUT /admin/app-settings` is ignored.",
             "format": "date-time",
             "nullable": true,
             "type": "string"
@@ -2984,7 +2985,7 @@
             "description": "RATE_LIMITED"
           }
         },
-        "summary": "Saves one key. A stale `rowVersion` is `409 STALE_VERSION` with `current { rowVersion,\nupdatedBy, updatedAt, value }` (a `payment` value shows only `accountNumberLast5`). Field errors\ncarry the full camelCase path, for example `ordering.boardThresholds.accept.warn`. The\n`payment` key also needs `X-Step-Up-Token` for `settings.payment` (`403 FORBIDDEN` without it),\nand the other admins are emailed after the save.",
+        "summary": "Saves one key. A stale `rowVersion` is `409 STALE_VERSION` with `current { rowVersion,\nupdatedBy, updatedAt, value }` (a `payment` value shows only `accountNumberLast5`). Field errors\ncarry the full camelCase path, for example `ordering.boardThresholds.accept.warn`. The\n`payment` key also needs `X-Step-Up-Token` for `settings.payment` (`403 FORBIDDEN` without it),\nand the other admins are emailed after the save. `maintenance.since` is set by the server\n(D-127): the value sent is ignored.",
         "tags": [
           "AdminSettings"
         ]

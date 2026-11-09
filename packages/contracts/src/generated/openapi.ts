@@ -34,7 +34,8 @@ export interface paths {
          *     updatedBy, updatedAt, value }` (a `payment` value shows only `accountNumberLast5`). Field errors
          *     carry the full camelCase path, for example `ordering.boardThresholds.accept.warn`. The
          *     `payment` key also needs `X-Step-Up-Token` for `settings.payment` (`403 FORBIDDEN` without it),
-         *     and the other admins are emailed after the save.
+         *     and the other admins are emailed after the save. `maintenance.since` is set by the server
+         *     (D-127): the value sent is ignored.
          */
         put: operations["AdminSettingsController_save_v1"];
         post?: never;
@@ -1253,7 +1254,11 @@ export interface components {
             /** Format: date-time */
             expectedBackAt: string | null;
             message: string | null;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description When maintenance began. Set by the server: stamped when `enabled` turns on, kept while it stays
+             *     on, `null` when it is off; a value sent in `PUT /admin/app-settings` is ignored.
+             */
             since: string | null;
         };
         MaintenanceSettingRecord: {

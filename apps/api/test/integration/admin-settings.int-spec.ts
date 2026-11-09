@@ -292,6 +292,40 @@ describe('admin settings and meta config (kd_app, real PostgreSQL)', () => {
       }
     });
 
+    it('sets maintenance.since itself and ignores the value sent (D-127)', async () => {
+      const on = await saveAs(
+        'maintenance',
+        { ...CHANGED.maintenance, since: '2020-01-01T00:00:00.000Z' },
+        0,
+      );
+      expect(on.status).toBe(200);
+      expect((on.body as RecordBody).value).toMatchObject({ enabled: true, since: NOW });
+
+      clock.advance(60_000);
+      const kept = await saveAs(
+        'maintenance',
+        { ...CHANGED.maintenance, message: 'Vẫn đang bảo trì.', since: null },
+        1,
+      );
+      expect(kept.status).toBe(200);
+      expect((kept.body as RecordBody).value).toMatchObject({ enabled: true, since: NOW });
+
+      const off = await saveAs(
+        'maintenance',
+        { ...SETTING_DEFAULTS.maintenance, since: '2026-11-08T03:00:00.000Z' },
+        2,
+      );
+      expect(off.status).toBe(200);
+      expect((off.body as RecordBody).value).toMatchObject({ enabled: false, since: null });
+
+      clock.advance(60_000);
+      const again = await saveAs('maintenance', CHANGED.maintenance, 3);
+      expect((again.body as RecordBody).value).toMatchObject({
+        enabled: true,
+        since: '2026-11-08T03:02:00.000Z',
+      });
+    });
+
     it('answers a stale save with STALE_VERSION carrying who changed it and the current value', async () => {
       expect((await saveAs('ordering', CHANGED.ordering, 0, OTHER_ADMIN_ID)).status).toBe(200);
 

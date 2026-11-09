@@ -823,8 +823,8 @@ Notes: the log has 145 lines. The last five digits `45678` also count `0`. The s
 | First admin id (step 3) | `01a1bdbb-6875-70f3-af28-6ccc5ebe213a` (`first.admin.smoke@kitchendaylight.example`, kept in `kd_dev`) |
 | Authenticator entry and recovery codes | no app entry was made; the setup key and recovery codes lived in a session scratch file, deleted after the run. To sign in as `first.admin.smoke@...` again, reset its second factor or reset `kd_dev` |
 | Settings left in `kd_dev` | `ordering.itemNoteMax` 150, `payment` complete (fictional), `maintenance` off, `minAppVersion` `0.0.0` both; customer `bao.a4.smoke@example.com` |
-| Follow-up tasks opened | (1) `maintenance.since` is not filled by the server when maintenance is switched on (review); (2) the root `.env` now holds the two `SEED_ADMIN_*` lines of this run: remove them or keep them, they only matter to `seed reference --commit` |
-| Owner | |
+| Follow-up tasks opened | (1) `maintenance.since` is not filled by the server when maintenance is switched on: logged as D-127, the owner chose server stamping, built in A4-T7 (2026-11-09); (2) the root `.env` now holds the two `SEED_ADMIN_*` lines of this run: remove them or keep them, they only matter to `seed reference --commit` |
+| Owner | Trương Tấn Khánh (signed 2026-11-09) |
 | Date | 2026-11-09 |
 
 Phase A4 gate: run the review prompt

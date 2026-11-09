@@ -59,7 +59,8 @@ export class AdminSettingsController {
    * updatedBy, updatedAt, value }` (a `payment` value shows only `accountNumberLast5`). Field errors
    * carry the full camelCase path, for example `ordering.boardThresholds.accept.warn`. The
    * `payment` key also needs `X-Step-Up-Token` for `settings.payment` (`403 FORBIDDEN` without it),
-   * and the other admins are emailed after the save.
+   * and the other admins are emailed after the save. `maintenance.since` is set by the server
+   * (D-127): the value sent is ignored.
    */
   @Put()
   @ApiHeader({
