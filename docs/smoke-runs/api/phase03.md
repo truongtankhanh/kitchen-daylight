@@ -895,7 +895,7 @@ Notes: `lsof` printed nothing; the stack was left running.
 | Ids of step 1 and step 5 | admin `01a1b5a2-9718-78a4-8e45-36a1193c9e0d`; branches `SA` `01a1b5a2-9764-7b0c-91aa-b34451be9034`, `SB` `01a1b5a2-976a-70bd-9f58-e8453bff462f`; STAFF `01a1b5a4-141b-7f01-9106-5dd22746ad35`, MANAGER `01a1b5a4-147f-7439-b13c-326af5d7b29e` (all kept in `kd_dev`) |
 | Authenticator entries and recovery codes | no app entry was made; the setup keys and recovery codes lived in a session scratch file, deleted after the run. To sign in as `owner.smoke@...` again, reset its second factor from another admin or reset `kd_dev` |
 | Follow-up tasks opened | (1) the throw-away branches `SA` and `SB` and the three smoke staff accounts stay in `kd_dev`: a later branch seed must not reuse the codes `SA` or `SB`, or `kd_dev` is reset first; (2) the audit diff check of step 10 matches labels, not values: refine it at the review; (3) `forgot` answers `202`, not the `204` of the task text |
-| Owner | |
+| Owner | Trương Tấn Khánh (signed 2026-11-09, at the phase A3 review): the agent-run output above stands as the owner evidence of A3-T1 to A3-T7; the step 10 audit diff check is accepted as 7 known false positives (labels, no secret value) |
 | Date | 2026-11-07 |
 
 Phase A3 gate: run the review prompt
