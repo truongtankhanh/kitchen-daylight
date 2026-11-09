@@ -229,6 +229,68 @@ export interface paths {
         patch: operations["AdminBranchesController_update_v1"];
         trace?: never;
     };
+    "/api/v1/admin/branches/{id}/delivery-zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every ring, active or not, ordered by radius, with `total` (brief C27: no cap). */
+        get: operations["AdminDeliveryZonesController_list_v1"];
+        put?: never;
+        /** A new ring, larger than the outermost one (`RADIUS_ORDER`, brief C19). */
+        post: operations["AdminDeliveryZonesController_create_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/branches/{id}/delivery-zones/{zoneId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Hard delete. `LAST_ACTIVE_ZONE` on `id` (C21); `IN_USE` with `usage` once orders reference the
+         *     zone, "stop using" being `isActive: false` (C22).
+         */
+        delete: operations["AdminDeliveryZonesController_remove_v1"];
+        options?: never;
+        head?: never;
+        /**
+         * A partial change with the zone `rowVersion`. `RADIUS_ORDER` (C19), `LAST_ACTIVE_ZONE` on
+         *     `isActive` (C21).
+         */
+        patch: operations["AdminDeliveryZonesController_update_v1"];
+        trace?: never;
+    };
+    "/api/v1/admin/branches/{id}/delivery-zones/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The ring that serves a point: `{ distanceM, zone, outOfZone }` (brief C24). The coordinates
+         *     are not stored, logged or echoed.
+         */
+        post: operations["AdminDeliveryZonesController_check_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/branches/{id}/hours": {
         parameters: {
             query?: never;
@@ -1161,6 +1223,50 @@ export interface components {
             /** @enum {string} */
             status: "INVITED" | "ACTIVE" | "SUSPENDED" | "DELETED";
         };
+        AdminDeliveryZone: {
+            etaMinutes: number;
+            fee: number;
+            freeOver: number | null;
+            /** Format: uuid */
+            id: string;
+            isActive: boolean;
+            minOrder: number;
+            name: string;
+            radiusM: number;
+            /** @description The zone's own `rowVersion`, sent back on `PATCH` and `DELETE`. */
+            rowVersion: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AdminDeliveryZoneCreateDto: {
+            etaMinutes: number;
+            /** @description Delivery fee, whole VND. */
+            fee: number;
+            /** @description Free delivery from this subtotal, above `minOrder`; absent or `null` when never free. */
+            freeOver?: number | null;
+            isActive: boolean;
+            /** @description Minimum subtotal before any discount, whole VND. */
+            minOrder: number;
+            /** @description Trimmed; 1 to 100 characters. */
+            name: string;
+            /** @description Straight-line radius in metres from the branch pin. */
+            radiusM: number;
+        };
+        AdminDeliveryZoneList: {
+            items: components["schemas"]["AdminDeliveryZone"][];
+            total: number;
+        };
+        AdminDeliveryZoneUpdateDto: {
+            etaMinutes?: number;
+            fee?: number;
+            /** @description `null` makes delivery never free. */
+            freeOver?: number | null;
+            isActive?: boolean;
+            minOrder?: number;
+            name?: string;
+            radiusM?: number;
+            rowVersion: number;
+        };
         AdminMetaBranch: {
             code: string;
             /** Format: uuid */
@@ -1477,6 +1583,16 @@ export interface components {
         ConsentDocumentType: "TERMS_OF_SERVICE" | "PRIVACY_POLICY";
         CurrentConsentDocuments: {
             documents: components["schemas"]["ConsentDocument"][];
+        };
+        DeliveryZoneCheckDto: {
+            location: components["schemas"]["BranchLocationInputDto"];
+        };
+        DeliveryZoneCheckResult: {
+            /** @description Straight-line distance from the branch pin, rounded to a whole metre. */
+            distanceM: number;
+            outOfZone: boolean;
+            /** @description The smallest active ring containing the point; `null` when `outOfZone`. */
+            zone: components["schemas"]["AdminDeliveryZone"] | null;
         };
         /**
          * @description Stable code of the catalogue (decision 0007 section 9).
@@ -2927,6 +3043,368 @@ export interface operations {
             };
             /** @description STALE_VERSION, ALREADY_EXISTS */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminDeliveryZonesController_list_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDeliveryZoneList"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminDeliveryZonesController_create_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminDeliveryZoneCreateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDeliveryZone"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminDeliveryZonesController_remove_v1: {
+        parameters: {
+            query: {
+                rowVersion: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                zoneId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION, IN_USE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminDeliveryZonesController_update_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                zoneId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminDeliveryZoneUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDeliveryZone"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminDeliveryZonesController_check_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryZoneCheckDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryZoneCheckResult"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -5,18 +5,22 @@ import { clockProvider } from '../../common/time/clock.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AdminBranchHoursController } from './admin-branch-hours.controller.js';
 import { AdminBranchesController } from './admin-branches.controller.js';
+import { AdminDeliveryZonesController } from './admin-delivery-zones.controller.js';
 import { BranchHoursService } from './branch-hours.service.js';
 import { BranchesService } from './branches.service.js';
+import { DeliveryZonesService } from './delivery-zones.service.js';
 
 /**
  * Branches (phase 5). A5-T2: `/admin/branches` list, detail, create, update and soft delete.
  * A5-T3: `/admin/branches/{id}/hours` and the `todayHours` of the list and detail (the `Clock`
- * gives today's Vietnam date). Uses the application's global TypeORM `DataSource` and the global
- * `ORDERS_FACTS` binding of `AppModule` (`OrdersFactsModule.forRoot`); exports no repository.
+ * gives today's Vietnam date). A5-T4: `/admin/branches/{id}/delivery-zones` and the zone check
+ * (`DeliveryZonesService.findZoneForPoint`, which the delivery quote of A8-T3 will call). Uses the
+ * application's global TypeORM `DataSource` and the global `ORDERS_FACTS` binding of `AppModule`
+ * (`OrdersFactsModule.forRoot`); exports no repository.
  */
 @Module({
   imports: [AuditModule, BranchScopeModule],
-  controllers: [AdminBranchesController, AdminBranchHoursController],
-  providers: [BranchesService, BranchHoursService, clockProvider],
+  controllers: [AdminBranchesController, AdminBranchHoursController, AdminDeliveryZonesController],
+  providers: [BranchesService, BranchHoursService, DeliveryZonesService, clockProvider],
 })
 export class BranchesModule {}
