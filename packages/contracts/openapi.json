@@ -680,6 +680,31 @@
         ],
         "type": "object"
       },
+      "AdminBranchPauseResult": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rowVersion": {
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "TEMPORARILY_CLOSED",
+              "CLOSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "AdminBranchRow": {
         "properties": {
           "acceptsDelivery": {
@@ -1689,6 +1714,52 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "AdminWardOption": {
+        "properties": {
+          "code": {
+            "description": "Official code, 5 digits, as text (for example `26743`).",
+            "example": "26743",
+            "type": "string"
+          },
+          "name": {
+            "description": "`names.vi`: the short name without the type prefix (for example `Bến Thành`).",
+            "type": "string"
+          },
+          "provinceCode": {
+            "description": "Official code of its province, 2 digits, as text.",
+            "example": "79",
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WardType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "provinceCode",
+          "type",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AdminWardSearchResult": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminWardOption"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
         "type": "object"
       },
       "AppSettingSave": {
@@ -3157,6 +3228,18 @@
           "updatedAt",
           "value",
           "rowVersion"
+        ],
+        "type": "object"
+      },
+      "PauseBranchDto": {
+        "properties": {
+          "paused": {
+            "description": "`true` pauses an `ACTIVE` branch, `false` reopens a `TEMPORARILY_CLOSED` one.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paused"
         ],
         "type": "object"
       },
@@ -5806,6 +5889,107 @@
         ]
       }
     },
+    "/api/v1/admin/branches/{id}/pause": {
+      "post": {
+        "operationId": "AdminBranchesController_pause_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseBranchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBranchPauseResult"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "INVALID_STATE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "The staff \"pause orders\" switch: `{ paused }` moves `status` between `ACTIVE` and\n`TEMPORARILY_CLOSED` only; a `CLOSED` branch is `INVALID_STATE` for every role. Asking for the\nstate the branch has answers `200` and writes nothing. Audited (`branch.pause`); emits\n`branch.updated`. Orders in progress are not affected.",
+        "tags": [
+          "AdminBranches"
+        ]
+      }
+    },
     "/api/v1/admin/meta/config": {
       "get": {
         "operationId": "AdminMetaController_config_v1",
@@ -6543,6 +6727,115 @@
         "summary": "The full email and phone; writes `order.contact_reveal` with entity `USER` (E13).",
         "tags": [
           "AdminUsers"
+        ]
+      }
+    },
+    "/api/v1/admin/wards": {
+      "get": {
+        "operationId": "AdminWardsController_search_v1",
+        "parameters": [
+          {
+            "description": "Rows returned, 1 to 20.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Ward codes to rebuild the chips of chosen records (`ids=…&ids=…`), at most 20; combined with\nthe other parameters, an unknown code is left out.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "maxLength": 16,
+              "type": "array"
+            }
+          },
+          {
+            "description": "Official province code from `GET /api/v1/provinces` (for example `79`).",
+            "in": "query",
+            "name": "provinceCode",
+            "required": true,
+            "schema": {
+              "maxLength": 16,
+              "type": "string"
+            }
+          },
+          {
+            "description": "A fragment of the Vietnamese ward name, accent and case insensitive (`ba dinh` finds\n`Ba Đình`); `%` and `_` are literal. Names that start with it come first.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminWardSearchResult"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Wards of one province matching `q` (accent and case insensitive, prefix matches first), at\nmost `limit` (20); repeated `ids` rebuild the chips of chosen wards. `{ items }`, never paged.",
+        "tags": [
+          "AdminWards"
         ]
       }
     },

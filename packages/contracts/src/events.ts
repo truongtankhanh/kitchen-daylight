@@ -39,11 +39,23 @@ export interface ConfigChangedPayload {
   version: number;
 }
 
+/**
+ * `branch.updated`: branch data changed and clients refetch it (api-outline, Realtime); audience
+ * `PUBLIC`. Emitted so far by the pause switch only (A5-T5, `POST /admin/branches/{id}/pause`);
+ * the other branch writes join in A10-T5. `rowVersion` is the branch's version after the change;
+ * never a name, a status text or the editor.
+ */
+export interface BranchUpdatedPayload {
+  branchId: string;
+  rowVersion: number;
+}
+
 /** Map of realtime event name to payload type. A10-T2 completes the list. */
 export interface RealtimeEventMap {
   'user.suspended': UserSuspendedPayload;
   'session.revoked': SessionRevokedPayload;
   'config.changed': ConfigChangedPayload;
+  'branch.updated': BranchUpdatedPayload;
 }
 
 /** Who receives an outbox event (data-model, `outbox_events.audience`). */

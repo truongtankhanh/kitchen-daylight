@@ -315,6 +315,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/branches/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The staff "pause orders" switch: `{ paused }` moves `status` between `ACTIVE` and
+         *     `TEMPORARILY_CLOSED` only; a `CLOSED` branch is `INVALID_STATE` for every role. Asking for the
+         *     state the branch has answers `200` and writes nothing. Audited (`branch.pause`); emits
+         *     `branch.updated`. Orders in progress are not affected.
+         */
+        post: operations["AdminBranchesController_pause_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/meta/config": {
         parameters: {
             query?: never;
@@ -432,6 +454,26 @@ export interface paths {
         put?: never;
         /** The full email and phone; writes `order.contact_reveal` with entity `USER` (E13). */
         post: operations["AdminUsersController_revealContact_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wards of one province matching `q` (accent and case insensitive, prefix matches first), at
+         *     most `limit` (20); repeated `ids` rebuild the chips of chosen wards. `{ items }`, never paged.
+         */
+        get: operations["AdminWardsController_search_v1"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1133,6 +1175,13 @@ export interface components {
             pageSize: number;
             total: number;
         };
+        AdminBranchPauseResult: {
+            /** Format: uuid */
+            id: string;
+            rowVersion: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "TEMPORARILY_CLOSED" | "CLOSED";
+        };
         AdminBranchRow: {
             acceptsDelivery: boolean;
             acceptsPickup: boolean;
@@ -1411,6 +1460,24 @@ export interface components {
             role?: "STAFF" | "MANAGER" | "ADMIN";
             /** @enum {string} */
             status?: "ACTIVE" | "SUSPENDED";
+        };
+        AdminWardOption: {
+            /**
+             * @description Official code, 5 digits, as text (for example `26743`).
+             * @example 26743
+             */
+            code: string;
+            /** @description `names.vi`: the short name without the type prefix (for example `Bến Thành`). */
+            name: string;
+            /**
+             * @description Official code of its province, 2 digits, as text.
+             * @example 79
+             */
+            provinceCode: string;
+            type: components["schemas"]["WardType"];
+        };
+        AdminWardSearchResult: {
+            items: components["schemas"]["AdminWardOption"][];
         };
         AppSettingSave: {
             /** @enum {string} */
@@ -1876,6 +1943,10 @@ export interface components {
             /** @description `null` for a key never saved or written by the seed. */
             updatedBy: components["schemas"]["SettingActor"] | null;
             value: components["schemas"]["OrderingSetting"];
+        };
+        PauseBranchDto: {
+            /** @description `true` pauses an `ACTIVE` branch, `false` reopens a `TEMPORARILY_CLOSED` one. */
+            paused: boolean;
         };
         PaymentSetting: {
             accountHolder: string | null;
@@ -3578,6 +3649,85 @@ export interface operations {
             };
         };
     };
+    AdminBranchesController_pause_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PauseBranchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBranchPauseResult"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description INVALID_STATE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     AdminMetaController_config_v1: {
         parameters: {
             query?: never;
@@ -4112,6 +4262,76 @@ export interface operations {
             };
             /** @description NOT_FOUND */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminWardsController_search_v1: {
+        parameters: {
+            query: {
+                /**
+                 * @description Ward codes to rebuild the chips of chosen records (`ids=…&ids=…`), at most 20; combined with
+                 *     the other parameters, an unknown code is left out.
+                 */
+                ids?: string[];
+                /** @description Rows returned, 1 to 20. */
+                limit?: number;
+                /** @description Official province code from `GET /api/v1/provinces` (for example `79`). */
+                provinceCode: string;
+                /**
+                 * @description A fragment of the Vietnamese ward name, accent and case insensitive (`ba dinh` finds
+                 *     `Ba Đình`); `%` and `_` are literal. Names that start with it come first.
+                 */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminWardSearchResult"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

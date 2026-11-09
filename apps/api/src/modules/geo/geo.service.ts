@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { ApiError } from '../../common/errors/api-error.js';
+import { escapeLike } from '../users/admin-users.service.js';
 import { Province } from './entities/province.entity.js';
 import type { AdminUnitNames, ProvinceType } from './entities/province.entity.js';
 import { Ward } from './entities/ward.entity.js';
@@ -59,6 +60,82 @@ export function strongEtag(body: unknown): string {
   return `"${createHash('sha256').update(JSON.stringify(body)).digest('base64url')}"`;
 }
 
+/** One ward of the staff search `GET /admin/wards` (api-divergences D-146). */
+export interface WardOptionView {
+  readonly code: string;
+  readonly provinceCode: string;
+  /** `names.vi`, as `AdminUnitView.name`. */
+  readonly name: string;
+  readonly type: WardType;
+}
+
+/** A validated `GET /admin/wards` query. */
+export interface WardSearchQuery {
+  readonly provinceCode: string;
+  readonly q?: string;
+  readonly limit: number;
+  readonly ids?: readonly string[];
+}
+
+/** A row of `SEARCH_WARDS_SQL`. */
+export interface WardMatch {
+  readonly code: string;
+  readonly province_code: string;
+  readonly names: AdminUnitNames;
+  readonly type: WardType;
+  /** The name starts with `q` (always `false` without `q`). */
+  readonly is_prefix: boolean;
+}
+
+/**
+ * The wards of one province that match, unsorted and unlimited: a province has a few hundred
+ * wards at most, so the order and the limit are applied in `rankWardMatches` with the same
+ * collator as the public lists. `$2` is `q` with `\`, `%` and `_` escaped (or `null`); the name and
+ * `q` both go through `kd_unaccent` (migration 0001) and `lower`, so `ba dinh`, `BA DINH` and
+ * `Ba Đình` meet. `$3` is the `ids` filter (or `null`).
+ */
+const SEARCH_WARDS_SQL = `SELECT w.code, w.province_code, w.names, w.type::text AS type,
+  COALESCE(lower(public.kd_unaccent(w.names->>'vi'))
+    LIKE lower(public.kd_unaccent($2::text)) || '%' ESCAPE '\\', false) AS is_prefix
+  FROM public.wards w
+ WHERE w.province_code = $1
+   AND ($2::text IS NULL
+        OR lower(public.kd_unaccent(w.names->>'vi'))
+           LIKE '%' || lower(public.kd_unaccent($2::text)) || '%' ESCAPE '\\')
+   AND ($3::text[] IS NULL OR w.code = ANY($3::text[]))`;
+
+/**
+ * Prefix matches first, then by name (`sortAdminUnits`: Vietnamese collator, then code), cut to
+ * `limit`.
+ */
+export function rankWardMatches(
+  rows: readonly WardMatch[],
+  limit: number,
+  collator: Intl.Collator,
+): WardOptionView[] {
+  const units = rows.map((row) => ({
+    ...toAdminUnitView(row),
+    provinceCode: row.province_code,
+    isPrefix: row.is_prefix,
+  }));
+  const ranked = [
+    ...sortAdminUnits(
+      units.filter((unit) => unit.isPrefix),
+      collator,
+    ),
+    ...sortAdminUnits(
+      units.filter((unit) => !unit.isPrefix),
+      collator,
+    ),
+  ];
+  return ranked.slice(0, limit).map((unit) => ({
+    code: unit.code,
+    provinceCode: unit.provinceCode,
+    name: unit.name,
+    type: unit.type,
+  }));
+}
+
 /**
  * Provinces and wards for addresses (data-model "Geography"; api-outline, Public table). Reference
  * data, read only: the rows are written by `seed reference` (tools/seed). No in-memory cache, so a
@@ -88,5 +165,20 @@ export class GeoService {
       throw new ApiError('NOT_FOUND', { detail: 'Unknown province.' });
     }
     return sortAdminUnits(rows.map(toAdminUnitView), this.collator);
+  }
+
+  /**
+   * `GET /admin/wards`: the staff search for selects (brief C7). An unknown `provinceCode`
+   * matches nothing (an empty list, not `404`); a blank `q` lists the province by name.
+   */
+  async searchWards(query: WardSearchQuery): Promise<WardOptionView[]> {
+    const q = query.q?.trim() ?? '';
+    const ids = query.ids === undefined ? null : [...new Set(query.ids)];
+    const rows: WardMatch[] = await this.dataSource.query(SEARCH_WARDS_SQL, [
+      query.provinceCode,
+      q === '' ? null : escapeLike(q),
+      ids,
+    ]);
+    return rankWardMatches(rows, query.limit, this.collator);
   }
 }

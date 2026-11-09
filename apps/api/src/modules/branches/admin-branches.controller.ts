@@ -17,10 +17,12 @@ import { ApiCreatedResponse, ApiNoContentResponse, ApiOkResponse } from '@nestjs
 
 import { CurrentUser } from '../../common/auth/current-user.decorator.js';
 import type { RequestUser } from '../../common/auth/request-user.js';
-import { MANAGER_ROLES, Roles } from '../../common/auth/roles.decorator.js';
+import { MANAGER_ROLES, Roles, STAFF_ROLES } from '../../common/auth/roles.decorator.js';
 import { NotBranchScoped } from '../../common/branch-scope/branch-scope.decorator.js';
 import { ApiProblemResponses } from '../../common/errors/api-problem-responses.decorator.js';
 import { createValidationPipe } from '../../common/errors/validation.pipe.js';
+import { BranchPauseService } from './branch-pause.service.js';
+import type { BranchPauseView } from './branch-pause.service.js';
 import { BranchesService } from './branches.service.js';
 import type { AdminBranchDetailView, AdminBranchPage } from './branches.service.js';
 import { AdminBranchCreateDto, AdminBranchUpdateDto } from './dto/admin-branch-input.dto.js';
@@ -29,6 +31,7 @@ import {
   AdminBranchDeleteQueryDto,
   AdminBranchesQueryDto,
 } from './dto/admin-branches-query.dto.js';
+import { BranchPauseResultDto, PauseBranchDto } from './dto/pause-branch.dto.js';
 
 /**
  * The global validation pipe with the DTO class named here instead of read from emitted decorator
@@ -55,13 +58,17 @@ const SCOPED_IN_SERVICE =
 
 /**
  * `/admin/branches` (api-outline "Branches"; A5-T2). `MANAGER` reads and edits their own branches,
- * `ADMIN` every branch; create and delete are `ADMIN` only. `STAFF` and customers get `403
- * FORBIDDEN` from `RolesGuard`. The acting user comes from the access token only.
+ * `ADMIN` every branch; create and delete are `ADMIN` only. `STAFF` may only use the pause switch
+ * (A5-T5) on their own branches; customers get `403 FORBIDDEN` from `RolesGuard`. The acting user
+ * comes from the access token only.
  */
 @Roles(...MANAGER_ROLES)
 @Controller('admin/branches')
 export class AdminBranchesController {
-  constructor(@Inject(BranchesService) private readonly branches: BranchesService) {}
+  constructor(
+    @Inject(BranchesService) private readonly branches: BranchesService,
+    @Inject(BranchPauseService) private readonly pauses: BranchPauseService,
+  ) {}
 
   /** The caller's branches, with the figures of the list (brief C2, C4). */
   @Get()
@@ -142,6 +149,34 @@ export class AdminBranchesController {
     @Body(new ValidatedAs(AdminBranchUpdateDto)) body: AdminBranchUpdateDto,
   ): Promise<AdminBranchDetailView> {
     return this.branches.update(actor, id, body);
+  }
+
+  /**
+   * The staff "pause orders" switch: `{ paused }` moves `status` between `ACTIVE` and
+   * `TEMPORARILY_CLOSED` only; a `CLOSED` branch is `INVALID_STATE` for every role. Asking for the
+   * state the branch has answers `200` and writes nothing. Audited (`branch.pause`); emits
+   * `branch.updated`. Orders in progress are not affected.
+   */
+  @Post(':id/pause')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...STAFF_ROLES)
+  @NotBranchScoped(SCOPED_IN_SERVICE)
+  @ApiOkResponse({ type: BranchPauseResultDto })
+  @ApiProblemResponses(
+    'VALIDATION_FAILED',
+    'UNAUTHENTICATED',
+    'TOKEN_EXPIRED',
+    'FORBIDDEN',
+    'NOT_FOUND',
+    'INVALID_STATE',
+    'RATE_LIMITED',
+  )
+  pause(
+    @CurrentUser() actor: RequestUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ValidatedAs(PauseBranchDto)) body: PauseBranchDto,
+  ): Promise<BranchPauseView> {
+    return this.pauses.setPaused(actor, id, body.paused);
   }
 
   /**

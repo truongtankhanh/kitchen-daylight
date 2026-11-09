@@ -64,6 +64,11 @@ export const AUDIT_ACTIONS = [
   // phone or coordinates. Names are proposals (brief G7 "create and delete branch").
   'branch.create',
   'branch.delete',
+  // The staff pause switch (A5-T5, `POST /admin/branches/{id}/pause`): entity BRANCH, `branch_id`
+  // the branch, `entity_label` its name, diff { status { from, to } } between `ACTIVE` and
+  // `TEMPORARILY_CLOSED` only; no row for a call that changes nothing. Data-model `branches` says
+  // the switch is audited; the name is a proposal (brief G7, A25).
+  'branch.pause',
   // Delivery zones, old and new diff. Proposals (brief C25).
   'delivery_zone.create',
   'delivery_zone.update',

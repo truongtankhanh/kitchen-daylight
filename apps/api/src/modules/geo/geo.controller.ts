@@ -52,7 +52,7 @@ function setCacheHeaders(response: ResponseHeaders, body: unknown): void {
  * routes are `@Public()` and take the lenient `default` throttler. A success sends `Cache-Control` and
  * a strong `ETag`; Express answers `304` with no body when `If-None-Match` matches (it keeps an `ETag`
  * already set and checks freshness before sending). Shapes in api-divergences D-055.
- * `GET /admin/wards` (staff search) is A5-T5.
+ * `GET /admin/wards` (staff search) is `AdminWardsController` (A5-T5).
  */
 @Public()
 @Controller()
