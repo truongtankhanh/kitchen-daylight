@@ -242,6 +242,132 @@
         },
         "type": "object"
       },
+      "AdminAmenity": {
+        "properties": {
+          "branchCount": {
+            "description": "Branches, not soft-deleted, that show the amenity.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "icon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AmenityIcon"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "names": {
+            "$ref": "#/components/schemas/AmenityNames"
+          },
+          "rowVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "icon",
+          "branchCount",
+          "rowVersion",
+          "updatedAt",
+          "code"
+        ],
+        "type": "object"
+      },
+      "AdminAmenityCreateDto": {
+        "properties": {
+          "code": {
+            "description": "Unique and immutable; derived from `names.vi` when absent (`ALREADY_EXISTS` when taken).",
+            "maxLength": 60,
+            "type": "string"
+          },
+          "icon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AmenityIcon"
+              }
+            ],
+            "description": "One key of the fixed list (`amenity-icons.ts`); anything else is `INVALID` on `icon`."
+          },
+          "names": {
+            "$ref": "#/components/schemas/AmenityNames"
+          }
+        },
+        "required": [
+          "names",
+          "icon"
+        ],
+        "type": "object"
+      },
+      "AdminAmenityPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAmenity"
+            },
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageSize": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object"
+      },
+      "AdminAmenityUpdateDto": {
+        "properties": {
+          "icon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AmenityIcon"
+              }
+            ]
+          },
+          "names": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AmenityNames"
+              }
+            ],
+            "description": "Replaces the whole `names` object."
+          },
+          "rowVersion": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "AdminAppSettings": {
         "properties": {
           "brand": {
@@ -1544,6 +1670,143 @@
         ],
         "type": "object"
       },
+      "AdminTag": {
+        "properties": {
+          "branchCount": {
+            "description": "Branches, not soft-deleted, that sell at least one of those items.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "itemCount": {
+            "description": "Items, not soft-deleted, that carry the tag.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagKind"
+              }
+            ]
+          },
+          "names": {
+            "$ref": "#/components/schemas/TagNames"
+          },
+          "rowVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "unverifiedCount": {
+            "description": "Unconfirmed claims on those items; always 0 for a `LABEL` tag (nothing to verify).",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "names",
+          "itemCount",
+          "unverifiedCount",
+          "branchCount",
+          "rowVersion",
+          "updatedAt",
+          "slug"
+        ],
+        "type": "object"
+      },
+      "AdminTagCreateDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagKind"
+              }
+            ]
+          },
+          "names": {
+            "$ref": "#/components/schemas/TagNames"
+          },
+          "slug": {
+            "description": "Unique and immutable; derived from `names.vi` when absent (`ALREADY_EXISTS` when taken).",
+            "maxLength": 60,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "names"
+        ],
+        "type": "object"
+      },
+      "AdminTagPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTag"
+            },
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pageSize": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object"
+      },
+      "AdminTagUpdateDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagKind"
+              }
+            ]
+          },
+          "names": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagNames"
+              }
+            ],
+            "description": "Replaces the whole `names` object."
+          },
+          "rowVersion": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rowVersion"
+        ],
+        "type": "object"
+      },
       "AdminUserBranch": {
         "properties": {
           "code": {
@@ -1759,6 +2022,36 @@
         },
         "required": [
           "items"
+        ],
+        "type": "object"
+      },
+      "AmenityIcon": {
+        "enum": [
+          "wifi",
+          "car",
+          "snow",
+          "tree",
+          "door",
+          "child",
+          "wheelchair",
+          "box"
+        ],
+        "type": "string"
+      },
+      "AmenityNames": {
+        "properties": {
+          "en": {
+            "description": "Blank is dropped.",
+            "maxLength": 60,
+            "type": "string"
+          },
+          "vi": {
+            "maxLength": 60,
+            "type": "string"
+          }
+        },
+        "required": [
+          "vi"
         ],
         "type": "object"
       },
@@ -3991,6 +4284,31 @@
         ],
         "type": "object"
       },
+      "TagKind": {
+        "enum": [
+          "DIETARY",
+          "ALLERGEN",
+          "LABEL"
+        ],
+        "type": "string"
+      },
+      "TagNames": {
+        "properties": {
+          "en": {
+            "description": "Blank is dropped.",
+            "maxLength": 60,
+            "type": "string"
+          },
+          "vi": {
+            "maxLength": 60,
+            "type": "string"
+          }
+        },
+        "required": [
+          "vi"
+        ],
+        "type": "object"
+      },
       "TodayHoursSession": {
         "properties": {
           "closeTime": {
@@ -4159,6 +4477,401 @@
         "security": [],
         "tags": [
           "Health"
+        ]
+      }
+    },
+    "/api/v1/admin/amenities": {
+      "get": {
+        "operationId": "AdminAmenitiesController_list_v1",
+        "parameters": [
+          {
+            "description": "Page number, from 1.",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Rows per page.",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Select mode: the first `limit` rows (1 to 20); `page` and `pageSize` are then ignored.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Amenity ids to rebuild the chips of chosen records (`ids=…&ids=…`), at most 20; AND-ed.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            }
+          },
+          {
+            "description": "A fragment of the Vietnamese name, accent and case insensitive; `%` and `_` are literal.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAmenityPage"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A page (`page`, `pageSize`) or, with `limit`, the first rows for a select; filters `q` and\n`ids`. Sorted by unaccented name, then `id`; each row has `branchCount`.",
+        "tags": [
+          "AdminAmenities"
+        ]
+      },
+      "post": {
+        "operationId": "AdminAmenitiesController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminAmenityCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAmenity"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A new amenity; the code is derived from `names.vi` when absent (`ALREADY_EXISTS`).",
+        "tags": [
+          "AdminAmenities"
+        ]
+      }
+    },
+    "/api/v1/admin/amenities/{id}": {
+      "delete": {
+        "operationId": "AdminAmenitiesController_remove_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rowVersion",
+            "required": true,
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION, IN_USE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Hard delete; `IN_USE` with `usage` while a branch shows the amenity (B24).",
+        "tags": [
+          "AdminAmenities"
+        ]
+      },
+      "patch": {
+        "operationId": "AdminAmenitiesController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminAmenityUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAmenity"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "`names` and `icon` with the amenity `rowVersion`.",
+        "tags": [
+          "AdminAmenities"
         ]
       }
     },
@@ -6113,6 +6826,409 @@
         "summary": "The caller, their branches, their permission keys and the settings the console reads.",
         "tags": [
           "AdminMeta"
+        ]
+      }
+    },
+    "/api/v1/admin/tags": {
+      "get": {
+        "operationId": "AdminTagsController_list_v1",
+        "parameters": [
+          {
+            "description": "Page number, from 1.",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Rows per page.",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TagKind"
+            }
+          },
+          {
+            "description": "Select mode: the first `limit` rows (1 to 20); `page` and `pageSize` are then ignored.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Tag ids to rebuild the chips of chosen records (`ids=…&ids=…`), at most 20; AND-ed.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            }
+          },
+          {
+            "description": "A fragment of the Vietnamese name, accent and case insensitive; `%` and `_` are literal.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTagPage"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A page (`page`, `pageSize`) or, with `limit`, the first rows for a select; filters `q`, `kind`\nand `ids`. Sorted by `kind`, unaccented name, `id`. Each row has `itemCount`,\n`unverifiedCount` and `branchCount`.",
+        "tags": [
+          "AdminTags"
+        ]
+      },
+      "post": {
+        "operationId": "AdminTagsController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminTagCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTag"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "ALREADY_EXISTS"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "A new tag; the slug is derived from `names.vi` when absent (`ALREADY_EXISTS` when taken).",
+        "tags": [
+          "AdminTags"
+        ]
+      }
+    },
+    "/api/v1/admin/tags/{id}": {
+      "delete": {
+        "operationId": "AdminTagsController_remove_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rowVersion",
+            "required": true,
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION, IN_USE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Hard delete; `IN_USE` with `usage` while items carry the tag (B24).",
+        "tags": [
+          "AdminTags"
+        ]
+      },
+      "patch": {
+        "operationId": "AdminTagsController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminTagUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTag"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "STALE_VERSION, IN_USE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "`kind` and `names` with the tag `rowVersion`; a new `kind` on a used tag is `IN_USE` (B30).",
+        "tags": [
+          "AdminTags"
         ]
       }
     },

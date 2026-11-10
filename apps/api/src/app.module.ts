@@ -22,6 +22,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { BranchesModule } from './modules/branches/branches.module.js';
 import { GeoModule } from './modules/geo/geo.module.js';
 import { MediaModule } from './modules/media/media.module.js';
+import { MenuModule } from './modules/menu/menu.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
@@ -53,6 +54,8 @@ export class AppModule {
         BranchesModule,
         // `STORAGE_PORT` (A6-T2); the upload endpoint arrives in A6-T3.
         MediaModule,
+        // `/admin/tags` (A6-T5); `/admin/amenities` is in `BranchesModule`.
+        MenuModule,
       ],
       // Global pipe and filter as providers, so the filter can inject the logger (decision 0007 section 3).
       // The global guards run in the order listed here: throttler, the maintenance and

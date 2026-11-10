@@ -14,13 +14,13 @@ In the API image the same command is `node seed/dist/cli.js <mode> [--commit]` (
 
 ## Modes
 
-| Mode        | State                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `reference` | steps `geography` (A2-T3), `app-settings`, `consent-documents`, `first-admin` (A4-T5). Safe in every tier, `prod` included |
-| `business`  | not implemented (A13): exits 2                                                                                             |
-| `demo`      | not implemented (A13): exits 2; refused when `APP_ENV=prod`                                                                |
+| Mode        | State                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reference` | steps `geography` (A2-T3), `app-settings`, `consent-documents` (A4-T5), `vocabulary` (A6-T5), `first-admin` (A4-T5). Safe in every tier, `prod` included |
+| `business`  | not implemented (A13): exits 2                                                                                                                           |
+| `demo`      | not implemented (A13): exits 2; refused when `APP_ENV=prod`                                                                                              |
 
-**Steps still to come in `reference`**, each added to `referenceSteps` in `src/steps/index.ts` by the task that owns it: amenities and tags (A6-T5, the vocabulary seed), email templates with `MFA_RESET_NOTICE` (A12-T3) (api-divergences D-125).
+**Step still to come in `reference`**, added to `referenceSteps` in `src/steps/index.ts` by the task that owns it: email templates with `MFA_RESET_NOTICE` (A12-T3) (api-divergences D-125). A4-T5 planned the amenities and tags; A6-T5 wrote them as the `vocabulary` step once the tables existed (D-161).
 
 ## How a run works
 
@@ -90,6 +90,15 @@ The text comes from the owner and counsel and never enters the repository. Keep 
   In a container, mount the file read-only and pass the variable to `node seed/dist/cli.js reference --commit`.
 
 - Each (type, version, locale) is inserted once with `published_at` now, so it becomes current at once; a re-run changes nothing. Changing a published version's text exits 4: give the new text a new `version`.
+
+## Step `vocabulary`
+
+- Reads `data/vocabulary.json`: seven amenities (Wifi, parking, air conditioning, outdoor seating, private room, kid friendly, wheelchair access), each with an icon key, and twelve tags (vegetarian, vegan, halal as `DIETARY`; peanut, shellfish, gluten, milk, egg, soy as `ALLERGEN`; best seller, new, spicy as `LABEL`), all with a `vi` and an `en` name. Neutral, non-personal labels.
+- Checks every row before any statement: codes and slugs in the slug shape (at most 60 characters) and unique, a known icon or kind, a `vi` name of 1 to 60 characters, `en` optional, no other locale (exit 4 on the first broken row, named by its code or slug).
+- Inserts an amenity **only when its `code` has no row**, and a tag **only when its `slug` has no row** (`ON CONFLICT ... DO NOTHING`): a name, icon or kind changed in the admin is never overwritten, so `updated` is always 0, and rows the admin added are not reported as stale.
+- A seeded row that the admin **deleted** is inserted again by the next `--commit` run, because it then has no row (api-divergences D-161).
+
+> **Two copies of the icon list.** `AMENITY_ICONS` in `src/steps/vocabulary.ts` mirrors `apps/api/src/modules/branches/amenity-icons.ts` (this package may not import `@kd/api`). Change both together.
 
 ## Step `first-admin`
 

@@ -1,0 +1,54 @@
+{
+  "_meta": {
+    "source": "data-model.md, rows `amenities` and `tags`; A6-T5 (brief B24, B32). Neutral, non-personal labels.",
+    "rule": "Inserted only when the code or slug has no row (ON CONFLICT DO NOTHING); an admin edit is never overwritten.",
+    "icons": "One of the eight keys of apps/api/src/modules/branches/amenity-icons.ts (mirrored in src/steps/vocabulary.ts)."
+  },
+  "amenities": [
+    { "code": "wifi", "names": { "vi": "Wifi", "en": "Wifi" }, "icon": "wifi" },
+    { "code": "parking", "names": { "vi": "Chỗ đậu xe", "en": "Parking" }, "icon": "car" },
+    {
+      "code": "air-conditioning",
+      "names": { "vi": "Máy lạnh", "en": "Air conditioning" },
+      "icon": "snow"
+    },
+    {
+      "code": "outdoor-seating",
+      "names": { "vi": "Chỗ ngồi ngoài trời", "en": "Outdoor seating" },
+      "icon": "tree"
+    },
+    {
+      "code": "private-room",
+      "names": { "vi": "Phòng riêng", "en": "Private room" },
+      "icon": "door"
+    },
+    {
+      "code": "kid-friendly",
+      "names": { "vi": "Thân thiện với trẻ em", "en": "Kid friendly" },
+      "icon": "child"
+    },
+    {
+      "code": "wheelchair-access",
+      "names": { "vi": "Lối đi cho xe lăn", "en": "Wheelchair access" },
+      "icon": "wheelchair"
+    }
+  ],
+  "tags": [
+    { "kind": "DIETARY", "slug": "mon-chay", "names": { "vi": "Món chay", "en": "Vegetarian" } },
+    { "kind": "DIETARY", "slug": "thuan-chay", "names": { "vi": "Thuần chay", "en": "Vegan" } },
+    { "kind": "DIETARY", "slug": "halal", "names": { "vi": "Halal", "en": "Halal" } },
+    { "kind": "ALLERGEN", "slug": "dau-phong", "names": { "vi": "Đậu phộng", "en": "Peanut" } },
+    {
+      "kind": "ALLERGEN",
+      "slug": "hai-san-co-vo",
+      "names": { "vi": "Hải sản có vỏ", "en": "Shellfish" }
+    },
+    { "kind": "ALLERGEN", "slug": "gluten", "names": { "vi": "Gluten", "en": "Gluten" } },
+    { "kind": "ALLERGEN", "slug": "sua", "names": { "vi": "Sữa", "en": "Milk" } },
+    { "kind": "ALLERGEN", "slug": "trung", "names": { "vi": "Trứng", "en": "Egg" } },
+    { "kind": "ALLERGEN", "slug": "dau-nanh", "names": { "vi": "Đậu nành", "en": "Soy" } },
+    { "kind": "LABEL", "slug": "ban-chay", "names": { "vi": "Bán chạy", "en": "Best seller" } },
+    { "kind": "LABEL", "slug": "mon-moi", "names": { "vi": "Món mới", "en": "New" } },
+    { "kind": "LABEL", "slug": "cay", "names": { "vi": "Cay", "en": "Spicy" } }
+  ]
+}

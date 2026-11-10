@@ -11,6 +11,7 @@ import {
 import { createFirstAdminStep } from './first-admin.js';
 import { createGeographyStep, PROVINCES_FILE, WARDS_FILE } from './geography.js';
 import type { SeedStep } from './step.js';
+import { createVocabularyStep, VOCABULARY_FILE } from './vocabulary.js';
 
 /** Reads a JSON file of `@kd/seed-data` through the package's `exports` (decision 0003 section 6). */
 export async function readSeedData(specifier: string): Promise<unknown> {
@@ -33,9 +34,9 @@ export interface ReferenceOptions {
 }
 
 /**
- * The ordered steps of `seed reference`. Still to come, each as its own step added here by its
- * task: amenities and tags (A6-T5, the vocabulary seed) and the email templates (A12-T3)
- * (api-divergences D-125).
+ * The ordered steps of `seed reference`. Still to come, as its own step added here by its task:
+ * the email templates (A12-T3) (api-divergences D-125). Amenities and tags are the `vocabulary`
+ * step (A6-T5).
  */
 export function referenceSteps(options: ReferenceOptions): readonly SeedStep[] {
   const ownerFile = options.consentDocumentsFile;
@@ -48,6 +49,7 @@ export function referenceSteps(options: ReferenceOptions): readonly SeedStep[] {
     ownerFile === null
       ? createConsentDocumentsStep(() => readJson(CONSENT_DOCUMENTS_FILE))
       : createPublishedDocumentsStep(() => readJson(pathToFileURL(ownerFile))),
+    createVocabularyStep(() => readJson(VOCABULARY_FILE)),
     createFirstAdminStep(options.firstAdmin),
   ];
 }

@@ -20,6 +20,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/amenities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A page (`page`, `pageSize`) or, with `limit`, the first rows for a select; filters `q` and
+         *     `ids`. Sorted by unaccented name, then `id`; each row has `branchCount`.
+         */
+        get: operations["AdminAmenitiesController_list_v1"];
+        put?: never;
+        /** A new amenity; the code is derived from `names.vi` when absent (`ALREADY_EXISTS`). */
+        post: operations["AdminAmenitiesController_create_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/amenities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Hard delete; `IN_USE` with `usage` while a branch shows the amenity (B24). */
+        delete: operations["AdminAmenitiesController_remove_v1"];
+        options?: never;
+        head?: never;
+        /** `names` and `icon` with the amenity `rowVersion`. */
+        patch: operations["AdminAmenitiesController_update_v1"];
+        trace?: never;
+    };
     "/api/v1/admin/app-settings": {
         parameters: {
             query?: never;
@@ -352,6 +391,46 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A page (`page`, `pageSize`) or, with `limit`, the first rows for a select; filters `q`, `kind`
+         *     and `ids`. Sorted by `kind`, unaccented name, `id`. Each row has `itemCount`,
+         *     `unverifiedCount` and `branchCount`.
+         */
+        get: operations["AdminTagsController_list_v1"];
+        put?: never;
+        /** A new tag; the slug is derived from `names.vi` when absent (`ALREADY_EXISTS` when taken). */
+        post: operations["AdminTagsController_create_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Hard delete; `IN_USE` with `usage` while items carry the tag (B24). */
+        delete: operations["AdminTagsController_remove_v1"];
+        options?: never;
+        head?: never;
+        /** `kind` and `names` with the tag `rowVersion`; a new `kind` on a used tag is `IN_USE` (B30). */
+        patch: operations["AdminTagsController_update_v1"];
         trace?: never;
     };
     "/api/v1/admin/uploads/images": {
@@ -1076,6 +1155,37 @@ export interface components {
              */
             wardCode?: string | null;
         };
+        AdminAmenity: {
+            /** @description Branches, not soft-deleted, that show the amenity. */
+            branchCount: number;
+            code: string;
+            icon: components["schemas"]["AmenityIcon"];
+            /** Format: uuid */
+            id: string;
+            names: components["schemas"]["AmenityNames"];
+            rowVersion: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AdminAmenityCreateDto: {
+            /** @description Unique and immutable; derived from `names.vi` when absent (`ALREADY_EXISTS` when taken). */
+            code?: string;
+            /** @description One key of the fixed list (`amenity-icons.ts`); anything else is `INVALID` on `icon`. */
+            icon: components["schemas"]["AmenityIcon"];
+            names: components["schemas"]["AmenityNames"];
+        };
+        AdminAmenityPage: {
+            items: components["schemas"]["AdminAmenity"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        AdminAmenityUpdateDto: {
+            icon?: components["schemas"]["AmenityIcon"];
+            /** @description Replaces the whole `names` object. */
+            names?: components["schemas"]["AmenityNames"];
+            rowVersion: number;
+        };
         AdminAppSettings: {
             brand: components["schemas"]["BrandSettingRecord"];
             featureFlags: components["schemas"]["FeatureFlagsSettingRecord"];
@@ -1432,6 +1542,40 @@ export interface components {
             /** @enum {string} */
             status: "INVITED" | "ACTIVE" | "SUSPENDED" | "DELETED";
         };
+        AdminTag: {
+            /** @description Branches, not soft-deleted, that sell at least one of those items. */
+            branchCount: number;
+            /** Format: uuid */
+            id: string;
+            /** @description Items, not soft-deleted, that carry the tag. */
+            itemCount: number;
+            kind: components["schemas"]["TagKind"];
+            names: components["schemas"]["TagNames"];
+            rowVersion: number;
+            slug: string;
+            /** @description Unconfirmed claims on those items; always 0 for a `LABEL` tag (nothing to verify). */
+            unverifiedCount: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AdminTagCreateDto: {
+            kind: components["schemas"]["TagKind"];
+            names: components["schemas"]["TagNames"];
+            /** @description Unique and immutable; derived from `names.vi` when absent (`ALREADY_EXISTS` when taken). */
+            slug?: string;
+        };
+        AdminTagPage: {
+            items: components["schemas"]["AdminTag"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        AdminTagUpdateDto: {
+            kind?: components["schemas"]["TagKind"];
+            /** @description Replaces the whole `names` object. */
+            names?: components["schemas"]["TagNames"];
+            rowVersion: number;
+        };
         AdminUserBranch: {
             code: string;
             /** Format: uuid */
@@ -1498,6 +1642,13 @@ export interface components {
         };
         AdminWardSearchResult: {
             items: components["schemas"]["AdminWardOption"][];
+        };
+        /** @enum {string} */
+        AmenityIcon: "wifi" | "car" | "snow" | "tree" | "door" | "child" | "wheelchair" | "box";
+        AmenityNames: {
+            /** @description Blank is dropped. */
+            en?: string;
+            vi: string;
         };
         AppSettingSave: {
             /** @enum {string} */
@@ -2258,6 +2409,13 @@ export interface components {
              */
             stepUpToken: string;
         };
+        /** @enum {string} */
+        TagKind: "DIETARY" | "ALLERGEN" | "LABEL";
+        TagNames: {
+            /** @description Blank is dropped. */
+            en?: string;
+            vi: string;
+        };
         TodayHoursSession: {
             closesNextDay: boolean;
             /** @description `HH:mm`. */
@@ -2335,6 +2493,294 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+        };
+    };
+    AdminAmenitiesController_list_v1: {
+        parameters: {
+            query?: {
+                /** @description Amenity ids to rebuild the chips of chosen records (`ids=…&ids=…`), at most 20; AND-ed. */
+                ids?: string[];
+                /** @description Select mode: the first `limit` rows (1 to 20); `page` and `pageSize` are then ignored. */
+                limit?: number;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+                /** @description A fragment of the Vietnamese name, accent and case insensitive; `%` and `_` are literal. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAmenityPage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminAmenitiesController_create_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminAmenityCreateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAmenity"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ALREADY_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminAmenitiesController_remove_v1: {
+        parameters: {
+            query: {
+                rowVersion: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION, IN_USE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminAmenitiesController_update_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminAmenityUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAmenity"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -3813,6 +4259,295 @@ export interface operations {
             };
             /** @description FORBIDDEN */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminTagsController_list_v1: {
+        parameters: {
+            query?: {
+                /** @description Tag ids to rebuild the chips of chosen records (`ids=…&ids=…`), at most 20; AND-ed. */
+                ids?: string[];
+                kind?: components["schemas"]["TagKind"];
+                /** @description Select mode: the first `limit` rows (1 to 20); `page` and `pageSize` are then ignored. */
+                limit?: number;
+                /** @description Page number, from 1. */
+                page?: number;
+                /** @description Rows per page. */
+                pageSize?: number;
+                /** @description A fragment of the Vietnamese name, accent and case insensitive; `%` and `_` are literal. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTagPage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminTagsController_create_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTagCreateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTag"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description ALREADY_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminTagsController_remove_v1: {
+        parameters: {
+            query: {
+                rowVersion: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION, IN_USE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminTagsController_update_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTagUpdateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTag"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description STALE_VERSION, IN_USE */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
