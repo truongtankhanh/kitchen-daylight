@@ -2885,6 +2885,31 @@
         },
         "type": "object"
       },
+      "MediaImageVariants": {
+        "properties": {
+          "large": {
+            "description": "Longest edge 1600 px: detail and full screen.",
+            "format": "uri",
+            "type": "string"
+          },
+          "medium": {
+            "description": "Longest edge 800 px: cards, mobile detail.",
+            "format": "uri",
+            "type": "string"
+          },
+          "thumb": {
+            "description": "Longest edge 320 px: list rows, chips, admin tables.",
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "thumb",
+          "medium",
+          "large"
+        ],
+        "type": "object"
+      },
       "MfaCodeDto": {
         "properties": {
           "code": {
@@ -3984,6 +4009,55 @@
           "openTime",
           "closeTime",
           "closesNextDay"
+        ],
+        "type": "object"
+      },
+      "UploadedImage": {
+        "properties": {
+          "alt": {
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "blurhash": {
+            "type": "string"
+          },
+          "duplicate": {
+            "description": "`true` when the same bytes were already stored: the existing row, unchanged, with `200`.",
+            "type": "boolean"
+          },
+          "height": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "id": {
+            "description": "The media id; the admin sends it back as `mediaId`.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "url": {
+            "description": "Equal to `variants.large`.",
+            "format": "uri",
+            "type": "string"
+          },
+          "variants": {
+            "$ref": "#/components/schemas/MediaImageVariants"
+          },
+          "width": {
+            "description": "Of the oriented master, for the aspect ratio.",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "variants",
+          "blurhash",
+          "alt",
+          "width",
+          "height",
+          "duplicate"
         ],
         "type": "object"
       },
@@ -6039,6 +6113,130 @@
         "summary": "The caller, their branches, their permission keys and the settings the console reads.",
         "tags": [
           "AdminMeta"
+        ]
+      }
+    },
+    "/api/v1/admin/uploads/images": {
+      "post": {
+        "operationId": "AdminUploadsController_upload_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "alt": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "file": {
+                    "description": "JPEG, PNG or WebP; at most 10 MB (2 MB for LOGO).",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "default": "PHOTO",
+                    "enum": [
+                      "PHOTO",
+                      "LOGO"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedImage"
+                }
+              }
+            },
+            "description": "The same bytes were already stored: the existing image (`duplicate: true`)."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedImage"
+                }
+              }
+            },
+            "description": "A new image (`duplicate: false`)."
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "VALIDATION_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNAUTHENTICATED, TOKEN_EXPIRED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "FORBIDDEN"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "TOO_LARGE"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "UNSUPPORTED_TYPE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "RATE_LIMITED"
+          }
+        },
+        "summary": "Multipart upload of one image. `201` with a new row; `200` with `duplicate: true` and the\nexisting row, unchanged, when the same bytes are already stored.",
+        "tags": [
+          "AdminUploads"
         ]
       }
     },

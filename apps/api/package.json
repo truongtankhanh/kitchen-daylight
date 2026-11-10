@@ -21,6 +21,7 @@
     "@kd/tsconfig": "workspace:*",
     "@nestjs/cli": "12.0.11",
     "@nestjs/testing": "12.3.2",
+    "@types/multer": "2.3.0",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
@@ -36,6 +37,7 @@
     "@nestjs/swagger": "12.1.0",
     "@nestjs/throttler": "6.7.1",
     "@nestjs/typeorm": "12.0.2",
+    "blurhash": "2.0.5",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "jose": "6.2.15",
@@ -47,6 +49,7 @@
     "pino-http": "11.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "catalog:",
+    "sharp": "0.35.5",
     "typeorm": "1.1.2"
   }
 }

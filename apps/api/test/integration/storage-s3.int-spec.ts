@@ -12,6 +12,7 @@ import { createEphemeralAuthEnvironment } from '../../src/config/ephemeral-auth-
 import { loadConfig } from '../../src/config/load-config.js';
 import { productionGuardViolations } from '../../src/config/production-guard.js';
 import { MediaModule } from '../../src/modules/media/media.module.js';
+import { MediaService } from '../../src/modules/media/media.service.js';
 import { STORAGE_PORT, StorageError } from '../../src/modules/media/ports/storage.port.js';
 import type { StorageBucket, StoragePort } from '../../src/modules/media/ports/storage.port.js';
 import { ROOT_ENV_FILE } from '../support/test-database.js';
@@ -90,7 +91,11 @@ describe('StoragePort over S3 to the emulator', () => {
 
     moduleRef = await Test.createTestingModule({
       imports: [AppConfigModule.forRoot(config), LoggingModule, MediaModule],
-    }).compile();
+    })
+      // No database here: `MediaService` (A6-T3) is not used by this spec.
+      .overrideProvider(MediaService)
+      .useValue({})
+      .compile();
     storage = moduleRef.get<StoragePort>(STORAGE_PORT);
 
     // Fail, never skip, when the dev stack is down or the buckets are missing.

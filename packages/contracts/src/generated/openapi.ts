@@ -354,6 +354,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/uploads/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Multipart upload of one image. `201` with a new row; `200` with `duplicate: true` and the
+         *     existing row, unchanged, when the same bytes are already stored.
+         */
+        post: operations["AdminUploadsController_upload_v1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -1803,6 +1823,23 @@ export interface components {
             /** Format: uuid */
             preferredBranchId: string | null;
         };
+        MediaImageVariants: {
+            /**
+             * Format: uri
+             * @description Longest edge 1600 px: detail and full screen.
+             */
+            large: string;
+            /**
+             * Format: uri
+             * @description Longest edge 800 px: cards, mobile detail.
+             */
+            medium: string;
+            /**
+             * Format: uri
+             * @description Longest edge 320 px: list rows, chips, admin tables.
+             */
+            thumb: string;
+        };
         MePasswordDto: {
             /** Format: password */
             currentPassword: string;
@@ -2227,6 +2264,26 @@ export interface components {
             closeTime: string;
             /** @description `HH:mm`. */
             openTime: string;
+        };
+        UploadedImage: {
+            alt: string | null;
+            blurhash: string;
+            /** @description `true` when the same bytes were already stored: the existing row, unchanged, with `200`. */
+            duplicate: boolean;
+            height: number;
+            /**
+             * Format: uuid
+             * @description The media id; the admin sends it back as `mediaId`.
+             */
+            id: string;
+            /**
+             * Format: uri
+             * @description Equal to `variants.large`.
+             */
+            url: string;
+            variants: components["schemas"]["MediaImageVariants"];
+            /** @description Of the oriented master, for the aspect ratio. */
+            width: number;
         };
         VerifyEmailDto: {
             /** @description The 6-digit code from the mail; spaces are ignored. */
@@ -3756,6 +3813,105 @@ export interface operations {
             };
             /** @description FORBIDDEN */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdminUploadsController_upload_v1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    alt?: string;
+                    /**
+                     * Format: binary
+                     * @description JPEG, PNG or WebP; at most 10 MB (2 MB for LOGO).
+                     */
+                    file: string;
+                    /**
+                     * @default PHOTO
+                     * @enum {string}
+                     */
+                    purpose?: "PHOTO" | "LOGO";
+                };
+            };
+        };
+        responses: {
+            /** @description The same bytes were already stored: the existing image (`duplicate: true`). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedImage"];
+                };
+            };
+            /** @description A new image (`duplicate: false`). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedImage"];
+                };
+            };
+            /** @description VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNAUTHENTICATED, TOKEN_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description UNSUPPORTED_TYPE */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

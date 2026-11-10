@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
+import { clockProvider } from '../../common/time/clock.js';
 import { APP_CONFIG } from '../../config/config.module.js';
 import type { StorageConfig, ServerConfig } from '../../config/load-config.js';
 import { S3StorageAdapter } from './adapters/s3/storage.s3.adapter.js';
 import type { StorageLogger } from './adapters/s3/storage.s3.adapter.js';
+import { AdminUploadsController } from './admin-uploads.controller.js';
+import { MediaService } from './media.service.js';
 import { KeyCheckedStorage, STORAGE_PORT } from './ports/storage.port.js';
 
 /**
@@ -23,10 +26,13 @@ export function createStoragePort(config: StorageConfig, logger: StorageLogger):
 }
 
 /**
- * Binds `STORAGE_PORT` (decision 0009). Exports the token only, never an adapter class. Image
- * processing and the upload endpoint arrive in A6-T3.
+ * Media (decision 0009). A6-T2: binds `STORAGE_PORT`. A6-T3: the `media` table,
+ * `POST /admin/uploads/images` and `MediaService` (`assertUsable`, `setAlt`, `toImage`,
+ * `findOrphans` for later tasks). Uses the application's global TypeORM `DataSource`. Exports the
+ * token and the service, never an adapter class.
  */
 @Module({
+  controllers: [AdminUploadsController],
   providers: [
     {
       provide: STORAGE_PORT,
@@ -36,7 +42,9 @@ export function createStoragePort(config: StorageConfig, logger: StorageLogger):
         return createStoragePort(config.storage, logger);
       },
     },
+    MediaService,
+    clockProvider,
   ],
-  exports: [STORAGE_PORT],
+  exports: [STORAGE_PORT, MediaService],
 })
 export class MediaModule {}

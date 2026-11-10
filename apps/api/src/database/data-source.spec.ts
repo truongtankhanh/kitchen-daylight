@@ -14,6 +14,7 @@ import { Branch } from '../modules/branches/entities/branch.entity.js';
 import { DeliveryZone } from '../modules/branches/entities/delivery-zone.entity.js';
 import { Province } from '../modules/geo/entities/province.entity.js';
 import { Ward } from '../modules/geo/entities/ward.entity.js';
+import { Media } from '../modules/media/entities/media.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
 import { AppSetting } from '../modules/settings/entities/app-setting.entity.js';
 import { ConsentDocument } from '../modules/users/entities/consent-document.entity.js';
@@ -58,6 +59,7 @@ describe('createDataSourceOptions', () => {
         DeliveryZone,
         Amenity,
         BranchAmenity,
+        Media,
       ],
     });
   });
