@@ -26,6 +26,10 @@ const PLACEHOLDER_ENV = {
   DATABASE_URL_APP: 'postgres://openapi@127.0.0.1:1/openapi',
   MAIL_SMTP_HOST: '127.0.0.1',
   MAIL_SMTP_PORT: '1',
+  // The storage port (A6-T2) is bound but never called in preview mode.
+  STORAGE_S3_ENDPOINT: 'http://127.0.0.1:1',
+  STORAGE_S3_BUCKET_MEDIA: 'kd-openapi-media',
+  STORAGE_S3_BUCKET_PRIVATE: 'kd-openapi-private',
 } as const;
 
 /**

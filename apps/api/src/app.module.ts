@@ -21,6 +21,7 @@ import { HealthModule } from './health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { BranchesModule } from './modules/branches/branches.module.js';
 import { GeoModule } from './modules/geo/geo.module.js';
+import { MediaModule } from './modules/media/media.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
@@ -50,6 +51,8 @@ export class AppModule {
         OrdersFactsModule.forRoot(NoOrdersFacts),
         // `/admin/branches` (A5-T2).
         BranchesModule,
+        // `STORAGE_PORT` (A6-T2); the upload endpoint arrives in A6-T3.
+        MediaModule,
       ],
       // Global pipe and filter as providers, so the filter can inject the logger (decision 0007 section 3).
       // The global guards run in the order listed here: throttler, the maintenance and

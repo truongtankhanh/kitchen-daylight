@@ -54,6 +54,12 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
       // `mail-smtp.int-spec.ts` reads the Mailpit address of the root `.env` instead.
       MAIL_SMTP_HOST: '127.0.0.1',
       MAIL_SMTP_PORT: '1',
+      // `MediaModule` binds the S3 adapter (A6-T2); an endpoint makes it the `emulator` kind that
+      // `test` accepts, and port 1 on loopback makes a stray call fail at once.
+      // `storage-s3.int-spec.ts` reads the emulator of the root `.env` instead.
+      STORAGE_S3_ENDPOINT: 'http://127.0.0.1:1',
+      STORAGE_S3_BUCKET_MEDIA: 'kd-test-media',
+      STORAGE_S3_BUCKET_PRIVATE: 'kd-test-private',
       ...createEphemeralAuthEnvironment('kd-test-'),
     },
     'server',

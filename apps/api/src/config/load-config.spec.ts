@@ -8,7 +8,9 @@ import {
   AUTH_RULES,
   DEFAULT_ADMIN_ORIGINS,
   DEFAULT_MAIL_FROM,
+  DEFAULT_STORAGE_S3_REGION,
   PLACEHOLDER_PASSWORD_PREFIX,
+  STORAGE_RULES,
   STORE_URL_RULE,
 } from './config.schema.js';
 import {
@@ -49,6 +51,24 @@ const SMTP_PORT = 1045;
 /** A fictional deployed admin origin (decision 0008 section 10). */
 const DEPLOYED_ADMIN_ORIGIN = 'https://admin.kitchendaylight.example';
 
+/** Fictional storage names (decision 0009); the bucket names are those of the Docker stack. */
+const MEDIA_BUCKET = 'kd-dev-media';
+const PRIVATE_BUCKET = 'kd-dev-private';
+const DEPLOYED_REGION = 'ap-southeast-1';
+const DEPLOYED_PUBLIC_BASE_URL = 'https://media.kitchendaylight.example';
+
+/**
+ * Storage against AWS (no endpoint, no static key), named explicitly, so the same values are valid
+ * in every tier and the other blocks see no storage issue.
+ */
+const AWS_STORAGE: Environment = {
+  STORAGE_ADAPTER: 's3',
+  STORAGE_S3_REGION: DEPLOYED_REGION,
+  STORAGE_S3_BUCKET_MEDIA: MEDIA_BUCKET,
+  STORAGE_S3_BUCKET_PRIVATE: PRIVATE_BUCKET,
+  MEDIA_PUBLIC_BASE_URL: DEPLOYED_PUBLIC_BASE_URL,
+};
+
 const VALID_SERVER: Environment = {
   APP_ENV: 'dev',
   PORT: '3001',
@@ -56,6 +76,7 @@ const VALID_SERVER: Environment = {
   DATABASE_URL_APP: APP_URL,
   MAIL_SMTP_HOST: SMTP_HOST,
   MAIL_SMTP_PORT: String(SMTP_PORT),
+  ...AWS_STORAGE,
   ...AUTH,
 };
 
@@ -114,8 +135,22 @@ describe('loadConfig (server)', () => {
       },
       adminOrigins: ['http://localhost:4200'],
       appStoreUrls: { ios: null, android: null },
+      storage: {
+        adapter: 's3',
+        publicBaseUrl: DEPLOYED_PUBLIC_BASE_URL,
+        s3: {
+          region: DEPLOYED_REGION,
+          endpoint: null,
+          forcePathStyle: false,
+          credentials: null,
+          buckets: { media: MEDIA_BUCKET, private: PRIVATE_BUCKET },
+        },
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
+    expect(Object.isFrozen(config.storage)).toBe(true);
+    expect(Object.isFrozen(config.storage.s3)).toBe(true);
+    expect(Object.isFrozen(config.storage.s3.buckets)).toBe(true);
     expect(Object.isFrozen(config.appStoreUrls)).toBe(true);
     expect(Object.isFrozen(config.adminOrigins)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
@@ -198,7 +233,16 @@ describe('loadConfig (server)', () => {
     const names = issues({ PORT: 'abc', LOG_LEVEL: 'verbose' }).map(({ name }) => name);
 
     expect(names.sort()).toEqual(
-      ['APP_ENV', 'DATABASE_URL_APP', 'LOG_LEVEL', 'PORT', ...REQUIRED_AUTH_VARIABLES].sort(),
+      [
+        'APP_ENV',
+        'DATABASE_URL_APP',
+        'LOG_LEVEL',
+        'PORT',
+        'STORAGE_S3_BUCKET_MEDIA',
+        'STORAGE_S3_BUCKET_PRIVATE',
+        'MEDIA_PUBLIC_BASE_URL',
+        ...REQUIRED_AUTH_VARIABLES,
+      ].sort(),
     );
   });
 });
@@ -663,6 +707,281 @@ describe('loadConfig (mail variables)', () => {
   });
 });
 
+describe('loadConfig (storage variables)', () => {
+  const EMULATOR_ENDPOINT = 'http://127.0.0.1:9020';
+  // Local placeholders, as `print-env.sh` writes them for the emulator.
+  const ACCESS_KEY = `${PLACEHOLDER_PASSWORD_PREFIX}_ACCESS`;
+  const SECRET_KEY = `${PLACEHOLDER_PASSWORD_PREFIX}_SECRET`;
+
+  /** The host `.env` of `dev`: the emulator with its keys, nothing named that has a default. */
+  const EMULATOR: Environment = {
+    ...without(
+      without(without(VALID_SERVER, 'STORAGE_ADAPTER'), 'STORAGE_S3_REGION'),
+      'MEDIA_PUBLIC_BASE_URL',
+    ),
+    STORAGE_S3_ENDPOINT: EMULATOR_ENDPOINT,
+    STORAGE_S3_FORCE_PATH_STYLE: 'true',
+    STORAGE_S3_ACCESS_KEY: ACCESS_KEY,
+    STORAGE_S3_SECRET_KEY: SECRET_KEY,
+  };
+
+  /** What `demo` and `prod` require besides the storage variables. */
+  const DEPLOYED: Environment = {
+    ...VALID_SERVER,
+    TRUST_PROXY_HOPS: '1',
+    MAIL_ADAPTER: 'ses',
+    MAIL_FROM: DEFAULT_MAIL_FROM,
+    ADMIN_ORIGINS: DEPLOYED_ADMIN_ORIGIN,
+  };
+
+  it.each(['dev', 'test'])('maps the emulator with the defaults in %s', (appEnv) => {
+    const config = loadConfig({ ...EMULATOR, APP_ENV: appEnv }, 'server');
+
+    expect(config.storage).toEqual({
+      adapter: 's3',
+      publicBaseUrl: `${EMULATOR_ENDPOINT}/${MEDIA_BUCKET}`,
+      s3: {
+        region: DEFAULT_STORAGE_S3_REGION,
+        endpoint: EMULATOR_ENDPOINT,
+        forcePathStyle: true,
+        credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
+        buckets: { media: MEDIA_BUCKET, private: PRIVATE_BUCKET },
+      },
+    });
+    expect(Object.isFrozen(config.storage.s3.credentials)).toBe(true);
+  });
+
+  it('defaults path style to true with an endpoint and reads false', () => {
+    const unset = without(EMULATOR, 'STORAGE_S3_FORCE_PATH_STYLE');
+
+    expect(loadConfig(unset, 'server').storage.s3.forcePathStyle).toBe(true);
+    expect(
+      loadConfig({ ...EMULATOR, STORAGE_S3_FORCE_PATH_STYLE: 'false' }, 'server').storage.s3
+        .forcePathStyle,
+    ).toBe(false);
+  });
+
+  it('ignores path style without an endpoint', () => {
+    const env = { ...VALID_SERVER, STORAGE_S3_FORCE_PATH_STYLE: 'true' };
+
+    expect(loadConfig(env, 'server').storage.s3.forcePathStyle).toBe(false);
+  });
+
+  it('keeps an explicit MEDIA_PUBLIC_BASE_URL over the derived one, http allowed in dev', () => {
+    const lanUrl = 'http://192.168.1.20:9020/kd-dev-media';
+
+    expect(
+      loadConfig({ ...EMULATOR, MEDIA_PUBLIC_BASE_URL: lanUrl }, 'server').storage.publicBaseUrl,
+    ).toBe(lanUrl);
+  });
+
+  it('accepts a public base URL with a path', () => {
+    const url = 'https://cdn.kitchendaylight.example/media';
+
+    expect(
+      loadConfig({ ...VALID_SERVER, MEDIA_PUBLIC_BASE_URL: url }, 'server').storage.publicBaseUrl,
+    ).toBe(url);
+  });
+
+  it.each(['demo', 'prod'])('maps AWS with the default provider chain in %s', (appEnv) => {
+    expect(loadConfig({ ...DEPLOYED, APP_ENV: appEnv }, 'server').storage).toEqual({
+      adapter: 's3',
+      publicBaseUrl: DEPLOYED_PUBLIC_BASE_URL,
+      s3: {
+        region: DEPLOYED_REGION,
+        endpoint: null,
+        forcePathStyle: false,
+        credentials: null,
+        buckets: { media: MEDIA_BUCKET, private: PRIVATE_BUCKET },
+      },
+    });
+  });
+
+  it.each(['demo', 'prod'])(
+    'requires STORAGE_ADAPTER, STORAGE_S3_REGION and MEDIA_PUBLIC_BASE_URL in %s',
+    (appEnv) => {
+      const env = without(
+        without(without(DEPLOYED, 'STORAGE_ADAPTER'), 'STORAGE_S3_REGION'),
+        'MEDIA_PUBLIC_BASE_URL',
+      );
+
+      expect(sortedIssues({ ...env, APP_ENV: appEnv })).toEqual([
+        { name: 'MEDIA_PUBLIC_BASE_URL', rule: 'required' },
+        { name: 'STORAGE_ADAPTER', rule: 'required' },
+        { name: 'STORAGE_S3_REGION', rule: 'required' },
+      ]);
+    },
+  );
+
+  it.each(['dev', 'test', 'demo', 'prod'])('requires both buckets in %s', (appEnv) => {
+    const env = without(without(DEPLOYED, 'STORAGE_S3_BUCKET_MEDIA'), 'STORAGE_S3_BUCKET_PRIVATE');
+
+    expect(sortedIssues({ ...env, APP_ENV: appEnv })).toEqual([
+      { name: 'STORAGE_S3_BUCKET_MEDIA', rule: 'required' },
+      { name: 'STORAGE_S3_BUCKET_PRIVATE', rule: 'required' },
+    ]);
+  });
+
+  it.each(['dev', 'test'])('requires MEDIA_PUBLIC_BASE_URL without an endpoint in %s', (appEnv) => {
+    const env = { ...without(VALID_SERVER, 'MEDIA_PUBLIC_BASE_URL'), APP_ENV: appEnv };
+
+    expect(issues(env)).toEqual([{ name: 'MEDIA_PUBLIC_BASE_URL', rule: 'required' }]);
+  });
+
+  it('refuses STORAGE_S3_ENDPOINT in prod', () => {
+    const env = { ...DEPLOYED, APP_ENV: 'prod', STORAGE_S3_ENDPOINT: EMULATOR_ENDPOINT };
+
+    expect(issues(env)).toEqual([
+      { name: 'STORAGE_S3_ENDPOINT', rule: STORAGE_RULES.endpointInProd },
+    ]);
+  });
+
+  it('accepts an endpoint without keys in demo (decision 0005 section 5)', () => {
+    const env = { ...DEPLOYED, APP_ENV: 'demo', STORAGE_S3_ENDPOINT: EMULATOR_ENDPOINT };
+
+    expect(loadConfig(env, 'server').storage.s3.endpoint).toBe(EMULATOR_ENDPOINT);
+  });
+
+  it.each(['demo', 'prod'])('refuses static keys in %s', (appEnv) => {
+    const env = {
+      ...DEPLOYED,
+      APP_ENV: appEnv,
+      STORAGE_S3_ACCESS_KEY: 'kd-spec-access',
+      STORAGE_S3_SECRET_KEY: 'kd-spec-secret',
+    };
+
+    expect(sortedIssues(env)).toEqual([
+      { name: 'STORAGE_S3_ACCESS_KEY', rule: STORAGE_RULES.keyInDeployedTier },
+      { name: 'STORAGE_S3_SECRET_KEY', rule: STORAGE_RULES.keyInDeployedTier },
+    ]);
+  });
+
+  it.each([
+    ['STORAGE_S3_ACCESS_KEY', 'STORAGE_S3_SECRET_KEY'],
+    ['STORAGE_S3_SECRET_KEY', 'STORAGE_S3_ACCESS_KEY'],
+  ])('requires %s when %s is set', (missing) => {
+    expect(issues(without(EMULATOR, missing))).toEqual([{ name: missing, rule: 'required' }]);
+  });
+
+  it('uses the default provider chain with an endpoint and no keys', () => {
+    const env = without(without(EMULATOR, 'STORAGE_S3_ACCESS_KEY'), 'STORAGE_S3_SECRET_KEY');
+
+    expect(loadConfig(env, 'server').storage.s3.credentials).toBeNull();
+  });
+
+  it.each([
+    `${EMULATOR_ENDPOINT}/`,
+    `${EMULATOR_ENDPOINT}/kd-dev-media`,
+    'http://user:pw@127.0.0.1:9020',
+    'ftp://127.0.0.1:9020',
+    's3:9020',
+    '127.0.0.1:9020',
+  ])('rejects the endpoint %s', (endpoint) => {
+    expect(issues({ ...EMULATOR, STORAGE_S3_ENDPOINT: endpoint })).toEqual([
+      { name: 'STORAGE_S3_ENDPOINT', rule: STORAGE_RULES.endpoint },
+    ]);
+  });
+
+  it.each(['http://s3:8333', 'https://storage.kitchendaylight.example'])(
+    'accepts the endpoint %s',
+    (endpoint) => {
+      expect(
+        loadConfig({ ...EMULATOR, STORAGE_S3_ENDPOINT: endpoint }, 'server').storage.s3.endpoint,
+      ).toBe(endpoint);
+    },
+  );
+
+  it.each(['yes', '1', 'TRUE'])('rejects STORAGE_S3_FORCE_PATH_STYLE=%s', (value) => {
+    expect(issues({ ...EMULATOR, STORAGE_S3_FORCE_PATH_STYLE: value })).toEqual([
+      { name: 'STORAGE_S3_FORCE_PATH_STYLE', rule: STORAGE_RULES.forcePathStyle },
+    ]);
+  });
+
+  it.each(['KD-Media', 'kd_media', 'ab', '-kd-media', 'kd-media-'])(
+    'rejects the bucket name %s',
+    (bucket) => {
+      expect(issues({ ...VALID_SERVER, STORAGE_S3_BUCKET_MEDIA: bucket })).toEqual([
+        { name: 'STORAGE_S3_BUCKET_MEDIA', rule: STORAGE_RULES.bucket },
+      ]);
+    },
+  );
+
+  it('refuses one bucket for both roles', () => {
+    expect(issues({ ...VALID_SERVER, STORAGE_S3_BUCKET_PRIVATE: MEDIA_BUCKET })).toEqual([
+      { name: 'STORAGE_S3_BUCKET_PRIVATE', rule: STORAGE_RULES.bucketsDiffer },
+    ]);
+  });
+
+  it.each(['us-east', 'US-EAST-1', 'eu_west_1', 'ap-southeast-1a'])(
+    'rejects STORAGE_S3_REGION=%s',
+    (region) => {
+      expect(issues({ ...VALID_SERVER, STORAGE_S3_REGION: region })).toEqual([
+        { name: 'STORAGE_S3_REGION', rule: STORAGE_RULES.region },
+      ]);
+    },
+  );
+
+  it('rejects an unknown STORAGE_ADAPTER', () => {
+    expect(issues({ ...VALID_SERVER, STORAGE_ADAPTER: 'gcs' })).toEqual([
+      { name: 'STORAGE_ADAPTER', rule: 'must be one of s3' },
+    ]);
+  });
+
+  it.each([
+    `${DEPLOYED_PUBLIC_BASE_URL}/`,
+    `${DEPLOYED_PUBLIC_BASE_URL}?v=1`,
+    `${DEPLOYED_PUBLIC_BASE_URL}#media`,
+    'https://user:pw@media.kitchendaylight.example',
+    'media.kitchendaylight.example',
+    'ftp://media.kitchendaylight.example',
+  ])('rejects MEDIA_PUBLIC_BASE_URL=%s', (url) => {
+    expect(issues({ ...VALID_SERVER, MEDIA_PUBLIC_BASE_URL: url })).toEqual([
+      { name: 'MEDIA_PUBLIC_BASE_URL', rule: STORAGE_RULES.publicBaseUrl },
+    ]);
+  });
+
+  it.each(['demo', 'prod'])('refuses an http MEDIA_PUBLIC_BASE_URL in %s', (appEnv) => {
+    const env = {
+      ...DEPLOYED,
+      APP_ENV: appEnv,
+      MEDIA_PUBLIC_BASE_URL: 'http://media.kitchendaylight.example',
+    };
+
+    expect(issues(env)).toEqual([
+      { name: 'MEDIA_PUBLIC_BASE_URL', rule: STORAGE_RULES.publicBaseUrl },
+    ]);
+  });
+
+  it('never echoes a storage value', () => {
+    const env = {
+      ...DEPLOYED,
+      APP_ENV: 'prod',
+      STORAGE_ADAPTER: 'leak-check-adapter',
+      STORAGE_S3_REGION: 'leak-check-region',
+      STORAGE_S3_ENDPOINT: 'http://leak-check-endpoint.invalid:9020',
+      STORAGE_S3_FORCE_PATH_STYLE: 'leak-check-style',
+      STORAGE_S3_ACCESS_KEY: 'leak-check-access',
+      STORAGE_S3_SECRET_KEY: 'leak-check-secret',
+      STORAGE_S3_BUCKET_MEDIA: 'Leak-Check-Media',
+      STORAGE_S3_BUCKET_PRIVATE: 'Leak-Check-Private',
+      MEDIA_PUBLIC_BASE_URL: 'http://leak-check-cdn.invalid/',
+    };
+    const error = failure(env);
+    const text = [error.message, ...error.issues.map(({ name, rule }) => `${name} ${rule}`)].join(
+      '\n',
+    );
+
+    expect(error.issues).toHaveLength(9);
+    expect(text).not.toMatch(/leak.check/i);
+  });
+
+  it('is not read by the CLI', () => {
+    const env = { ...VALID_CLI, STORAGE_ADAPTER: 'gcs', STORAGE_S3_ENDPOINT: 'not a url' };
+
+    expect(loadConfig(env, 'cli')).not.toHaveProperty('storage');
+  });
+});
+
 describe('loadConfig (cli)', () => {
   it('maps a valid host environment to a frozen config without server fields', () => {
     const config = loadConfig({ ...VALID_CLI, PORT: 'abc' }, 'cli');
@@ -767,7 +1086,8 @@ describe('error text', () => {
       '\n',
     );
 
-    expect(error.issues).toHaveLength(12);
+    // The 12 supplied values, plus the two buckets and the public media URL, which are required.
+    expect(error.issues).toHaveLength(15);
     expect(text).not.toMatch(/leak.check/);
   });
 

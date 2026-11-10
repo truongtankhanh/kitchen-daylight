@@ -7,11 +7,13 @@ import {
   DEFAULT_LOG_LEVEL,
   DEFAULT_MAIL_FROM,
   DEFAULT_PORT,
+  DEFAULT_STORAGE_ADAPTER,
+  DEFAULT_STORAGE_S3_REGION,
   DEFAULT_TRUST_PROXY_HOPS,
   effectiveMailAdapter,
   ServerEnvironment,
 } from './config.schema.js';
-import type { AppEnv, LogLevel, TrustProxyHops } from './config.schema.js';
+import type { AppEnv, LogLevel, StorageAdapterName, TrustProxyHops } from './config.schema.js';
 
 export type ConfigKind = 'server' | 'cli';
 
@@ -66,6 +68,29 @@ export type MailConfig =
     }
   | { readonly adapter: 'ses'; readonly from: string };
 
+/** S3 client settings (decision 0005 section 2; decision 0009 section 8). */
+export interface S3Settings {
+  readonly region: string;
+  /** The emulator's origin; `null` on AWS. Its presence makes the adapter kind `emulator`. */
+  readonly endpoint: string | null;
+  /** Read only with an endpoint; always `false` without one. */
+  readonly forcePathStyle: boolean;
+  /** Static keys (emulator only); `null` means the SDK's default provider chain. */
+  readonly credentials: {
+    readonly accessKeyId: string;
+    readonly secretAccessKey: string;
+  } | null;
+  readonly buckets: { readonly media: string; readonly private: string };
+}
+
+/** Storage settings (decision 0009). */
+export interface StorageConfig {
+  readonly adapter: StorageAdapterName;
+  /** Base of every public media URL, no trailing slash (decision 0009 section 6). */
+  readonly publicBaseUrl: string;
+  readonly s3: S3Settings;
+}
+
 export interface ServerConfig extends CliConfig {
   readonly port: number;
   readonly logLevel: LogLevel;
@@ -81,6 +106,7 @@ export interface ServerConfig extends CliConfig {
   readonly adminOrigins: readonly string[];
   /** `APP_STORE_URL_IOS`, `APP_STORE_URL_ANDROID`; `null` when unset (A4-T3). */
   readonly appStoreUrls: AppStoreUrls;
+  readonly storage: StorageConfig;
 }
 
 /** The store page of each mobile platform, for `UPGRADE_REQUIRED` (brief L12). */
@@ -129,6 +155,19 @@ const AUTH_VARIABLES = [
 // Decision 0005, section 2 (A1-T8). `MAIL_UI_URL` is for people and e2e tests, never read here.
 const MAIL_VARIABLES = ['MAIL_ADAPTER', 'MAIL_SMTP_HOST', 'MAIL_SMTP_PORT', 'MAIL_FROM'] as const;
 
+// Decision 0005 section 2 and decision 0009 section 6 (A6-T2).
+const STORAGE_VARIABLES = [
+  'STORAGE_ADAPTER',
+  'STORAGE_S3_REGION',
+  'STORAGE_S3_ENDPOINT',
+  'STORAGE_S3_FORCE_PATH_STYLE',
+  'STORAGE_S3_ACCESS_KEY',
+  'STORAGE_S3_SECRET_KEY',
+  'STORAGE_S3_BUCKET_MEDIA',
+  'STORAGE_S3_BUCKET_PRIVATE',
+  'MEDIA_PUBLIC_BASE_URL',
+] as const;
+
 /** An empty value counts as unset. */
 function read(env: Environment, name: string): string | undefined {
   const value = env[name];
@@ -166,7 +205,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
     raw['ADMIN_ORIGINS'] = read(env, 'ADMIN_ORIGINS');
     raw['APP_STORE_URL_IOS'] = read(env, 'APP_STORE_URL_IOS');
     raw['APP_STORE_URL_ANDROID'] = read(env, 'APP_STORE_URL_ANDROID');
-    for (const name of [...AUTH_VARIABLES, ...MAIL_VARIABLES]) {
+    for (const name of [...AUTH_VARIABLES, ...MAIL_VARIABLES, ...STORAGE_VARIABLES]) {
       raw[name] = read(env, name);
     }
   }
@@ -214,6 +253,7 @@ export function loadConfig(env: Environment, kind: ConfigKind): CliConfig | Serv
         ios: instance.APP_STORE_URL_IOS ?? null,
         android: instance.APP_STORE_URL_ANDROID ?? null,
       }),
+      storage: toStorageConfig(instance),
     });
   }
   return Object.freeze({ appEnv: instance.APP_ENV, database });
@@ -257,6 +297,33 @@ function toMailConfig(env: ServerEnvironment): MailConfig {
     adapter: 'smtp',
     from,
     smtp: Object.freeze({ host: env.MAIL_SMTP_HOST as string, port: env.MAIL_SMTP_PORT as number }),
+  });
+}
+
+/**
+ * Applies the `dev`/`test` defaults (adapter, region, public URL derived from the emulator endpoint
+ * and the media bucket); the validation above guarantees every value read here.
+ */
+function toStorageConfig(env: ServerEnvironment): StorageConfig {
+  const endpoint = env.STORAGE_S3_ENDPOINT ?? null;
+  const media = env.STORAGE_S3_BUCKET_MEDIA;
+  const credentials =
+    env.STORAGE_S3_ACCESS_KEY !== undefined && env.STORAGE_S3_SECRET_KEY !== undefined
+      ? Object.freeze({
+          accessKeyId: env.STORAGE_S3_ACCESS_KEY,
+          secretAccessKey: env.STORAGE_S3_SECRET_KEY,
+        })
+      : null;
+  return Object.freeze({
+    adapter: env.STORAGE_ADAPTER ?? DEFAULT_STORAGE_ADAPTER,
+    publicBaseUrl: env.MEDIA_PUBLIC_BASE_URL ?? `${endpoint as string}/${media}`,
+    s3: Object.freeze({
+      region: env.STORAGE_S3_REGION ?? DEFAULT_STORAGE_S3_REGION,
+      endpoint,
+      forcePathStyle: endpoint !== null && env.STORAGE_S3_FORCE_PATH_STYLE !== 'false',
+      credentials,
+      buckets: Object.freeze({ media, private: env.STORAGE_S3_BUCKET_PRIVATE }),
+    }),
   });
 }
 

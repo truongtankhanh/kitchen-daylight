@@ -121,6 +121,143 @@ function AdminOriginList(): PropertyDecorator {
   };
 }
 
+// --- Storage variables (decision 0005 section 2; decision 0009 sections 6, 8 and 9; A6-T2) -------
+
+/** `s3`, the only adapter. Its kind follows `STORAGE_S3_ENDPOINT`: `emulator` when set, else `real`. */
+export const STORAGE_ADAPTERS = ['s3'] as const;
+export type StorageAdapterName = (typeof STORAGE_ADAPTERS)[number];
+/** Applies only in `dev` and `test` and only when `STORAGE_ADAPTER` is unset. */
+export const DEFAULT_STORAGE_ADAPTER: StorageAdapterName = 's3';
+/** The region of the Docker emulator (`api-contract.md`); `demo` and `prod` name theirs. */
+export const DEFAULT_STORAGE_S3_REGION = 'us-east-1';
+/** `demo` and `prod` name the adapter, the region and the public URL explicitly. */
+const STORAGE_REQUIRED_IN: readonly AppEnv[] = ['demo', 'prod'];
+/** Instance profile, never static keys (ADR-0004; decision 0005 section 2). */
+const STORAGE_KEYS_REFUSED_IN: readonly AppEnv[] = ['demo', 'prod'];
+/** `prod` never talks to an emulator (decision 0005 section 5). */
+const STORAGE_ENDPOINT_REFUSED_IN: readonly AppEnv[] = ['prod'];
+const S3_BUCKET_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+const S3_REGION_PATTERN = /^[a-z]{2}(?:-[a-z]+)+-\d{1,2}$/;
+
+export const STORAGE_RULES = {
+  endpoint: 'must be an http(s) origin (scheme://host[:port], no path)',
+  endpointInProd: 'must be unset when APP_ENV is prod',
+  keyInDeployedTier: 'must be unset when APP_ENV is demo or prod (instance profile)',
+  forcePathStyle: 'must be true or false',
+  bucket: 'must be an S3 bucket name: 3 to 63 lower-case letters, digits, "." or "-"',
+  bucketsDiffer: 'must differ from STORAGE_S3_BUCKET_MEDIA',
+  region: 'must be an AWS region name, for example ap-southeast-1',
+  publicBaseUrl:
+    'must be an absolute http(s) URL without credentials, query, fragment or trailing slash; https only when APP_ENV is demo or prod',
+} as const;
+
+function inTiers(tiers: readonly AppEnv[], appEnv: unknown): boolean {
+  return tiers.some((tier) => tier === appEnv);
+}
+
+/** True for `scheme://host[:port]` exactly, `http` or `https`, as the S3 client takes an endpoint. */
+export function isHttpOrigin(value: unknown): boolean {
+  if (typeof value !== 'string' || !URL.canParse(value)) {
+    return false;
+  }
+  const url = new URL(value);
+  return (
+    (url.protocol === 'http:' || url.protocol === 'https:') &&
+    url.origin === value &&
+    MAIL_SMTP_HOST_PATTERN.test(url.hostname)
+  );
+}
+
+/**
+ * True for the base of public media URLs (decision 0009 section 6): an absolute URL, `https` in
+ * `demo` and `prod`, with an optional path but no credentials, query, fragment or trailing slash.
+ */
+export function isPublicBaseUrl(value: unknown, appEnv: unknown): boolean {
+  if (typeof value !== 'string' || !URL.canParse(value)) {
+    return false;
+  }
+  const url = new URL(value);
+  const httpsOnly = inTiers(STORAGE_REQUIRED_IN, appEnv);
+  return (
+    (url.protocol === 'https:' || (!httpsOnly && url.protocol === 'http:')) &&
+    url.username === '' &&
+    url.password === '' &&
+    !value.includes('?') &&
+    !value.includes('#') &&
+    !value.endsWith('/') &&
+    MAIL_SMTP_HOST_PATTERN.test(url.hostname)
+  );
+}
+
+type StorageCheck = (value: unknown, env: Partial<ServerEnvironment>) => string | undefined;
+
+/** One decorator per storage rule set: its message is the first rule the value breaks. */
+function StorageValue(check: StorageCheck): PropertyDecorator {
+  return (target, propertyName) => {
+    registerDecorator({
+      name: 'storageValue',
+      target: target.constructor,
+      propertyName: String(propertyName),
+      validator: {
+        validate(value: unknown, args: ValidationArguments): boolean {
+          return check(value, args.object as Partial<ServerEnvironment>) === undefined;
+        },
+        defaultMessage(args: ValidationArguments): string {
+          return check(args.value, args.object as Partial<ServerEnvironment>) ?? 'invalid';
+        },
+      },
+    });
+  };
+}
+
+const checkStorageEndpoint: StorageCheck = (value, env) => {
+  if (inTiers(STORAGE_ENDPOINT_REFUSED_IN, env.APP_ENV)) {
+    return STORAGE_RULES.endpointInProd;
+  }
+  return isHttpOrigin(value) ? undefined : STORAGE_RULES.endpoint;
+};
+
+/** Both keys or neither; none at all in `demo` and `prod`. An absent partner reads as `required`. */
+const checkStorageKey: StorageCheck = (value, env) => {
+  if (inTiers(STORAGE_KEYS_REFUSED_IN, env.APP_ENV)) {
+    return value === undefined ? undefined : STORAGE_RULES.keyInDeployedTier;
+  }
+  return typeof value === 'string' ? undefined : 'required';
+};
+
+const checkBucket: StorageCheck = (value) =>
+  typeof value === 'string' && S3_BUCKET_PATTERN.test(value) ? undefined : STORAGE_RULES.bucket;
+
+const checkPrivateBucket: StorageCheck = (value, env) =>
+  checkBucket(value, env) ??
+  (value === env.STORAGE_S3_BUCKET_MEDIA ? STORAGE_RULES.bucketsDiffer : undefined);
+
+const checkPublicBaseUrl: StorageCheck = (value, env) =>
+  isPublicBaseUrl(value, env.APP_ENV) ? undefined : STORAGE_RULES.publicBaseUrl;
+
+function storageKeysPresent(env: ServerEnvironment): boolean {
+  return env.STORAGE_S3_ACCESS_KEY !== undefined || env.STORAGE_S3_SECRET_KEY !== undefined;
+}
+
+/** Validated when set, and always in `demo` and `prod`. */
+function presentOrRequiredForStorage(
+  property: 'STORAGE_ADAPTER' | 'STORAGE_S3_REGION',
+): (env: ServerEnvironment) => boolean {
+  return (env) => env[property] !== undefined || STORAGE_REQUIRED_IN.includes(env.APP_ENV);
+}
+
+/**
+ * The base of public media URLs. `dev` and `test` derive it from the emulator endpoint and the
+ * media bucket when unset, so it is required there only without an endpoint (decision 0009 section 6).
+ */
+function publicBaseUrlNeeded(env: ServerEnvironment): boolean {
+  return (
+    env.MEDIA_PUBLIC_BASE_URL !== undefined ||
+    STORAGE_REQUIRED_IN.includes(env.APP_ENV) ||
+    env.STORAGE_S3_ENDPOINT === undefined
+  );
+}
+
 /** The adapter the mail slice will use: the explicit one, else the `dev`/`test` default. */
 export function effectiveMailAdapter(
   env: Pick<ServerEnvironment, 'APP_ENV' | 'MAIL_ADAPTER'>,
@@ -464,4 +601,47 @@ export class ServerEnvironment extends CliEnvironment {
   @IsOptional()
   @IsUrl(STORE_URL_OPTIONS, { message: STORE_URL_RULE })
   APP_STORE_URL_ANDROID?: string;
+
+  // Storage (decision 0005 section 2, decision 0009; A6-T2). `dev` and `test`: default `s3` and
+  // `DEFAULT_STORAGE_S3_REGION`; `demo` and `prod`: both required.
+  @ValidateIf(presentOrRequiredForStorage('STORAGE_ADAPTER'))
+  @IsIn(STORAGE_ADAPTERS, { message: `must be one of ${STORAGE_ADAPTERS.join('|')}` })
+  STORAGE_ADAPTER?: StorageAdapterName;
+
+  @ValidateIf(presentOrRequiredForStorage('STORAGE_S3_REGION'))
+  @IsString({ message: STORAGE_RULES.region })
+  @Matches(S3_REGION_PATTERN, { message: STORAGE_RULES.region })
+  STORAGE_S3_REGION?: string;
+
+  // Set only for the emulator, which makes the adapter kind `emulator`; refused in `prod`.
+  @IsOptional()
+  @StorageValue(checkStorageEndpoint)
+  STORAGE_S3_ENDPOINT?: string;
+
+  // Read only with an endpoint; default `true` there (path-style buckets of the emulator).
+  @IsOptional()
+  @IsIn(['true', 'false'], { message: STORAGE_RULES.forcePathStyle })
+  STORAGE_S3_FORCE_PATH_STYLE?: 'true' | 'false';
+
+  // Both or neither (else the default provider chain); refused in `demo` and `prod`.
+  @ValidateIf(storageKeysPresent)
+  @StorageValue(checkStorageKey)
+  STORAGE_S3_ACCESS_KEY?: string;
+
+  @ValidateIf(storageKeysPresent)
+  @StorageValue(checkStorageKey)
+  STORAGE_S3_SECRET_KEY?: string;
+
+  // Required in every tier: the adapter is always bound (decision 0005 section 2).
+  @StorageValue(checkBucket)
+  STORAGE_S3_BUCKET_MEDIA!: string;
+
+  @StorageValue(checkPrivateBucket)
+  STORAGE_S3_BUCKET_PRIVATE!: string;
+
+  // Decision 0009 section 6: the CloudFront URL in `demo` and `prod` (https, required); in `dev` and
+  // `test` optional when the endpoint is set (default `<endpoint>/<media bucket>`).
+  @ValidateIf(publicBaseUrlNeeded)
+  @StorageValue(checkPublicBaseUrl)
+  MEDIA_PUBLIC_BASE_URL?: string;
 }

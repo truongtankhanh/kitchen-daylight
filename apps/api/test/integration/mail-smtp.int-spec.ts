@@ -86,6 +86,10 @@ describe('MailPort over SMTP to Mailpit', () => {
         MAIL_ADAPTER: 'smtp',
         MAIL_SMTP_HOST: required('MAIL_SMTP_HOST'),
         MAIL_SMTP_PORT: required('MAIL_SMTP_PORT'),
+        // Required by the config since A6-T2; never connected, the spec imports no media module.
+        STORAGE_S3_ENDPOINT: 'http://127.0.0.1:1',
+        STORAGE_S3_BUCKET_MEDIA: 'kd-mail-spec-media',
+        STORAGE_S3_BUCKET_PRIVATE: 'kd-mail-spec-private',
         ...createEphemeralAuthEnvironment('kd-mail-spec-'),
       },
       'server',

@@ -28,6 +28,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1164.0",
     "@kd/contracts": "workspace:*",
     "@nestjs/common": "12.3.2",
     "@nestjs/core": "12.3.2",
