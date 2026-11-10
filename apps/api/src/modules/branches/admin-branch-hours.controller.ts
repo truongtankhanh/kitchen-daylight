@@ -30,10 +30,10 @@ class ValidatedAs implements PipeTransform {
   }
 }
 
-/** Same scoping as `/admin/branches/{id}` (api-divergences D-132). */
+/** Same scoping as `/admin/branches/{id}` (api-divergences D-132, D-147). */
 const SCOPED_IN_SERVICE =
   'Scoped in BranchHoursService through BranchScopeService (404 outside staff_branches); ' +
-  'moves to @BranchScoped in A5-T6 (api-divergences D-132).';
+  'checked by branches-scoping.int-spec.ts (api-divergences D-132, D-147).';
 
 /**
  * `/admin/branches/{id}/hours` (api-outline "Branches"; A5-T3). `MANAGER` on their own branches,

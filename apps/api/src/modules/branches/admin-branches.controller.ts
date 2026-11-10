@@ -48,13 +48,14 @@ class ValidatedAs implements PipeTransform {
 }
 
 /**
- * The reason of the manager routes: `BranchesService` scopes them through `BranchScopeService`
- * (an id outside the caller's `staff_branches` is `404`). A5-T6 moves them to `@BranchScoped`
- * when the enumerating harness accepts manager-only routes (api-divergences D-132).
+ * The reason of the branch routes: `BranchesService` scopes them through `BranchScopeService`
+ * (an id outside the caller's `staff_branches` is `404`). They stay `@NotBranchScoped`; the
+ * role-aware family list of `branches-scoping.int-spec.ts` checks every one (api-divergences
+ * D-132, D-147).
  */
 const SCOPED_IN_SERVICE =
   'Scoped in BranchesService through BranchScopeService (404 outside staff_branches); ' +
-  'moves to @BranchScoped in A5-T6 (api-divergences D-132).';
+  'checked by branches-scoping.int-spec.ts (api-divergences D-132, D-147).';
 
 /**
  * `/admin/branches` (api-outline "Branches"; A5-T2). `MANAGER` reads and edits their own branches,
