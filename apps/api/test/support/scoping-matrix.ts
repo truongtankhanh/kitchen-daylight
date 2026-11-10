@@ -122,3 +122,78 @@ registerScopingCase({
 // (it lists the caller's own branches through `BranchScopeService`), so it has no case here: a case
 // for a route that is not `@BranchScoped` fails the spec. `branch-scoping.int-spec.ts` lists it with
 // its reason in the route table; `admin-settings.int-spec.ts` checks its branches per role.
+
+// ---------------------------------------------------------------------------------------------
+// A5-T6: the branch family (`/api/v1/admin/branches*`, `/api/v1/admin/wards`)
+// ---------------------------------------------------------------------------------------------
+
+// These routes are `@NotBranchScoped(reason)` and scoped in their services through
+// `BranchScopeService` (api-divergences D-132, D-147): most of them are manager-only, which the
+// generic matrix above (a `STAFF` of branch A succeeds on every case) cannot express. They are
+// listed here instead, with the role set that may call them, and
+// `branches-scoping.int-spec.ts` (A5-T6) fails for a route of the family that the router has and
+// this list lacks, for an entry the router does not have, and for an entry without a request in
+// that spec. It then asserts the exact status of every route for ADMIN, the MANAGER of A, the
+// STAFF of A and the MANAGER of B. A new route under these paths is added here, in the slice
+// that adds it, together with its request in that spec.
+
+/** Who may call a family route before branch scoping: the `@Roles` set of api-outline. */
+export type BranchFamilyAccess = 'STAFF' | 'MANAGER' | 'ADMIN';
+
+/**
+ * - `BRANCH`: an action on the branch of the path `:id` (`404` outside the caller's branches).
+ * - `LIST`: the caller's branches only.
+ * - `NONE`: reads or writes no existing branch (create, reference data).
+ */
+export type BranchFamilyTarget = 'BRANCH' | 'LIST' | 'NONE';
+
+export interface BranchFamilyRoute {
+  /** `METHOD /api/v1/...`, as the router registers it. */
+  readonly route: string;
+  readonly access: BranchFamilyAccess;
+  readonly target: BranchFamilyTarget;
+}
+
+/** The paths of the family: the route itself or anything below it. */
+export const BRANCH_FAMILY_PATHS: readonly string[] = [
+  '/api/v1/admin/branches',
+  '/api/v1/admin/wards',
+];
+
+/** True for a registered path of the family. */
+export function isBranchFamilyPath(path: string): boolean {
+  return BRANCH_FAMILY_PATHS.some((base) => path === base || path.startsWith(`${base}/`));
+}
+
+export const BRANCH_FAMILY_ROUTES: readonly BranchFamilyRoute[] = [
+  // A5-T2
+  { route: 'GET /api/v1/admin/branches', access: 'MANAGER', target: 'LIST' },
+  { route: 'POST /api/v1/admin/branches', access: 'ADMIN', target: 'NONE' },
+  { route: 'GET /api/v1/admin/branches/:id', access: 'MANAGER', target: 'BRANCH' },
+  { route: 'PATCH /api/v1/admin/branches/:id', access: 'MANAGER', target: 'BRANCH' },
+  { route: 'DELETE /api/v1/admin/branches/:id', access: 'ADMIN', target: 'BRANCH' },
+  // A5-T3
+  { route: 'GET /api/v1/admin/branches/:id/hours', access: 'MANAGER', target: 'BRANCH' },
+  { route: 'PUT /api/v1/admin/branches/:id/hours', access: 'MANAGER', target: 'BRANCH' },
+  // A5-T4
+  { route: 'GET /api/v1/admin/branches/:id/delivery-zones', access: 'MANAGER', target: 'BRANCH' },
+  { route: 'POST /api/v1/admin/branches/:id/delivery-zones', access: 'MANAGER', target: 'BRANCH' },
+  {
+    route: 'POST /api/v1/admin/branches/:id/delivery-zones/check',
+    access: 'STAFF',
+    target: 'BRANCH',
+  },
+  {
+    route: 'PATCH /api/v1/admin/branches/:id/delivery-zones/:zoneId',
+    access: 'MANAGER',
+    target: 'BRANCH',
+  },
+  {
+    route: 'DELETE /api/v1/admin/branches/:id/delivery-zones/:zoneId',
+    access: 'MANAGER',
+    target: 'BRANCH',
+  },
+  // A5-T5
+  { route: 'POST /api/v1/admin/branches/:id/pause', access: 'STAFF', target: 'BRANCH' },
+  { route: 'GET /api/v1/admin/wards', access: 'STAFF', target: 'NONE' },
+];
