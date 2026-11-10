@@ -30,6 +30,7 @@ An accepted record is not rewritten: a change of decision is a new record that s
 | [0006](0006-admin-and-mobile-platform-facts.md) | Admin and mobile platform facts | accepted | 2026-11-03 | P0-T7 |
 | [0007](0007-api-platform-libraries-and-rules.md) | API platform libraries and rules | proposed | 2026-11-05 | A0-T1 |
 | [0008](0008-authentication-implementation.md) | Authentication implementation | accepted | 2026-11-06 | A1-T1 |
+| [0009](0009-media-and-storage.md) | Media and storage: image processing, upload rules, keys and URLs, S3 client | proposed | 2026-11-10 | A6-T1 |
 | [0011](0011-staff-refresh-cookie-secure-by-tier.md) | Staff refresh cookie: `Secure` by tier (amends 0008 section 10) | accepted | 2026-11-09 | phase A3 review |
 
 Not a decision record: [follow-ups.md](follow-ups.md) holds the paste-ready text that P6-T4 hands to the Docker repository and the design documents, and the slice 1 readiness checklist. [api-divergences.md](api-divergences.md) lists where the API as built differs from `data-model.md` or `api-outline.md` (decision 0007, section 13).
