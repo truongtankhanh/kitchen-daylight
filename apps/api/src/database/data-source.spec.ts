@@ -8,6 +8,7 @@ import { MfaCredential } from '../modules/auth/entities/mfa-credential.entity.js
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity.js';
 import { Amenity } from '../modules/branches/entities/amenity.entity.js';
 import { BranchAmenity } from '../modules/branches/entities/branch-amenity.entity.js';
+import { BranchMedia } from '../modules/branches/entities/branch-media.entity.js';
 import { BranchOpeningPeriod } from '../modules/branches/entities/branch-opening-period.entity.js';
 import { BranchSpecialHours } from '../modules/branches/entities/branch-special-hours.entity.js';
 import { Branch } from '../modules/branches/entities/branch.entity.js';
@@ -15,6 +16,15 @@ import { DeliveryZone } from '../modules/branches/entities/delivery-zone.entity.
 import { Province } from '../modules/geo/entities/province.entity.js';
 import { Ward } from '../modules/geo/entities/ward.entity.js';
 import { Media } from '../modules/media/entities/media.entity.js';
+import { BranchMenuItem } from '../modules/menu/entities/branch-menu-item.entity.js';
+import { ItemOptionGroup } from '../modules/menu/entities/item-option-group.entity.js';
+import { ItemOption } from '../modules/menu/entities/item-option.entity.js';
+import { MenuCategory } from '../modules/menu/entities/menu-category.entity.js';
+import { MenuItemMedia } from '../modules/menu/entities/menu-item-media.entity.js';
+import { MenuItemTag } from '../modules/menu/entities/menu-item-tag.entity.js';
+import { MenuItemTranslation } from '../modules/menu/entities/menu-item-translation.entity.js';
+import { MenuItem } from '../modules/menu/entities/menu-item.entity.js';
+import { Tag } from '../modules/menu/entities/tag.entity.js';
 import { OutboxEvent } from '../modules/realtime/entities/outbox-event.entity.js';
 import { AppSetting } from '../modules/settings/entities/app-setting.entity.js';
 import { ConsentDocument } from '../modules/users/entities/consent-document.entity.js';
@@ -60,6 +70,16 @@ describe('createDataSourceOptions', () => {
         Amenity,
         BranchAmenity,
         Media,
+        MenuCategory,
+        MenuItem,
+        MenuItemTranslation,
+        Tag,
+        MenuItemTag,
+        ItemOptionGroup,
+        ItemOption,
+        MenuItemMedia,
+        BranchMedia,
+        BranchMenuItem,
       ],
     });
   });
