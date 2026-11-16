@@ -11,7 +11,7 @@
 
 # --- build: install with the lockfile, compile the API, the seed tool and their workspace
 # dependencies ---
-FROM node:26.13.0-trixie-slim AS build
+FROM node:26.13.1-trixie-slim AS build
 
 # CI=true: non-interactive pnpm. HUSKY=0: no git hooks in the image (decision 0002).
 ENV CI=true \
@@ -36,7 +36,7 @@ RUN pnpm install --offline --frozen-lockfile --filter "@kd/api..." --filter "@kd
     && pnpm --filter @kd/seed deploy --prod /prod/seed
 
 # --- runtime: production dependencies and compiled output only ---
-FROM node:26.13.0-trixie-slim AS runtime
+FROM node:26.13.1-trixie-slim AS runtime
 
 ENV NODE_ENV=production
 
